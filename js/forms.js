@@ -21,13 +21,13 @@ function openDetail(id, focus) {
   const pay = S.payments[id];
 
   const kv = (l, v) => `<div><span>${l}</span><b>${v == null || v === '' ? '-' : esc(v)}</b></div>`;
-  const basic = `<div class="sec"><h3>기본 정보</h3><div class="kv">
+  const basic = `<div class="sec"><h3>기본 정보</h3><div class="basic-wrap">${photoUrl(a) ? `<img class="photo" src="${esc(photoUrl(a))}" alt="사진">` : `<div class="photo none">사진 없음</div>`}<div style="flex:1"><div class="kv">
     ${kv('한글 성명', a.name_ko)}${kv('영문 성명', a.name_en)}${kv('성별', a.gender)}${kv('생년월일', a.birth_date)}${kv('국적', a.nationality)}
     ${kv('입학구분', a.admission_kind + (a.transfer_year ? ` (${a.transfer_year}학년 편입)` : ''))}${kv('지원학과', d.name_ko)}${kv('전형', qualName(a.qualification_code))}
     ${full ? kv('지원경로', a.route === '유학원' ? `유학원${a.agency_id && S.agencyMap[a.agency_id] ? ' (' + S.agencyMap[a.agency_id].name + ')' : ''}` : a.route) : ''}
     ${kv('어학능력', a.topik_level ? `TOPIK ${a.topik_level}급` : '')}${kv('출신 고교', a.high_school)}${kv('GPA(내신)', a.gpa)}
     ${full ? kv('여권번호', a.passport_last4 ? '****' + a.passport_last4 : '') + kv('여권 만료일', a.passport_expiry) + kv('비자', a.visa_type) + kv('이메일', a.email) + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' : '미신청') : ''}
-    ${kv('지원일자', fmtDate(a.created_at))}</div>
+    ${kv('지원일자', fmtDate(a.created_at))}</div></div></div>
     ${full && can.edit() ? `<div style="margin-top:10px"><button class="btn sm" onclick="showSecrets('${id}')">여권번호·외국인등록번호 원문 보기</button>
       <span class="secret" id="secrets"></span><div class="muted small">※ 원문을 볼 때마다 열람 기록이 남습니다. 20초 뒤 자동으로 가려집니다.</div></div>` : ''}
     ${full && a.memo ? `<div style="margin-top:10px"><span class="muted small">비고</span><div>${esc(a.memo)}</div></div>` : ''}</div>`;
@@ -154,7 +154,19 @@ async function autoAssignScholarships() {
 }
 
 /* ---------- 등록 / 수정 폼 ---------- */
+let pendingPhoto = null;
+async function onPhotoPick(file) {
+  pendingPhoto = null;
+  if (!file) return;
+  try {
+    pendingPhoto = await resizePhoto(file);
+    $('#af-prev').classList.remove('none');
+    $('#af-prev').innerHTML = `<img src="${URL.createObjectURL(pendingPhoto)}" alt="">`;
+    const d = $('#af-photo-del'); if (d) d.checked = false;
+  } catch (e) { toast(errMsg(e), 'err'); $('#af-photo').value = ''; }
+}
 function openApplicantForm(id) {
+  pendingPhoto = null;
   const edit = !!id;
   const a = edit ? S.apps.find(x => x.id === id) : { admission_kind: '신입학', route: '개별지원', gender: '' };
   const v = k => esc(a[k] == null ? '' : a[k]);
@@ -163,13 +175,17 @@ function openApplicantForm(id) {
     .map(d => `<option value="${d.id}" ${sel('department_id', d.id)}>${esc(d.name_ko)}${d.program_type === '전공심화' ? ' [전공심화]' : ''}</option>`).join('');
   const html = `${mHead(edit ? '지원자 정보 수정' : '지원자 추가', edit ? esc(a.receipt_no) : `${esc(S.term.name)} 모집`)}
   <div class="m-body"><div id="af-err" class="err-box hide"></div>
+   <div class="sec"><h3>사진 <span class="muted small">여권용 사진 (JPG·PNG, 자동으로 줄여서 저장됩니다)</span></h3>
+    <div class="photo-edit"><div id="af-prev" class="photo ${photoUrl(a) ? '' : 'none'}">${photoUrl(a) ? `<img src="${esc(photoUrl(a))}" alt="">` : '사진 없음'}</div>
+     <div><input type="file" id="af-photo" accept="image/*" onchange="onPhotoPick(this.files[0])">
+     ${a.photo_path ? `<label style="display:flex;gap:6px;align-items:center;margin-top:8px;font-weight:500"><input type="checkbox" id="af-photo-del" style="width:auto"> 현재 사진 삭제</label>` : ''}</div></div></div>
    <div class="sec"><h3>기본 정보</h3><div class="grid2">
     ${field('한글 성명', `<input id="af-name_ko" value="${v('name_ko')}">`, { req: 1 })}
     ${field('영문 성명 (여권과 동일)', `<input id="af-name_en" value="${v('name_en')}" style="text-transform:uppercase">`, { req: 1 })}
     ${field('성별', `<select id="af-gender"><option value="">선택</option><option ${sel('gender', '남')}>남</option><option ${sel('gender', '여')}>여</option></select>`, { req: 1 })}
     ${field('생년월일', `<input id="af-birth_date" type="date" value="${v('birth_date')}">`, { req: 1 })}
     ${field('국적', `<input id="af-nationality" list="nations" value="${v('nationality')}"><datalist id="nations">${NATIONS.map(n => `<option value="${n}">`).join('')}</datalist>`, { req: 1 })}
-    ${field('접수번호 (비우면 자동 부여)', `<input id="af-receipt_no" value="${v('receipt_no')}" ${edit ? 'disabled' : ''} placeholder="INHA-${S.term.year}-000">`)}
+    ${field('접수번호 (비우면 자동 부여)', `<input id="af-receipt_no" value="${v('receipt_no')}" ${edit ? 'disabled' : ''} placeholder="ITC-000">`)}
    </div></div>
    <div class="sec"><h3>지원 정보</h3><div class="grid2">
     ${field('입학구분', `<select id="af-admission_kind" onchange="$('#af-ty').classList.toggle('hide',this.value!=='편입학')"><option ${sel('admission_kind', '신입학')}>신입학</option><option ${sel('admission_kind', '편입학')}>편입학</option></select>`, { req: 1 })}
@@ -225,12 +241,17 @@ async function saveApplicant(id) {
   if (g('passport_no')) p.passport_no = g('passport_no');
   if (g('alien_reg_no')) p.alien_reg_no = g('alien_reg_no');
   const btn = $('#af-save'); btn.disabled = true;
-  let error;
+  let error, savedId = id, photoErr = '';
   if (id) ({ error } = await sb.from('applicants').update(p).eq('id', id));
-  else { p.term_id = S.term.id; if (g('receipt_no')) p.receipt_no = g('receipt_no'); ({ error } = await sb.from('applicants').insert(p)); }
-  btn.disabled = false;
-  if (error) { box.textContent = errMsg(error); box.classList.remove('hide'); return; }
-  toast(id ? '수정했습니다.' : '지원자를 등록했습니다.');
+  else { p.term_id = S.term.id; if (g('receipt_no')) p.receipt_no = g('receipt_no'); const r = await sb.from('applicants').insert(p).select('id').single(); error = r.error; if (r.data) savedId = r.data.id; }
+  if (error) { btn.disabled = false; box.textContent = errMsg(error); box.classList.remove('hide'); return; }
+  try {
+    if (pendingPhoto) await savePhoto(savedId, pendingPhoto);
+    else if ($('#af-photo-del') && $('#af-photo-del').checked) await removePhoto(savedId);
+  } catch (e) { photoErr = errMsg(e); }
+  btn.disabled = false; pendingPhoto = null;
+  if (photoErr) toast('정보는 저장했지만 사진 저장에 실패했습니다: ' + photoErr, 'err');
+  else toast(id ? '수정했습니다.' : '지원자를 등록했습니다.');
   closeModal();
   await reloadAndRender();
 }

@@ -62,13 +62,13 @@ function evBadge(e) {
 function evalCardView(a) {
   const e1 = getEv(a.id, '원장'), e2 = getEv(a.id, '학과장'), o = orderOf(a);
   const done = e1 && e1.submitted;
-  return `<div class="ev-card ${done ? 'done' : ''}"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span> <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
+  return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span> <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}</div>
    <div class="kv" style="margin-top:8px"><div><span>국제교류원장</span><b>${evBadge(e1)}</b></div><div><span>학과장</span><b>${evBadge(e2)}</b></div></div>
    ${e1 && e1.comment ? `<div class="muted small" style="margin-top:6px">원장 의견: ${esc(e1.comment)}</div>` : ''}
    ${can.admin() && (e1 && e1.submitted || e2 && e2.submitted) ? `<div style="margin-top:8px">
      ${e2 && e2.submitted ? `<button class="btn sm" onclick="cancelSubmit('${a.id}','학과장')">학과장 제출 취소</button>` : ''}
-     ${e1 && e1.submitted ? `<button class="btn sm" onclick="cancelSubmit('${a.id}','원장')">원장 제출 취소</button>` : ''}</div>` : ''}</div>`;
+     ${e1 && e1.submitted ? `<button class="btn sm" onclick="cancelSubmit('${a.id}','원장')">원장 제출 취소</button>` : ''}</div>` : ''}</div></div></div>`;
 }
 function evalCardEdit(a, t) {
   const d = draftOf(a.id), e = getEv(a.id, t) || {};
@@ -91,9 +91,9 @@ function evalCardEdit(a, t) {
   } else {
     resHtml = `<div><div class="muted small" style="margin-bottom:4px">자동 판정</div><span class="res-btn on r-${res || '보류'}" style="${res ? '' : 'background:var(--soft);color:var(--mute);border-color:var(--line)'}">${esc(res || '-')}</span></div>`;
   }
-  return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>
+  return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>
     ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}</h3>
-   <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''}</div>
+   <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''}</div></div></div>
    <div class="ev-3">${items}</div>
    ${ref ? `<div class="ev-ref"><span>학과장 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
    <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (필수)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value">${esc(d.comment)}</textarea>
@@ -215,9 +215,9 @@ function printEvalSheet() {
   const pages = Object.keys(byDept).map(did => `<div class="doc sheet" style="height:auto;min-height:280mm">
     <h2>외국인 특별전형 면접평가표 (${esc(S.term.name)})</h2>
     <div style="margin-bottom:4mm"><b>학과:</b> ${esc(deptName(did))} &nbsp; <b>출력일:</b> ${todayYMD()}</div>
-    <table><thead><tr><th>순서</th><th>접수번호</th><th>성명</th><th>국적</th><th>TOPIK</th><th>${esc(EV_ITEMS[0])}</th><th>${esc(EV_ITEMS[1])}</th><th>${esc(EV_ITEMS[2])}</th><th>판정</th>${showDir ? '<th>구분</th>' : ''}</tr></thead><tbody>
+    <table><thead><tr><th>순서</th><th>사진</th><th>접수번호</th><th>성명</th><th>국적</th><th>TOPIK</th><th>${esc(EV_ITEMS[0])}</th><th>${esc(EV_ITEMS[1])}</th><th>${esc(EV_ITEMS[2])}</th><th>판정</th>${showDir ? '<th>구분</th>' : ''}</tr></thead><tbody>
     ${byDept[did].map(a => { const o = orderOf(a); const rowsEv = [['학과장', getEv(a.id, '학과장')]].concat(showDir ? [['원장', getEv(a.id, '원장')]] : []);
-      return rowsEv.map(([lbl, e], i) => `<tr>${i === 0 ? `<td rowspan="${rowsEv.length}">${o == null ? '' : o}</td><td rowspan="${rowsEv.length}">${esc(a.receipt_no)}</td><td rowspan="${rowsEv.length}">${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td rowspan="${rowsEv.length}">${esc(a.nationality)}</td><td rowspan="${rowsEv.length}">${a.topik_level ? a.topik_level + '급' : ''}</td>` : ''}
+      return rowsEv.map(([lbl, e], i) => `<tr>${i === 0 ? `<td rowspan="${rowsEv.length}">${o == null ? '' : o}</td><td rowspan="${rowsEv.length}">${photoUrl(a) ? `<img src="${esc(photoUrl(a))}" style="width:16mm;height:21mm;object-fit:cover" alt="">` : ''}</td><td rowspan="${rowsEv.length}">${esc(a.receipt_no)}</td><td rowspan="${rowsEv.length}">${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td rowspan="${rowsEv.length}">${esc(a.nationality)}</td><td rowspan="${rowsEv.length}">${a.topik_level ? a.topik_level + '급' : ''}</td>` : ''}
       <td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td>${e ? esc(e.result || '') : ''}</td>${showDir ? `<td>${lbl}</td>` : ''}</tr>`).join(''); }).join('')}
     </tbody></table>
     <div style="margin-top:6mm;font-size:9pt">A: 우수(탁월) · B: 보통(적격) · C: 미흡(불합격) — C가 하나라도 있으면 불합격</div>

@@ -197,7 +197,7 @@ function rowHtml(a) {
   const ord = orderOf(a);
   return `<tr>
     <td><span class="rno">${esc(a.receipt_no)}</span></td>
-    <td><div class="who-cell"><div class="av">${esc((a.name_ko || '?').charAt(0))}</div><div>
+    <td><div class="who-cell">${avatarHtml(a)}<div>
       <div class="nm">${esc(a.name_ko)} <span class="muted small">${a.gender === '여' ? '여' : '남'}</span>${ag}</div>
       <div class="muted small">${esc(a.name_en)}</div>
       ${a.visa_type ? `<div class="small" style="color:var(--pri2);font-weight:700">비자: ${esc(a.visa_type)}</div>` : ''}</div></div></td>

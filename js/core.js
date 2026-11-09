@@ -128,7 +128,7 @@ function rebuildMaps() {
 const deptName = id => (S.deptMap[id] ? S.deptMap[id].name_ko : '-');
 const qualName = code => (S.qualMap[code] ? S.qualMap[code].name_ko : '-');
 
-const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,passport_last4,passport_expiry,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,created_at,updated_at';
+const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,passport_last4,passport_expiry,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
 
 async function loadTermData() {
   if (!S.term) { S.apps = []; return; }
@@ -148,6 +148,7 @@ async function loadAux() {
   S.evals = {};
   evs.forEach(r => { if (ids.has(r.applicant_id)) S.evals[r.applicant_id + '|' + r.evaluator_type] = r; });
   S.payments = {}; S.docs = {};
+  await loadPhotos();
   if (can.broad()) {
     const pays = await selectAll('payments', ['applicant_id']);
     pays.forEach(r => { if (ids.has(r.applicant_id)) S.payments[r.applicant_id] = r; });
@@ -157,6 +158,52 @@ async function loadAux() {
     }
   }
 }
+/* ---------- 지원자 사진 ---------- */
+async function loadPhotos() {
+  S.photos = {};
+  const paths = S.apps.map(a => a.photo_path).filter(Boolean);
+  for (const part of chunk(paths, 100)) {
+    try {
+      const { data } = await sb.storage.from('photos').createSignedUrls(part, 3600);
+      (data || []).forEach(r => { if (r.signedUrl) S.photos[r.path] = r.signedUrl; });
+    } catch (e) { /* 사진을 못 불러와도 화면은 계속 보여 줍니다 */ }
+  }
+}
+const photoUrl = a => (a && a.photo_path && S.photos && S.photos[a.photo_path]) || '';
+function avatarHtml(a, cls) {
+  const u = photoUrl(a);
+  return u ? `<img class="${cls || 'av'} ph" src="${esc(u)}" alt="" loading="lazy">` : `<div class="${cls || 'av'}">${esc((a.name_ko || '?').charAt(0))}</div>`;
+}
+/* 사진을 가로 480 x 세로 640 이내 JPG로 줄입니다 (용량 약 50~100KB) */
+function resizePhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\//.test(file.type)) { reject(new Error('이미지 파일(JPG, PNG)만 올릴 수 있습니다.')); return; }
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 480 / img.width, 640 / img.height);
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('사진을 변환하지 못했습니다.'))), 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('사진을 읽을 수 없습니다. 다른 파일로 시도해 주세요.')); };
+    img.src = url;
+  });
+}
+async function savePhoto(id, blob) {
+  const path = id + '.jpg';
+  const up = await sb.storage.from('photos').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+  if (up.error) throw up.error;
+  const r = await sb.from('applicants').update({ photo_path: path }).eq('id', id);
+  if (r.error) throw r.error;
+}
+async function removePhoto(id) {
+  await sb.storage.from('photos').remove([id + '.jpg']);
+  const r = await sb.from('applicants').update({ photo_path: null }).eq('id', id);
+  if (r.error) throw r.error;
+}
+
 async function reloadAndRender() {
   const y = window.scrollY;
   setBusy(true);
