@@ -68,7 +68,7 @@ async function printDoc(id, type) {
 
 /* ---------- 공통 틀 ---------- */
 function docFrame(c, titleKo, titleEn, inner, opts = {}) {
-  return `<div class="doc"><div class="doc-border">
+  return `<div class="doc ${opts.cls || ''}"><div class="doc-border">
    ${c.hasLogo ? `<img class="doc-wm" src="${esc(C.LOGO)}" alt=""><img class="doc-logo" src="${esc(C.LOGO)}" alt="">` : ''}
    <div class="doc-no">${opts.noLabel || 'Doc. No.'} ${esc(c.docNo)}</div>
    <div class="doc-title">${titleKo}</div><div class="doc-sub">${titleEn}</div>
@@ -80,23 +80,23 @@ function docFrame(c, titleKo, titleEn, inner, opts = {}) {
 </div></div>`;
 }
 function fieldRows(rows) {
-  return `<table class="doc-fields"><tbody>${rows.map(([ko, en, vl, vs]) => `<tr><td class="lb">${ko}<small>${en}</small></td><td class="co">:</td><td class="vl">${vl}${vs ? `<small>${vs}</small>` : ''}</td></tr>`).join('')}</tbody></table>`;
+  return `<table class="doc-fields"><tbody>${rows.map(([ko, en, vl, vs]) => `<tr><td class="lb"><span class="lj">${Array.from(ko).map(ch => `<i>${ch}</i>`).join('')}</span><small>${en}</small></td><td class="co">:</td><td class="vl">${vl}${vs ? `<small>${vs}</small>` : ''}</td></tr>`).join('')}</tbody></table>`;
 }
 
 /* ---------- 합격통지서 ---------- */
 function docNotice(c) {
   const { a, t, d, q } = c;
   const fields = fieldRows([
-    ['수험(접수)번호', 'Application No.', esc(a.receipt_no)],
-    ['성 명', 'Name', esc(a.name_ko), esc(a.name_en)],
+    ['수험번호', 'Application No.', esc(a.receipt_no)],
+    ['이름', 'Name', esc(a.name_ko), esc(a.name_en)],
     ['생년월일', 'Date of Birth', esc(krDate(a.birth_date)), esc(enDate(a.birth_date))],
-    ['국 적', 'Nationality', esc(a.nationality), esc(NATION_EN[a.nationality] || '')],
-    ['지원학과', 'Department', esc(d.name_ko), esc(d.name_en)],
-    ['전 형', 'Admission Type', esc(a.admission_kind === '편입학' ? '외국인 특별전형(편입학)' : '외국인 특별전형(신입학)'), esc(q.name_en || '')]
+    ['국적', 'Nationality', esc(a.nationality), esc(NATION_EN[a.nationality] || '')],
+    ['학과', 'Department', esc(d.name_ko), esc(d.name_en)],
+    ['전형', 'Admission Type', esc(q.name_ko || '외국인 특별전형'), esc(q.name_en || '')]
   ]);
-  const body = `<div class="doc-body"><div class="ko">위 사람은 ${esc(C.SCHOOL_KO)} ${esc(t.year)}학년도 ${esc(t.semester)} 모집<br>외국인 특별전형에 합격하였음을 통지합니다.</div>
-   <div class="en">This is to certify that the above-named applicant has been admitted to<br>${esc(C.SCHOOL_EN)} for the ${semEn(t)} Semester of Academic Year ${esc(t.year)}<br>through the Special Admissions for International Students.</div></div>`;
-  return docFrame(c, '합 격 통 지 서', 'NOTICE OF ADMISSION', fields + body);
+  const body = `<div class="doc-body"><div class="ko">위 사람은 ${esc(C.SCHOOL_KO)}<br>${esc(t.year)}학년도 외국인 특별전형 ${a.admission_kind === '편입학' ? '편입학 ' : ''}모집에<br>합격하였음을 통지합니다.</div>
+   <div class="en">This is to certify that the applicant above has been officially admitted to<br>${esc(C.SCHOOL_EN)} for the ${esc(t.year)} Academic Year Special Admissions for<br>International Students.</div></div>`;
+  return docFrame(c, '합 격 통 지 서', 'CERTIFICATE OF ADMISSION', fields + body, { cls: 'cert' });
 }
 
 /* ---------- 등록금고지서 ---------- */

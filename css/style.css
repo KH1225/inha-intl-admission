@@ -253,3 +253,21 @@ table.tbl{border-collapse:collapse;width:100%;min-width:1050px;background:var(--
 .ev-main{flex:1;min-width:0}
 .ev-photo{width:64px;height:85px;border-radius:8px;object-fit:cover;flex:none;border:1px solid var(--line);background:var(--soft);display:grid;place-items:center;font-weight:800;color:var(--mute);font-size:22px}
 @media(max-width:640px){.basic-wrap{flex-direction:column}}
+
+/* 합격통지서(cert) 전용 */
+.lj{display:flex;justify-content:space-between;width:27mm}
+.lj i{font-style:normal}
+.cert{padding:20mm 14mm 0}
+.cert .doc-border{height:240mm;padding:17mm 16mm 7mm;border-width:1.2mm}
+.cert .doc-logo{width:26mm;height:26mm;top:-13mm;border-radius:50%}
+.cert .doc-title{font-size:25pt;letter-spacing:3mm;margin:3mm 0 1mm}
+.cert .doc-sub{font-size:9.5pt;letter-spacing:.9mm;margin-bottom:8mm}
+.cert .doc-fields .lb{width:42mm;font-size:12pt;letter-spacing:0}
+.cert .doc-fields .vl{font-size:12pt}
+.cert .doc-fields td{padding:1.7mm 0}
+.cert .doc-body{margin:6mm 0 0;line-height:1.9}
+.cert .doc-body .ko{font-size:14pt}
+.cert .doc-body .en{font-size:8.5pt;line-height:1.6;margin-top:3mm}
+.cert .doc-pres .ko{font-size:17pt}
+.cert .doc-seal{right:calc(50% - 47mm);top:-6mm;width:21mm;height:21mm}
+.cert .doc-no{top:auto;bottom:4mm;left:8mm;right:auto}
