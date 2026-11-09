@@ -6,6 +6,10 @@ const enDate = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/
 const semEn = t => (t.semester === '전기' ? 'Spring' : 'Fall');
 const krw = n => (n == null ? '-' : Number(n).toLocaleString('ko-KR') + ' KRW');
 
+const NATION_EN = { 우즈베키스탄: 'Uzbekistan', 일본: 'Japan', 베트남: 'Vietnam', 몽골: 'Mongolia', 키르기스스탄: 'Kyrgyzstan', 러시아: 'Russia', 중국: 'China', 카자흐스탄: 'Kazakhstan', 네팔: 'Nepal', 인도네시아: 'Indonesia', 태국: 'Thailand', 필리핀: 'Philippines', 미얀마: 'Myanmar', 방글라데시: 'Bangladesh', 스리랑카: 'Sri Lanka', 캄보디아: 'Cambodia', 인도: 'India', 파키스탄: 'Pakistan', 타지키스탄: 'Tajikistan', 투르크메니스탄: 'Turkmenistan', 미국: 'United States', 대만: 'Taiwan', 라오스: 'Laos', 말레이시아: 'Malaysia', 싱가포르: 'Singapore', 아프가니스탄: 'Afghanistan', 이란: 'Iran', 튀르키예: 'Turkey', 터키: 'Turkey', 우크라이나: 'Ukraine', 벨라루스: 'Belarus', 아제르바이잔: 'Azerbaijan', 조지아: 'Georgia', 아르메니아: 'Armenia', 이집트: 'Egypt', 나이지리아: 'Nigeria', 가나: 'Ghana', 케냐: 'Kenya', 에티오피아: 'Ethiopia', 브라질: 'Brazil', 캐나다: 'Canada', 호주: 'Australia', 영국: 'United Kingdom', 프랑스: 'France', 독일: 'Germany', 한국: 'Korea' };
+function logoOk() {
+  return new Promise(res => { const im = new Image(); im.onload = () => res(true); im.onerror = () => res(false); im.src = C.LOGO + '?v=' + Date.now(); });
+}
 function printHtml(html) {
   const pa = $('#printArea');
   pa.innerHTML = html;
@@ -46,12 +50,14 @@ async function printDoc(id, type) {
   if (error) { setBusy(false); toast(errMsg(error), 'err'); return; }
   const iss = Array.isArray(issued) ? issued[0] : issued;
   const seal = await sealUrl();
+  const hasLogo = await logoOk();
+  if (!hasLogo) toast('학교 로고 파일(assets/logo.png)을 찾을 수 없어 로고 없이 인쇄합니다. GitHub의 assets 폴더에 logo.png를 올려 주세요.', 'err');
   setBusy(false);
   closeModal();
   const t = S.term, d = S.deptMap[a.department_id] || {}, q = S.qualMap[a.qualification_code] || {};
   const docNo = iss.doc_no + (iss.reissue_no ? `-R${iss.reissue_no}` : '');
   const issueDate = (iss.issued_at || '').slice(0, 10) || todayYMD();
-  const common = { a, t, d, q, docNo, issueDate, seal, pay: S.payments[id] };
+  const common = { a, t, d, q, docNo, issueDate, seal, hasLogo, pay: S.payments[id] };
   let html = '';
   if (type === '합격통지서') html = docNotice(common);
   else if (type === '등록금고지서') html = docBill(common);
@@ -63,15 +69,15 @@ async function printDoc(id, type) {
 /* ---------- 공통 틀 ---------- */
 function docFrame(c, titleKo, titleEn, inner, opts = {}) {
   return `<div class="doc"><div class="doc-border">
-   <img class="doc-wm" src="${esc(C.LOGO)}" alt="" onerror="this.style.display='none'">
-   <img class="doc-logo" src="${esc(C.LOGO)}" alt="" onerror="this.style.display='none'">
+   ${c.hasLogo ? `<img class="doc-wm" src="${esc(C.LOGO)}" alt=""><img class="doc-logo" src="${esc(C.LOGO)}" alt="">` : ''}
+   <div class="doc-no">${opts.noLabel || 'Doc. No.'} ${esc(c.docNo)}</div>
    <div class="doc-title">${titleKo}</div><div class="doc-sub">${titleEn}</div>
    ${inner}
    <div class="doc-spacer"></div>
    <div class="doc-date"><div class="ko">${krDate(c.issueDate)}</div><div class="en">${enDate(c.issueDate)}</div></div>
    <div class="doc-pres"><div class="ko">${esc(C.PRESIDENT_KO)}</div><div class="en">${esc(C.PRESIDENT_EN)}</div>
     ${c.seal ? `<img class="doc-seal" src="${esc(c.seal)}" alt="">` : ''}</div>
-   <div class="doc-no">${opts.noLabel || 'Doc. No.'} ${esc(c.docNo)}</div></div></div>`;
+</div></div>`;
 }
 function fieldRows(rows) {
   return `<table class="doc-fields"><tbody>${rows.map(([ko, en, vl, vs]) => `<tr><td class="lb">${ko}<small>${en}</small></td><td class="co">:</td><td class="vl">${vl}${vs ? `<small>${vs}</small>` : ''}</td></tr>`).join('')}</tbody></table>`;
@@ -84,14 +90,12 @@ function docNotice(c) {
     ['수험(접수)번호', 'Application No.', esc(a.receipt_no)],
     ['성 명', 'Name', esc(a.name_ko), esc(a.name_en)],
     ['생년월일', 'Date of Birth', esc(krDate(a.birth_date)), esc(enDate(a.birth_date))],
-    ['국 적', 'Nationality', esc(a.nationality)],
+    ['국 적', 'Nationality', esc(a.nationality), esc(NATION_EN[a.nationality] || '')],
     ['지원학과', 'Department', esc(d.name_ko), esc(d.name_en)],
     ['전 형', 'Admission Type', esc(a.admission_kind === '편입학' ? '외국인 특별전형(편입학)' : '외국인 특별전형(신입학)'), esc(q.name_en || '')]
   ]);
   const body = `<div class="doc-body"><div class="ko">위 사람은 ${esc(C.SCHOOL_KO)} ${esc(t.year)}학년도 ${esc(t.semester)} 모집<br>외국인 특별전형에 합격하였음을 통지합니다.</div>
-   <div class="en">This is to certify that the above-named applicant has been admitted to<br>${esc(C.SCHOOL_EN)} for the ${semEn(t)} Semester of Academic Year ${esc(t.year)}<br>through the Special Admissions for International Students.</div></div>
-   ${t.register_start ? `<div class="doc-body" style="margin-top:6mm"><div class="ko" style="font-size:11pt">등록기간 : ${krDate(t.register_start)} ~ ${krDate(t.register_end)}</div>
-   <div class="en">Registration Period: ${enDate(t.register_start)} – ${enDate(t.register_end)}</div></div>` : ''}`;
+   <div class="en">This is to certify that the above-named applicant has been admitted to<br>${esc(C.SCHOOL_EN)} for the ${semEn(t)} Semester of Academic Year ${esc(t.year)}<br>through the Special Admissions for International Students.</div></div>`;
   return docFrame(c, '합 격 통 지 서', 'NOTICE OF ADMISSION', fields + body);
 }
 
@@ -101,7 +105,7 @@ function docBill(c) {
   const tuition = pay ? pay.tuition_amount : null, sch = pay ? pay.scholarship_amount : 0;
   const payable = pay ? pay.payable_amount : null;
   const info = `<table class="doc-tbl"><tbody>
-   <tr><th>성명<small>Name</small></th><td>${esc(a.name_ko)} / ${esc(a.name_en)}</td></tr>
+   <tr><th>성명<small>Name</small></th><td>${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td></tr>
    <tr><th>접수번호<small>Application No.</small></th><td>${esc(a.receipt_no)}</td></tr>
    <tr><th>지원학과<small>Department</small></th><td>${esc(d.name_ko)}<br><small>${esc(d.name_en)}</small></td></tr>
    <tr><th>등록기간<small>Payment Period</small></th><td>${krDate(t.register_start)} ~ ${krDate(t.register_end)}<br><small>${enDate(t.register_start)} – ${enDate(t.register_end)}</small></td></tr></tbody></table>

@@ -185,7 +185,7 @@ function openApplicantForm(id) {
     ${field('성별', `<select id="af-gender"><option value="">선택</option><option ${sel('gender', '남')}>남</option><option ${sel('gender', '여')}>여</option></select>`, { req: 1 })}
     ${field('생년월일', `<input id="af-birth_date" type="date" value="${v('birth_date')}">`, { req: 1 })}
     ${field('국적', `<input id="af-nationality" list="nations" value="${v('nationality')}"><datalist id="nations">${NATIONS.map(n => `<option value="${n}">`).join('')}</datalist>`, { req: 1 })}
-    ${field('접수번호 (비우면 자동 부여)', `<input id="af-receipt_no" value="${v('receipt_no')}" ${edit ? 'disabled' : ''} placeholder="ITC-000">`)}
+    ${field('접수번호 (비우면 자동 부여)', `<input id="af-receipt_no" value="${v('receipt_no')}" ${edit ? 'disabled' : ''} placeholder="ITC-${S.term.year}-000">`)}
    </div></div>
    <div class="sec"><h3>지원 정보</h3><div class="grid2">
     ${field('입학구분', `<select id="af-admission_kind" onchange="$('#af-ty').classList.toggle('hide',this.value!=='편입학')"><option ${sel('admission_kind', '신입학')}>신입학</option><option ${sel('admission_kind', '편입학')}>편입학</option></select>`, { req: 1 })}
