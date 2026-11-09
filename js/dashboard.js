@@ -201,14 +201,14 @@ function rowHtml(a) {
       <div class="nm">${esc(a.name_ko)} <span class="muted small">${a.gender === '여' ? '여' : '남'}</span>${ag}</div>
       <div class="muted small">${esc(a.name_en)}</div>
       ${a.visa_type ? `<div class="small" style="color:var(--pri2);font-weight:700">비자: ${esc(a.visa_type)}</div>` : ''}</div></div></td>
-    <td>${esc(a.nationality)}</td>
+    <td style="white-space:nowrap">${esc(a.nationality)}</td>
     <td><div class="nm">${esc(d.name_ko || '-')} <span class="badge kind">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
       <div class="muted small">${esc(d.division || '')} · ${esc(d.program_type || '')}</div></td>
     <td><span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span></td>
-    <td>${a.topik_level ? `<b style="white-space:nowrap">TOPIK ${a.topik_level}급</b>` : '<span class="muted">-</span>'}</td>
+    <td style="white-space:nowrap">${a.topik_level ? `<b>TOPIK ${a.topik_level}급</b>` : '<span class="muted">-</span>'}</td>
     ${can.broad() ? `<td>${dp.need ? `<div class="dots">${dots}</div><div class="dc ${dp.got >= dp.need ? 'ok' : 'no'}">${dp.got}/${dp.need} 구비${dp.got >= dp.need ? '' : ' 미비'}</div>` : '<span class="muted">-</span>'}</td>` : ''}
     <td>${statusCell(a)}</td>
-    <td class="muted">${fmtDate(a.created_at)}</td>
+    <td class="muted" style="white-space:nowrap">${fmtDate(a.created_at)}</td>
     <td><div class="acts">
       ${can.broad() ? `<button class="btn sm" onclick="openDetail('${a.id}','docs')">서류</button>` : ''}
       ${can.edit() ? `<button class="btn sm" onclick="openPrintMenu('${a.id}')">인쇄</button>` : ''}
