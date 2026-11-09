@@ -87,7 +87,7 @@ function chartsHtml() {
   // 학과 Top5
   const dc = {};
   S.apps.forEach(a => { dc[a.department_id] = (dc[a.department_id] || 0) + 1; });
-  const top = Object.entries(dc).map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n).slice(0, 5);
+  const top = Object.entries(dc).map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n || deptName(Number(a.id)).localeCompare(deptName(Number(b.id)), 'ko'));
   const max = top.length ? top[0].n : 1;
   const bars = top.map((t, i) => `<div class="bar"><div class="row"><span>${i + 1}&nbsp; ${esc(deptName(Number(t.id)))}</span><span>${t.n}명</span></div><div class="tr"><b style="width:${t.n / max * 100}%"></b></div></div>`).join('') || '<div class="muted">데이터가 없습니다</div>';
   // TOPIK
@@ -98,7 +98,7 @@ function chartsHtml() {
   }).join('');
   return `
    <div class="panel"><h3>국적별 지원 분포 <small>다국적 국가별 비율</small></h3><div class="donut-wrap">${donut}<div class="legend">${legend || '<span class="muted">데이터가 없습니다</span>'}</div></div></div>
-   <div class="panel"><h3>인기 지원 학과 Top 5 <small>학과별 지원자 순위</small></h3><div class="bars">${bars}</div></div>
+   <div class="panel"><h3>학과별 지원 현황 <small>지원자가 있는 ${top.length}개 학과</small></h3><div class="bars scroll">${bars}</div></div>
    <div class="panel"><h3>한국어(TOPIK) 어학 현황 <small>급수별 보유 인원</small></h3>${tp}</div>`;
 }
 
@@ -205,7 +205,7 @@ function rowHtml(a) {
     <td><div class="nm">${esc(d.name_ko || '-')} <span class="badge kind">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
       <div class="muted small">${esc(d.division || '')} · ${esc(d.program_type || '')}</div></td>
     <td><span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span></td>
-    <td>${a.topik_level ? `<b>TOPIK ${a.topik_level}급</b><div class="muted small">한국어능력</div>` : '<span class="muted">-</span>'}</td>
+    <td>${a.topik_level ? `<b style="white-space:nowrap">TOPIK ${a.topik_level}급</b>` : '<span class="muted">-</span>'}</td>
     ${can.broad() ? `<td>${dp.need ? `<div class="dots">${dots}</div><div class="dc ${dp.got >= dp.need ? 'ok' : 'no'}">${dp.got}/${dp.need} 구비${dp.got >= dp.need ? '' : ' 미비'}</div>` : '<span class="muted">-</span>'}</td>` : ''}
     <td>${statusCell(a)}</td>
     <td class="muted">${fmtDate(a.created_at)}</td>
