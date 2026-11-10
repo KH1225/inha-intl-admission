@@ -66,7 +66,6 @@ function listButtons() {
   b.push(`<button class="btn pur" onclick="switchTab('eval')">면접평가표 (전체 평가)</button>`);
   if (can.admin()) b.push(`<button class="btn blue" onclick="openOrderModal()">면접 순서 지정</button>`);
   if (S.role === 'admin' || S.role === 'staff' || S.role === 'director') b.push(`<button class="btn" onclick="printEvalSheet()">면접평가표 인쇄</button>`);
-  if (can.edit()) b.push(`<button class="btn pur" onclick="autoAssignScholarships()">장학금 일괄 자동 배정</button>`);
   return b.join('');
 }
 
@@ -240,7 +239,8 @@ async function changeStatus(id, el) {
   const { error } = await sb.from('applicants').update({ status: to }).eq('id', id);
   if (error) { toast(errMsg(error), 'err'); el.value = from; el.disabled = false; return; }
   a.status = to;
-  try { await loadAux(); } catch (e) { toast(errMsg(e), 'err'); }
+  await syncScholarships();
+  try { await loadTermData(); } catch (e) { toast(errMsg(e), 'err'); }
   const y = window.scrollY;
   renderShell();
   window.scrollTo(0, y);

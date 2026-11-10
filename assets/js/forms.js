@@ -106,6 +106,7 @@ async function markRegistered(id) {
   if (!confirm('등록완료로 처리할까요?')) return;
   const { error } = await sb.from('applicants').update({ status: '등록완료' }).eq('id', id);
   if (error) { toast(errMsg(error), 'err'); return; }
+  await syncScholarships();
   toast('등록완료 처리되었습니다.');
   closeModal(); await reloadAndRender(); openDetail(id);
 }
@@ -121,6 +122,7 @@ async function cancelApplication(id) {
   const { error } = await sb.from('applicants').update({ status: '접수취소', memo }).eq('id', id);
   setBusy(false);
   if (error) { toast(/check constraint|invalid input value/i.test(errMsg(error)) ? '데이터베이스에 접수취소 상태가 아직 없습니다. 관리자에게 SQL 적용을 요청하세요.' : errMsg(error), 'err'); return; }
+  await syncScholarships();
   toast(`${a.name_ko}: 접수취소 처리되었습니다.`);
   closeModal(); await reloadAndRender();
 }
@@ -133,6 +135,8 @@ async function restoreApplication(id) {
   const { error } = await sb.from('applicants').update({ status: '서류심사', memo }).eq('id', id);
   setBusy(false);
   if (error) { toast(errMsg(error), 'err'); return; }
+  if (a.scholarship_source === '수동' && !a.scholarship_type) await sb.rpc('reset_scholarship_auto', { p_applicant: id });
+  await syncScholarships();
   toast(`${a.name_ko}: 서류심사 상태로 되돌렸습니다.`);
   closeModal(); await reloadAndRender(); openDetail(id);
 }
@@ -150,7 +154,7 @@ async function deleteApplicant(id) {
 function openScholEdit(id) {
   const a = S.apps.find(x => x.id === id);
   openModal(`${mHead('장학금 직접 지정', esc(a.name_ko))}<div class="m-body">
-    <div class="warn">직접 지정하면 “일괄 자동 배정”이 이 지원자를 건드리지 않습니다. 감면액은 등록금 기준으로 다시 계산됩니다.</div>
+    <div class="warn">직접 지정하면 자동 배정이 이 지원자를 건드리지 않습니다. 감면액은 등록금 기준으로 다시 계산됩니다.</div>
     <div class="grid2">${field('장학금 이름', `<input id="se-type" value="${esc(a.scholarship_type || '')}" placeholder="예: 토픽 장학금">`)}
     ${field('감면율(%)', `<input id="se-pct" type="number" min="0" max="100" step="0.01" value="${esc(a.scholarship_pct || 0)}">`)}</div></div>
     <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" onclick="saveScholEdit('${id}')">저장</button></div>`);
@@ -167,21 +171,10 @@ async function saveScholEdit(id) {
 async function resetSchol(id) {
   const { error } = await sb.rpc('reset_scholarship_auto', { p_applicant: id });
   if (error) { toast(errMsg(error), 'err'); return; }
-  const r = await sb.rpc('auto_assign_scholarships', { p_term: S.term.id });
-  if (r.error) { toast(errMsg(r.error), 'err'); return; }
+  if ((await syncScholarships()).error) return;
   toast('자동 배정으로 되돌렸습니다.');
   closeModal(); await reloadAndRender(); openDetail(id);
 }
-async function autoAssignScholarships() {
-  if (!confirm('장학금을 일괄 자동 배정합니다.\n(직접 지정한 지원자, 불합격·등록완료자는 제외됩니다.)')) return;
-  setBusy(true);
-  const { data, error } = await sb.rpc('auto_assign_scholarships', { p_term: S.term.id });
-  setBusy(false);
-  if (error) { toast(errMsg(error), 'err'); return; }
-  toast(`${data}명의 장학금이 변경되었습니다.`);
-  await reloadAndRender();
-}
-
 /* ---------- 등록 / 수정 폼 ---------- */
 let pendingPhoto = null;
 async function onPhotoPick(file) {
@@ -312,6 +305,7 @@ async function saveApplicant(id) {
     if (pendingPhoto) await savePhoto(savedId, pendingPhoto);
     else if ($('#af-photo-del') && $('#af-photo-del').checked) await removePhoto(savedId);
   } catch (e) { photoErr = errMsg(e); }
+  await syncScholarships();
   btn.disabled = false; pendingPhoto = null;
   if (photoErr) toast('정보는 저장했지만 사진 저장에 실패했습니다: ' + photoErr, 'err');
   else toast(id ? '수정했습니다.' : '지원자를 등록했습니다.');

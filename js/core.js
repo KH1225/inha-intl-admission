@@ -206,6 +206,19 @@ async function removePhoto(id) {
   if (r.error) throw r.error;
 }
 
+/* ---------- 장학금 자동 배정 ----------
+   지원자 등록·수정·상태 변경 때마다 자동으로 다시 계산합니다.
+   (직접 지정한 지원자, 불합격·등록완료자는 DB 함수가 제외하고, 접수취소자는 여기서 비웁니다) */
+async function syncScholarships() {
+  if (!can.edit() || !S.term) return { changed: 0 };
+  const r = await sb.rpc('auto_assign_scholarships', { p_term: S.term.id });
+  if (r.error) { toast('장학금 자동 배정 실패: ' + errMsg(r.error), 'err'); return { error: r.error }; }
+  const c = await sb.from('applicants').update({ scholarship_type: null, scholarship_pct: 0 })
+    .eq('term_id', S.term.id).eq('status', '접수취소').not('scholarship_type', 'is', null)
+    .or('scholarship_source.is.null,scholarship_source.neq.수동');
+  if (c.error) toast('접수취소자 장학금 해제 실패: ' + errMsg(c.error), 'err');
+  return { changed: r.data || 0 };
+}
 async function reloadAndRender() {
   const y = window.scrollY;
   setBusy(true);

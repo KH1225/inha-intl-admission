@@ -105,7 +105,7 @@ function openScholarship() {
    <div class="sec"><h3>${esc(S.term.name)} 배정 현황</h3>${Object.keys(counts).length ? Object.entries(counts).map(([k, n]) => `<span class="pill s-review" style="margin:2px">${esc(k)} ${n}명</span>`).join('') : '<span class="muted">아직 배정된 장학금이 없습니다.</span>'}</div>
   </div>
   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">닫기</button>
-   <button class="btn" onclick="saveScholarship(false)">저장</button><button class="btn pri" onclick="saveScholarship(true)">저장 후 일괄 자동 배정</button></div>`, { wide: true, sticky: true });
+   <button class="btn pri" onclick="saveScholarship()">저장 (지원자 장학금 자동 재계산)</button></div>`, { wide: true, sticky: true });
 }
 let newPartnerSeq = 0;
 function addPartnerRow() {
@@ -114,7 +114,7 @@ function addPartnerRow() {
    <td><select class="pt"><option value="금액">금액(고정)</option><option value="비율">비율(%)</option></select></td><td><input class="pc" style="width:56px" value="A"></td>
    <td><input class="pa" type="number" min="0" style="width:110px" value="0"></td><td><input class="pp" type="number" min="0" max="100" step="0.01" style="width:70px" value="0"></td><td><input class="pk" type="checkbox" checked></td></tr>`);
 }
-async function saveScholarship(assign) {
+async function saveScholarship() {
   const num0 = id => Number($(id).value || 0);
   const pcts = [num0('#sc-root'), num0('#sc-adv'), ...$$('.tk').map(i => Number(i.value || 0)), ...$$('.pp').map(i => Number(i.value || 0))];
   if (pcts.some(x => isNaN(x) || x < 0 || x > 100)) { toast('감면율은 0~100 사이여야 합니다.', 'err'); return; }
@@ -134,12 +134,8 @@ async function saveScholarship(assign) {
     }
     const res = await Promise.all(ups);
     const bad = res.find(r => r.error); if (bad) throw bad.error;
-    let msg = '저장했습니다.';
-    if (assign) {
-      const r = await sb.rpc('auto_assign_scholarships', { p_term: S.term.id });
-      if (r.error) throw r.error;
-      msg = `저장했고 ${r.data}명의 장학금이 변경되었습니다.`;
-    }
+    const r = await syncScholarships();
+    const msg = r.error ? '저장했습니다. (장학금 재계산은 실패)' : `저장했고 ${r.changed}명의 장학금이 변경되었습니다.`;
     await loadStatic();
     setBusy(false); toast(msg);
     closeModal(); await reloadAndRender();

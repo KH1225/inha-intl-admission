@@ -15,7 +15,7 @@ function openImport() {
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn" onclick="downloadTemplate()">양식 내려받기</button>
       <input type="file" id="imp-file" accept=".xlsx,.xls,.csv" onchange="onImportFile(this.files[0])"></div>
-    <div class="muted small" style="margin-top:8px">※ 심사진행상태: ${can.admin() ? '시트의 값(서류심사·면접심사 등)이 반영됩니다. “서류접수”는 서류심사로 처리됩니다.' : '모두 “서류심사”로 등록됩니다.'} 장학금은 등록 후 “장학금 일괄 자동 배정”으로 계산합니다.</div>
+    <div class="muted small" style="margin-top:8px">※ 심사진행상태: ${can.admin() ? '시트의 값(서류심사·면접심사 등)이 반영됩니다. “서류접수”는 서류심사로 처리됩니다.' : '모두 “서류심사”로 등록됩니다.'} 장학금은 등록과 동시에 자동으로 배정됩니다.</div>
     <div id="imp-result" style="margin-top:12px"></div></div>
    <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">닫기</button>
     <button class="btn pri" id="imp-run" disabled onclick="runImport()">등록 실행</button></div>`, { wide: true, sticky: true });
@@ -142,6 +142,7 @@ async function runImport() {
     }
     if (done % 10 === 0) $('#imp-result').innerHTML = `<div>등록 중… ${done}/${list.length}</div>`;
   }
+  if (done) await syncScholarships();
   setBusy(false);
   $('#imp-result').innerHTML = `<div><b>${done}</b>건 등록 완료${fails.length ? `, <b>${fails.length}</b>건 실패` : ''}</div>${fails.length ? `<div class="err-box" style="white-space:pre-wrap;margin-top:8px">${esc(fails.join('\n'))}</div>` : ''}`;
   importRows = [];
