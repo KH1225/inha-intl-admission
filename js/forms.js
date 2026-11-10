@@ -165,6 +165,20 @@ async function onPhotoPick(file) {
     const d = $('#af-photo-del'); if (d) d.checked = false;
   } catch (e) { toast(errMsg(e), 'err'); $('#af-photo').value = ''; }
 }
+/* 국적: 목록에서 고르고, 목록에 없으면 '기타(직접 입력)' */
+function natSelectHtml(cur) {
+  cur = cur || '';
+  const other = cur && !NATIONS.includes(cur);
+  return `<select id="af-nat-sel" onchange="onNatSel(this.value)"><option value="">선택</option>
+    ${NATIONS.map(n => `<option ${n === cur ? 'selected' : ''}>${n}</option>`).join('')}
+    <option value="__other" ${other ? 'selected' : ''}>기타 (직접 입력)</option></select>
+   <input id="af-nationality" class="${other ? '' : 'hide'}" style="margin-top:6px" placeholder="국적을 한글로 입력" value="${esc(cur)}">`;
+}
+function onNatSel(val) {
+  const inp = $('#af-nationality');
+  if (val === '__other') { inp.value = ''; inp.classList.remove('hide'); inp.focus(); }
+  else { inp.value = val; inp.classList.add('hide'); }
+}
 function openApplicantForm(id) {
   pendingPhoto = null;
   const edit = !!id;
@@ -184,7 +198,7 @@ function openApplicantForm(id) {
     ${field('영문 성명 (여권과 동일)', `<input id="af-name_en" value="${v('name_en')}" style="text-transform:uppercase">`, { req: 1 })}
     ${field('성별', `<select id="af-gender"><option value="">선택</option><option ${sel('gender', '남')}>남</option><option ${sel('gender', '여')}>여</option></select>`, { req: 1 })}
     ${field('생년월일', `<input id="af-birth_date" type="date" min="1900-01-01" max="9999-12-31" value="${v('birth_date')}">`, { req: 1 })}
-    ${field('국적', `<input id="af-nationality" list="nations" value="${v('nationality')}"><datalist id="nations">${NATIONS.map(n => `<option value="${n}">`).join('')}</datalist>`, { req: 1 })}
+    ${field('국적', natSelectHtml(a.nationality), { req: 1 })}
     ${field('접수번호 (비우면 자동 부여)', `<input id="af-receipt_no" value="${v('receipt_no')}" ${edit ? 'disabled' : ''} placeholder="ITC-${S.term.year}-000">`)}
    </div></div>
    <div class="sec"><h3>지원 정보</h3><div class="grid2">
