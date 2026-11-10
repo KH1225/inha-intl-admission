@@ -59,6 +59,8 @@ function openDetail(id, focus) {
     <div class="m-body">${basic}${docs}${interview}${schol}${payment}${history}</div>
     <div class="m-foot">${can.edit() ? `<button class="btn" onclick="closeModal(this.closest('.backdrop'));openApplicantForm('${id}')">정보 수정</button>
       <button class="btn" onclick="closeModal(this.closest('.backdrop'));openPrintMenu('${id}')">문서 인쇄</button>` : ''}
+      ${can.edit() && !['등록완료', '접수취소'].includes(a.status) ? `<button class="btn bad" onclick="cancelApplication('${id}')">접수 취소</button>` : ''}
+      ${can.admin() && a.status === '접수취소' ? `<button class="btn" onclick="restoreApplication('${id}')">취소 철회</button>` : ''}
       ${can.admin() ? `<button class="btn bad" onclick="deleteApplicant('${id}')">삭제</button>` : ''}
       <button class="btn pri" onclick="closeModal(this.closest('.backdrop'))">닫기</button></div>`, { wide: true });
   if (focus === 'docs') { const el = $('#sec-docs', bd); if (el) setTimeout(() => el.scrollIntoView({ block: 'center' }), 50); }
@@ -105,6 +107,33 @@ async function markRegistered(id) {
   const { error } = await sb.from('applicants').update({ status: '등록완료' }).eq('id', id);
   if (error) { toast(errMsg(error), 'err'); return; }
   toast('등록완료 처리되었습니다.');
+  closeModal(); await reloadAndRender(); openDetail(id);
+}
+/* ---------- 접수 취소 / 철회 ---------- */
+async function cancelApplication(id) {
+  const a = S.apps.find(x => x.id === id);
+  if (!a) return;
+  const reason = (prompt(`${a.name_ko} (${a.receipt_no}) 지원자의 접수를 취소합니다.\n취소 사유를 입력하세요. (예: 본인 요청, 타 대학 진학, 비자 거절)`) || '').trim();
+  if (!reason) { toast('취소 사유를 입력해야 접수를 취소할 수 있습니다.', 'err'); return; }
+  const line = `[접수취소 ${todayYMD()}] ${reason}`;
+  const memo = a.memo ? `${a.memo}\n${line}` : line;
+  setBusy(true);
+  const { error } = await sb.from('applicants').update({ status: '접수취소', memo }).eq('id', id);
+  setBusy(false);
+  if (error) { toast(/check constraint|invalid input value/i.test(errMsg(error)) ? '데이터베이스에 접수취소 상태가 아직 없습니다. 관리자에게 SQL 적용을 요청하세요.' : errMsg(error), 'err'); return; }
+  toast(`${a.name_ko}: 접수취소 처리되었습니다.`);
+  closeModal(); await reloadAndRender();
+}
+async function restoreApplication(id) {
+  const a = S.apps.find(x => x.id === id);
+  if (!a || !confirm(`${a.name_ko} 지원자의 접수 취소를 철회하고 '서류심사' 상태로 되돌립니다.\n(필요하면 이후에 상태를 다시 바꿔 주세요.)`)) return;
+  const line = `[취소철회 ${todayYMD()}]`;
+  const memo = a.memo ? `${a.memo}\n${line}` : line;
+  setBusy(true);
+  const { error } = await sb.from('applicants').update({ status: '서류심사', memo }).eq('id', id);
+  setBusy(false);
+  if (error) { toast(errMsg(error), 'err'); return; }
+  toast(`${a.name_ko}: 서류심사 상태로 되돌렸습니다.`);
   closeModal(); await reloadAndRender(); openDetail(id);
 }
 async function deleteApplicant(id) {

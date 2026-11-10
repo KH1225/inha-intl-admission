@@ -5,8 +5,8 @@ const sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
 });
 
-const STATUSES = ['서류심사', '보완요청', '면접심사', '최종합격', '불합격', '등록완료'];
-const STATUS_CLS = { 서류심사: 's-review', 보완요청: 's-fix', 면접심사: 's-intv', 최종합격: 's-pass', 불합격: 's-fail', 등록완료: 's-reg' };
+const STATUSES = ['서류심사', '보완요청', '면접심사', '최종합격', '불합격', '등록완료', '접수취소'];
+const STATUS_CLS = { 서류심사: 's-review', 보완요청: 's-fix', 면접심사: 's-intv', 최종합격: 's-pass', 불합격: 's-fail', 등록완료: 's-reg', 접수취소: 's-cancel' };
 const ROLE_LABEL = { admin: '국제교류원 총괄관리자', staff: '국제교류팀', viewer: '조회 전용', director: '국제교류원장', dept: '학과장' };
 
 const S = {
