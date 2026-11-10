@@ -96,7 +96,7 @@ function evalCardEdit(a, t) {
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''}</div></div></div>
    <div class="ev-3">${items}</div>
    ${ref ? `<div class="ev-ref"><span>학과장 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
-   <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (필수)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value">${esc(d.comment)}</textarea>
+   <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (선택)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value">${esc(d.comment)}</textarea>
     ${resHtml}
     ${locked ? '' : `<div style="display:flex;gap:6px"><button class="btn" onclick="saveEval('${a.id}',false)">임시저장</button><button class="btn pri" onclick="saveEval('${a.id}',true)">평가 제출</button></div>`}</div></div>`;
 }
@@ -122,7 +122,6 @@ async function saveEval(id, submit) {
   const complete = d.item1 && d.item2 && d.item3;
   if (submit) {
     if (!complete) { toast('3개 항목을 모두 평가해야 제출할 수 있습니다.', 'err'); return; }
-    if (t === '원장' && !d.comment.trim()) { toast('종합심사의견을 입력해야 제출할 수 있습니다.', 'err'); return; }
     const a = S.apps.find(x => x.id === id);
     const res = d.result || autoResult(d);
     if (!confirm(`${a.name_ko} 지원자의 평가를 제출합니다.\n판정: ${res}\n${t === '학과장' ? '제출 후에는 수정할 수 없습니다.' : '제출 후에도 면접심사 단계에서는 수정할 수 있습니다.'}`)) return;
