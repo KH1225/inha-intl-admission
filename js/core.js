@@ -141,9 +141,11 @@ async function loadTermData() {
 }
 async function loadAux() {
   const ids = new Set(S.apps.map(a => a.id));
+  const stByApp = Object.fromEntries(S.apps.map(a => [a.id, a.status]));
   const ivs = await selectAll('interviews', ['applicant_id']);
   S.interviews = {};
-  ivs.forEach(r => { if (ids.has(r.applicant_id)) S.interviews[r.applicant_id] = r; });
+  // 면접심사 단계이거나 면접을 거쳐 결과가 난 지원자만 면접 대상으로 봅니다 (서류심사·보완요청으로 되돌린 지원자는 제외)
+  ivs.forEach(r => { if (ids.has(r.applicant_id) && ['면접심사', '최종합격', '불합격', '등록완료'].includes(stByApp[r.applicant_id])) S.interviews[r.applicant_id] = r; });
   const evs = await selectAll('interview_evaluations', ['applicant_id', 'evaluator_type']);
   S.evals = {};
   evs.forEach(r => { if (ids.has(r.applicant_id)) S.evals[r.applicant_id + '|' + r.evaluator_type] = r; });
