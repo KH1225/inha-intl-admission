@@ -272,3 +272,9 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .cert .doc-pres .ko{font-size:17pt}
 .cert .doc-seal{right:calc(50% - 47mm);top:-6mm;width:21mm;height:21mm}
 .cert .doc-no{top:auto;bottom:4mm;left:8mm;right:auto}
+
+/* 학과장 서명 */
+.sign-wrap{position:relative;margin-top:10px;border:2px dashed var(--line);border-radius:12px;background:#fff;height:180px}
+.sign-wrap canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;border-radius:10px}
+.sign-hint{position:absolute;inset:0;display:grid;place-items:center;color:#9ca3af;font-size:15px;pointer-events:none}
+.sign-mini{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:6px;padding:1px 6px;vertical-align:middle}

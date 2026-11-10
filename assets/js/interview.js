@@ -64,7 +64,7 @@ function evalCardView(a) {
   const done = e1 && e1.submitted;
   return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span> <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}</div>
-   <div class="kv" style="margin-top:8px"><div><span>국제교류원장</span><b>${evBadge(e1)}</b></div><div><span>학과장</span><b>${evBadge(e2)}</b></div></div>
+   <div class="kv" style="margin-top:8px"><div><span>국제교류원장</span><b>${evBadge(e1)}</b></div><div><span>학과장</span><b>${evBadge(e2)} ${e2 && e2.submitted ? signImg(e2, '22px') : ''}</b></div></div>
    ${e1 && e1.comment ? `<div class="muted small" style="margin-top:6px">원장 의견: ${esc(e1.comment)}</div>` : ''}
    ${can.admin() && (e1 && e1.submitted || e2 && e2.submitted) ? `<div style="margin-top:8px">
      ${e2 && e2.submitted ? `<button class="btn sm" onclick="cancelSubmit('${a.id}','학과장')">학과장 제출 취소</button>` : ''}
@@ -92,7 +92,7 @@ function evalCardEdit(a, t) {
     resHtml = `<div><div class="muted small" style="margin-bottom:4px">자동 판정</div><span class="res-btn on r-${res || '보류'}" style="${res ? '' : 'background:var(--soft);color:var(--mute);border-color:var(--line)'}">${esc(res || '-')}</span></div>`;
   }
   return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>
-    ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}</h3>
+    ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${e.submitted && signImg(e, '26px') ? ` <span class="sign-mini">${signImg(e, '26px')}</span>` : ''}</h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''}</div></div></div>
    <div class="ev-3">${items}</div>
    ${ref ? `<div class="ev-ref"><span>학과장 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
@@ -115,7 +115,7 @@ function keepScrollRender(id) {
   renderEval();
   window.scrollTo(0, y);
 }
-async function saveEval(id, submit) {
+async function saveEval(id, submit, signature) {
   const t = myEvalType(); if (!t) return;
   const d = draftOf(id);
   const ta = $('#evc-' + id); if (ta) d.comment = ta.value;
@@ -124,25 +124,100 @@ async function saveEval(id, submit) {
     if (!complete) { toast('3개 항목을 모두 평가해야 제출할 수 있습니다.', 'err'); return; }
     const a = S.apps.find(x => x.id === id);
     const res = d.result || autoResult(d);
-    if (!confirm(`${a.name_ko} 지원자의 평가를 제출합니다.\n판정: ${res}\n${t === '학과장' ? '제출 후에는 수정할 수 없습니다.' : '제출 후에도 면접심사 단계에서는 수정할 수 있습니다.'}`)) return;
+    if (t === '학과장' && !signature) { openSignPad(id); return; }
+    if (t !== '학과장' && !confirm(`${a.name_ko} 지원자의 평가를 제출합니다.\n판정: ${res}\n${t === '학과장' ? '제출 후에는 수정할 수 없습니다.' : '제출 후에도 면접심사 단계에서는 수정할 수 있습니다.'}`)) return;
   }
   const row = { item1: d.item1 || null, item2: d.item2 || null, item3: d.item3 || null, comment: d.comment.trim() || null, result: complete ? (d.result || autoResult(d)) : null };
-  if (submit) { row.submitted = true; row.submitted_at = new Date().toISOString(); }
+  if (submit) { row.submitted = true; row.submitted_at = new Date().toISOString(); if (signature) row.signature = signature; }
   const exist = getEv(id, t);
   let res;
   if (exist) res = await sb.from('interview_evaluations').update(row).eq('applicant_id', id).eq('evaluator_type', t).select().single();
   else res = await sb.from('interview_evaluations').insert({ applicant_id: id, evaluator_type: t, ...row }).select().single();
-  if (res.error) { toast(errMsg(res.error), 'err'); return; }
+  if (res.error) { toast(/signature/.test(errMsg(res.error)) ? '서명 저장 칸이 DB에 아직 없습니다. 관리자에게 SQL 적용을 요청하세요.' : errMsg(res.error), 'err'); return false; }
   S.evals[id + '|' + t] = res.data;
   delete S.evalDraft[id];
   toast(submit ? '평가를 제출했습니다.' : '임시저장했습니다.');
   if (t === '원장') await loadAux();
   const hdr = $('.toolbar'); if (hdr) hdr.innerHTML = toolbarHtml();
   keepScrollRender(id);
+  return true;
 }
+
+/* ---------- 학과장 서명 ---------- */
+const SIGN_KEY = () => 'lastSign:' + (S.user ? S.user.id : '');
+function lastSign() { try { return localStorage.getItem(SIGN_KEY()) || ''; } catch (e) { return ''; } }
+function openSignPad(id) {
+  const a = S.apps.find(x => x.id === id), d = draftOf(id);
+  const res = d.result || autoResult(d);
+  const prev = lastSign();
+  const bd = openModal(`${mHead('평가 제출 · 학과장 서명', `${esc(a.name_ko)} · ${esc(a.receipt_no)}`)}
+   <div class="m-body">
+    <div class="kv" style="margin-bottom:10px">${EV_ITEMS.map((nm, i) => `<div><span>${esc(nm)}</span><b>${esc(d['item' + (i + 1)])} ${esc(EV_GRADES[d['item' + (i + 1)]] || '')}</b></div>`).join('')}<div><span>판정</span><b>${esc(res)}</b></div></div>
+    <div class="warn">아래 칸에 마우스나 손가락으로 서명하세요. 제출 후에는 수정할 수 없습니다.</div>
+    <div class="sign-wrap"><canvas id="sign-pad"></canvas><div class="sign-hint" id="sign-hint">여기에 서명</div></div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="clearSignPad()">지우기</button>
+     ${prev ? `<button class="btn sm" onclick="useLastSign()">지난번 서명 사용</button>` : ''}</div></div>
+   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button>
+    <button class="btn pri" id="sign-ok" onclick="submitSigned('${id}')">서명하고 제출</button></div>`, { sticky: true });
+  initSignPad($('#sign-pad', bd));
+}
+function initSignPad(cv) {
+  const ratio = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * ratio; cv.height = h * ratio;
+  const ctx = cv.getContext('2d');
+  ctx.scale(ratio, ratio); ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+  cv._signed = false;
+  let drawing = false, lx = 0, ly = 0;
+  const pos = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.addEventListener('pointerdown', e => { drawing = true; [lx, ly] = pos(e); cv.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.arc(lx, ly, 1.1, 0, Math.PI * 2); ctx.fillStyle = '#111'; ctx.fill(); markSigned(cv); });
+  cv.addEventListener('pointermove', e => { if (!drawing) return; const [x, y] = pos(e); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(x, y); ctx.stroke(); lx = x; ly = y; });
+  const end = () => { drawing = false; };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end); cv.addEventListener('pointerleave', end);
+}
+function markSigned(cv) { cv._signed = true; const h = $('#sign-hint'); if (h) h.style.display = 'none'; }
+function clearSignPad() {
+  const cv = $('#sign-pad'); if (!cv) return;
+  cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); cv._signed = false;
+  const h = $('#sign-hint'); if (h) h.style.display = '';
+}
+function useLastSign() {
+  const cv = $('#sign-pad'), src = lastSign(); if (!cv || !src) return;
+  const im = new Image();
+  im.onload = () => {
+    clearSignPad();
+    const ctx = cv.getContext('2d'), w = cv.clientWidth, h = cv.clientHeight, s = Math.min(w / im.width, h / im.height);
+    ctx.drawImage(im, (w - im.width * s) / 2, (h - im.height * s) / 2, im.width * s, im.height * s);
+    markSigned(cv);
+  };
+  im.src = src;
+}
+/* 서명 둘레의 빈 공간을 잘라 작은 PNG로 만듭니다 */
+function signDataUrl(cv) {
+  const ctx = cv.getContext('2d'), { width: W, height: H } = cv, px = ctx.getImageData(0, 0, W, H).data;
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (px[(y * W + x) * 4 + 3] > 10) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return '';
+  const pad = 6; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(W - 1, x1 + pad); y1 = Math.min(H - 1, y1 + pad);
+  const sw = x1 - x0 + 1, sh = y1 - y0 + 1, k = Math.min(1, 400 / sw, 150 / sh);
+  const out = document.createElement('canvas'); out.width = Math.round(sw * k); out.height = Math.round(sh * k);
+  out.getContext('2d').drawImage(cv, x0, y0, sw, sh, 0, 0, out.width, out.height);
+  return out.toDataURL('image/png');
+}
+async function submitSigned(id) {
+  const cv = $('#sign-pad');
+  const url = cv && cv._signed ? signDataUrl(cv) : '';
+  if (!url) { toast('서명을 해야 제출할 수 있습니다.', 'err'); return; }
+  const btn = $('#sign-ok'); btn.disabled = true;
+  const ok = await saveEval(id, true, url);
+  if (!ok) { btn.disabled = false; return; }
+  try { localStorage.setItem(SIGN_KEY(), url); } catch (e) { /* 무시 */ }
+  closeModal(cv.closest('.backdrop'));
+}
+const signImg = (e, h) => (e && e.signature && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(e.signature) ? `<img src="${e.signature}" alt="서명" style="height:${h};vertical-align:middle">` : '');
+
 async function cancelSubmit(id, t) {
   if (!confirm(`${t} 평가의 제출을 취소할까요? 평가자가 다시 수정할 수 있게 됩니다.`)) return;
-  const { error } = await sb.from('interview_evaluations').update({ submitted: false, submitted_at: null }).eq('applicant_id', id).eq('evaluator_type', t);
+  const { error } = await sb.from('interview_evaluations').update(t === '학과장' ? { submitted: false, submitted_at: null, signature: null } : { submitted: false, submitted_at: null }).eq('applicant_id', id).eq('evaluator_type', t);
   if (error) { toast(errMsg(error), 'err'); return; }
   toast('제출을 취소했습니다.');
   await loadAux(); renderShell();
@@ -214,12 +289,13 @@ function printEvalSheet() {
   const pages = Object.keys(byDept).map(did => `<div class="doc sheet" style="height:auto;min-height:280mm">
     <h2>외국인 특별전형 면접평가표 (${esc(S.term.name)})</h2>
     <div style="margin-bottom:4mm"><b>학과:</b> ${esc(deptName(did))} &nbsp; <b>출력일:</b> ${todayYMD()}</div>
-    <table><thead><tr><th>순서</th><th>사진</th><th>접수번호</th><th>성명</th><th>국적</th><th>TOPIK</th><th>${esc(EV_ITEMS[0])}</th><th>${esc(EV_ITEMS[1])}</th><th>${esc(EV_ITEMS[2])}</th><th>판정</th>${showDir ? '<th>구분</th>' : ''}</tr></thead><tbody>
+    <table><thead><tr><th>순서</th><th>사진</th><th>접수번호</th><th>성명</th><th>국적</th><th>TOPIK</th><th>${esc(EV_ITEMS[0])}</th><th>${esc(EV_ITEMS[1])}</th><th>${esc(EV_ITEMS[2])}</th><th>판정</th>${showDir ? '<th>구분</th>' : ''}<th>서명</th></tr></thead><tbody>
     ${byDept[did].map(a => { const o = orderOf(a); const rowsEv = [['학과장', getEv(a.id, '학과장')]].concat(showDir ? [['원장', getEv(a.id, '원장')]] : []);
       return rowsEv.map(([lbl, e], i) => `<tr>${i === 0 ? `<td rowspan="${rowsEv.length}">${o == null ? '' : o}</td><td rowspan="${rowsEv.length}">${photoUrl(a) ? `<img src="${esc(photoUrl(a))}" style="width:16mm;height:21mm;object-fit:cover" alt="">` : ''}</td><td rowspan="${rowsEv.length}">${esc(a.receipt_no)}</td><td rowspan="${rowsEv.length}">${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td rowspan="${rowsEv.length}">${esc(a.nationality)}</td><td rowspan="${rowsEv.length}">${a.topik_level ? a.topik_level + '급' : ''}</td>` : ''}
-      <td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td>${e ? esc(e.result || '') : ''}</td>${showDir ? `<td>${lbl}</td>` : ''}</tr>`).join(''); }).join('')}
+      <td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td>${e ? esc(e.result || '') : ''}</td>${showDir ? `<td>${lbl}</td>` : ''}<td>${lbl === '학과장' && e && e.submitted ? signImg(e, '9mm') : ''}</td></tr>`).join(''); }).join('')}
     </tbody></table>
     <div style="margin-top:6mm;font-size:9pt">A: 우수(탁월) · B: 보통(적격) · C: 미흡(불합격) — C가 하나라도 있으면 불합격</div>
-    <div style="margin-top:14mm;text-align:right">평가자 서명: ____________________</div></div>`).join('');
+    ${(() => { const sg = byDept[did].map(a => getEv(a.id, '학과장')).find(e => e && e.submitted && e.signature);
+      return `<div style="margin-top:14mm;text-align:right">학과장 서명: ${sg ? signImg(sg, '14mm') : '____________________'}</div>`; })()}</div>`).join('');
   printHtml(pages);
 }
