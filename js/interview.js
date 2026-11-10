@@ -166,7 +166,7 @@ function openOrderModal() {
     <div class="tbl-wrap" style="max-height:60vh;overflow:auto"><table class="tbl" style="min-width:600px"><thead><tr><th>순서</th><th>지원자</th><th>학과</th><th>면접 일시</th></tr></thead><tbody>
     ${list.map(a => { const iv = S.interviews[a.id]; return `<tr data-id="${a.id}"><td><input class="ord-in" type="number" min="1" style="width:70px" value="${esc(iv.order_no == null ? '' : iv.order_no)}"></td>
       <td>${esc(a.name_ko)} <span class="muted small">${esc(a.receipt_no)}</span></td><td>${esc(deptName(a.department_id))}</td>
-      <td><input class="dt-in" type="datetime-local" value="${esc(toLocalInput(iv.scheduled_at))}"></td></tr>`; }).join('')}</tbody></table></div>`
+      <td><input class="dt-in" type="datetime-local" max="9999-12-31T23:59" value="${esc(toLocalInput(iv.scheduled_at))}"></td></tr>`; }).join('')}</tbody></table></div>`
     : '<div class="muted">면접심사 단계의 지원자가 없습니다. 먼저 지원자의 상태를 “면접심사”로 변경하세요.</div>'}</div>
    <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button>${list.length ? '<button class="btn pri" onclick="saveOrder()">저장</button>' : ''}</div>`, { wide: true, sticky: true });
 }

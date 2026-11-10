@@ -9,7 +9,7 @@ function termFormHtml(t, pfx) {
     ${field('첫 학기 등록금(원) — 장학금 감면 계산의 기준', `<input id="${pfx}first_tuition" type="number" min="0" value="${v('first_tuition')}">`, { req: 1 })}
     ${field('이후 학기 등록금(원)', `<input id="${pfx}later_tuition" type="number" min="0" value="${v('later_tuition')}">`, { req: 1 })}</div></div>
    <div class="sec"><h3>일정 · 등록기간</h3><div class="grid2">
-    ${TERM_DATE_FIELDS.map(([k, l]) => field(l, `<input id="${pfx}${k}" type="date" value="${v(k)}">`)).join('')}</div></div>
+    ${TERM_DATE_FIELDS.map(([k, l]) => field(l, `<input id="${pfx}${k}" type="date" min="1900-01-01" max="9999-12-31" value="${v(k)}">`)).join('')}</div></div>
    <div class="sec"><h3>해외송금 계좌 <span class="muted small">등록금고지서에 인쇄됩니다</span></h3><div class="grid2">
     ${TERM_BANK_FIELDS.map(([k, l]) => field(l, `<input id="${pfx}${k}" value="${v(k)}">`, { full: k === 'bank_address' })).join('')}</div></div>`;
 }
@@ -23,6 +23,7 @@ function readTermForm(pfx) {
 }
 function validTerm(o) {
   if (!(o.first_tuition >= 0) || isNaN(o.first_tuition) || !(o.later_tuition >= 0) || isNaN(o.later_tuition)) return '등록금을 숫자로 입력하세요.';
+  if (TERM_DATE_FIELDS.some(([k]) => o[k] && !/^\d{4}-\d{2}-\d{2}$/.test(o[k]))) return '날짜의 연도는 4자리로 입력하세요.';
   if (o.register_start && o.register_end && o.register_start > o.register_end) return '등록기간의 시작일이 마감일보다 늦습니다.';
   return '';
 }

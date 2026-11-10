@@ -48,7 +48,7 @@ function openDetail(id, focus) {
 
   const payment = pay ? `<div class="sec"><h3>등록금 · 납부</h3><div class="kv">${kv('등록금', won(pay.tuition_amount))}${kv('장학금', won(pay.scholarship_amount))}${kv('납부할 금액', won(pay.payable_amount))}</div>
     ${can.edit() ? `<div class="grid3" style="margin-top:10px">${field('납부 금액(원)', `<input id="pay-amt" type="number" min="0" value="${esc(pay.paid_amount == null ? '' : pay.paid_amount)}">`)}
-      ${field('납부일', `<input id="pay-at" type="date" value="${esc(pay.paid_at || '')}">`)}${field('메모', `<input id="pay-memo" value="${esc(pay.memo || '')}">`)}</div>
+      ${field('납부일', `<input id="pay-at" type="date" min="1900-01-01" max="9999-12-31" value="${esc(pay.paid_at || '')}">`)}${field('메모', `<input id="pay-memo" value="${esc(pay.memo || '')}">`)}</div>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri sm" onclick="savePayment('${id}')">납부 정보 저장</button>
       ${a.status === '최종합격' && pay.paid_at ? `<button class="btn ok sm" onclick="markRegistered('${id}')">등록완료 처리</button>` : ''}</div>`
       : `<div class="kv" style="margin-top:8px">${kv('납부 금액', won(pay.paid_amount))}${kv('납부일', pay.paid_at)}</div>`}</div>` : '';
@@ -183,7 +183,7 @@ function openApplicantForm(id) {
     ${field('한글 성명', `<input id="af-name_ko" value="${v('name_ko')}">`, { req: 1 })}
     ${field('영문 성명 (여권과 동일)', `<input id="af-name_en" value="${v('name_en')}" style="text-transform:uppercase">`, { req: 1 })}
     ${field('성별', `<select id="af-gender"><option value="">선택</option><option ${sel('gender', '남')}>남</option><option ${sel('gender', '여')}>여</option></select>`, { req: 1 })}
-    ${field('생년월일', `<input id="af-birth_date" type="date" value="${v('birth_date')}">`, { req: 1 })}
+    ${field('생년월일', `<input id="af-birth_date" type="date" min="1900-01-01" max="9999-12-31" value="${v('birth_date')}">`, { req: 1 })}
     ${field('국적', `<input id="af-nationality" list="nations" value="${v('nationality')}"><datalist id="nations">${NATIONS.map(n => `<option value="${n}">`).join('')}</datalist>`, { req: 1 })}
     ${field('접수번호 (비우면 자동 부여)', `<input id="af-receipt_no" value="${v('receipt_no')}" ${edit ? 'disabled' : ''} placeholder="ITC-${S.term.year}-000">`)}
    </div></div>
@@ -199,7 +199,7 @@ function openApplicantForm(id) {
    </div></div>
    <div class="sec"><h3>신원 · 연락처 <span class="muted small">민감정보 · 저장 시 암호화됩니다</span></h3><div class="grid2">
     ${field(edit ? '여권번호 (바꿀 때만 입력)' : '여권번호', `<input id="af-passport_no" autocomplete="off" placeholder="${edit && a.passport_last4 ? '현재: ****' + esc(a.passport_last4) : ''}">`, { req: !edit })}
-    ${field('여권 만료일', `<input id="af-passport_expiry" type="date" value="${v('passport_expiry')}">`)}
+    ${field('여권 만료일', `<input id="af-passport_expiry" type="date" min="1900-01-01" max="9999-12-31" value="${v('passport_expiry')}">`)}
     ${field(edit ? '외국인등록번호 (바꿀 때만 입력)' : '외국인등록번호', `<input id="af-alien_reg_no" autocomplete="off">`)}
     ${field('비자 종류', `<input id="af-visa_type" value="${v('visa_type')}" placeholder="예: D-4, H-1 · 등록완료">`)}
     ${field('이메일', `<input id="af-email" type="email" value="${v('email')}">`)}
@@ -228,7 +228,10 @@ async function saveApplicant(id) {
   if (!p.name_ko) errs.push('한글 성명을 입력하세요.');
   if (!p.name_en) errs.push('영문 성명을 입력하세요.');
   if (!p.gender) errs.push('성별을 선택하세요.');
+  const ymdOk = v => /^(19|20)\d{2}-\d{2}-\d{2}$/.test(v);
   if (!p.birth_date) errs.push('생년월일을 입력하세요.');
+  else if (!ymdOk(p.birth_date) || p.birth_date > todayYMD()) errs.push('생년월일을 확인하세요. (연도 4자리, 예: 2004-01-05)');
+  if (p.passport_expiry && !ymdOk(p.passport_expiry)) errs.push('여권 만료일을 확인하세요. (연도 4자리)');
   if (!p.nationality) errs.push('국적을 입력하세요.');
   if (!p.department_id) errs.push('지원학과를 선택하세요.');
   if (kind === '편입학' && !p.transfer_year) errs.push('편입 학년을 선택하세요.');
