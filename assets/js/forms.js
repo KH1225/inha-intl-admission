@@ -179,6 +179,23 @@ function onNatSel(val) {
   if (val === '__other') { inp.value = ''; inp.classList.remove('hide'); inp.focus(); }
   else { inp.value = val; inp.classList.add('hide'); }
 }
+/* 유학원: 드롭다운에서 '+ 새 유학원 추가'를 고르면 바로 등록 */
+async function onAgencySel(el) {
+  if (el.value !== '__new') return;
+  el.value = '';
+  const nm = (prompt('추가할 유학원 이름을 입력하세요.') || '').trim();
+  if (!nm) return;
+  const dup = S.agencies.find(x => x.name.toLowerCase() === nm.toLowerCase());
+  let ag = dup;
+  if (!dup) {
+    const { data, error } = await sb.from('agencies').insert({ name: nm }).select().single();
+    if (error) { toast('유학원 추가 실패: ' + errMsg(error), 'err'); return; }
+    ag = data; S.agencies.push(ag); S.agencies.sort((x, y) => x.name.localeCompare(y.name)); S.agencyMap[ag.id] = ag;
+  }
+  if (!el.querySelector(`option[value="${ag.id}"]`)) el.querySelector('option[value="__new"]').insertAdjacentHTML('beforebegin', `<option value="${ag.id}">${esc(ag.name)}</option>`);
+  el.value = String(ag.id);
+  toast(dup ? `이미 있는 유학원 “${ag.name}”을 선택했습니다.` : `유학원 “${ag.name}”을 추가했습니다.`);
+}
 function openApplicantForm(id) {
   pendingPhoto = null;
   const edit = !!id;
@@ -207,7 +224,7 @@ function openApplicantForm(id) {
     ${field('지원학과', `<select id="af-department_id"><option value="">선택</option>${deptOpts}</select>`, { req: 1 })}
     ${field('전형유형', `<select id="af-qualification_code"><option value="">선택</option>${S.quals.map(q => `<option value="${q.code}" ${sel('qualification_code', q.code)}>${esc(q.name_ko)}</option>`).join('')}</select>`)}
     ${field('지원경로', `<select id="af-route" onchange="$('#af-ag').classList.toggle('hide',this.value!=='유학원')"><option ${sel('route', '개별지원')}>개별지원</option><option ${sel('route', '유학원')}>유학원</option></select>`)}
-    <label class="fld ${a.route === '유학원' ? '' : 'hide'}" id="af-ag"><span>유학원</span><select id="af-agency_id"><option value="">선택</option>${S.agencies.filter(x => x.active || x.id === a.agency_id).map(x => `<option value="${x.id}" ${sel('agency_id', x.id)}>${esc(x.name)}</option>`).join('')}</select></label>
+    <label class="fld ${a.route === '유학원' ? '' : 'hide'}" id="af-ag"><span>유학원</span><select id="af-agency_id" onchange="onAgencySel(this)"><option value="">선택</option>${S.agencies.filter(x => x.active || x.id === a.agency_id).map(x => `<option value="${x.id}" ${sel('agency_id', x.id)}>${esc(x.name)}</option>`).join('')}${can.edit() ? '<option value="__new">+ 새 유학원 추가</option>' : ''}</select></label>
     ${field('어학능력 (TOPIK)', `<select id="af-topik_level"><option value="">없음</option>${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${sel('topik_level', n)}>${n}급</option>`).join('')}</select>`)}
     ${field('협약학교 (협약 장학금 대상)', `<select id="af-partner_school_id"><option value="">해당 없음</option>${S.partners.filter(p => p.active || p.id === a.partner_school_id).map(p => `<option value="${p.id}" ${sel('partner_school_id', p.id)}>${esc(p.name)}</option>`).join('')}</select>`)}
    </div></div>
