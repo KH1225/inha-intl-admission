@@ -18,8 +18,9 @@ const semKo = t => (t && t.semester === '후기' ? '2학기' : '1학기');
 const crTermTitle = () => `${esc(S.term.year)}학년도 ${semKo(S.term)}`;
 
 async function loadCredit() {
-  S.credit = {}; S.creditCourses = {}; S.creditReady = false;
+  S.credit = {}; S.creditCourses = {}; S.creditReady = false; S.crHasMajor = false;
   if (!canSeeCredit()) return;
+  try { const t = await sb.from('credit_reviews').select('prev_major').limit(1); S.crHasMajor = !t.error; } catch (e) { /* 무시 */ }
   const ids = S.apps.filter(a => a.admission_kind === '편입학').map(a => a.id);
   try {
     if (!ids.length) { const t = await sb.from('credit_reviews').select('applicant_id').limit(1); S.creditReady = !t.error; return; }
@@ -113,8 +114,9 @@ function crCardHtml(a) {
      ${typeof appFileBtn === 'function' && typeof afOf === 'function' && afOf(a.id) ? `<div style="margin-top:6px">${appFileBtn(a.id, 'btn sm blue')}</div>` : ''}</div>
     <div class="cr-sum"><div><span>전공 인정</span><b class="cr-maj">${crNum(s.maj, s.rMaj)}</b></div><div><span>교양 인정</span><b class="cr-gen">${crNum(s.gen, s.rGen)}</b></div><div><span>총계</span><b class="cr-tot">${crNum(s.total, s.rTotal)}</b></div></div></div>
    <div class="notice small cr-warn ${warn ? '' : 'hide'}" style="margin-top:8px">ℹ <span>${esc(warn)}</span></div>
-   <div class="grid2" style="margin-top:10px">
+   <div class="grid3" style="margin-top:10px">
     ${field(`전적교 대학명${crPartner(a) ? ' <span class="muted small">(협약학교)</span>' : ''}`, ed ? `<input class="cr-ps" value="${esc(crSchool(a))}" placeholder="예: Kyrgyz-Korean College">` : `<div>${esc(crSchool(a)) || '-'}</div>`)}
+    ${field('전적교 학과명', ed ? `<input class="cr-pm" value="${esc(r.prev_major || '')}" placeholder="예: Airline Industry (Cabin Attendant)" ${S.crHasMajor ? '' : 'disabled title="sql/2026-11-12_전적교_학과명.sql 실행 후 입력할 수 있습니다"'}>` : `<div>${esc(r.prev_major || '') || '-'}</div>`)}
     ${field('전적교 학년', ed ? `<select class="cr-py"><option value="">-</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(r.prev_year) === n ? 'selected' : ''}>${n}학년</option>`).join('')}</select>` : `<div>${r.prev_year ? esc(r.prev_year) + '학년' : '-'}</div>`)}
    </div>
    <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:760px;width:100%"><colgroup><col style="width:44px"><col><col style="width:84px"><col style="width:84px"><col style="width:76px">${ed ? '<col style="width:48px">' : ''}</colgroup><thead><tr><th>NO</th><th>교과목명</th><th>학점</th><th>구분</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
@@ -195,6 +197,7 @@ function crPasteApply(id) {
 function crRead(id) {
   const card = $(`#cr-${id}`);
   const review = { applicant_id: id, prev_school: $('.cr-ps', card).value.trim() || null, prev_year: Number($('.cr-py', card).value) || null,
+    ...(S.crHasMajor ? { prev_major: $('.cr-pm', card).value.trim() || null } : {}),
     comment: $('.cr-cm', card).value.trim() || null, reviewer: S.user.id, updated_at: new Date().toISOString() };
   const courses = $$('.cr-row', card).map((tr, i) => ({ applicant_id: id, seq: i + 1, category: $('.cr-cat', tr).value || null, course_name: $('.cr-nm', tr).value.trim() || null,
     credits: $('.cr-cr', tr).value === '' ? null : Number($('.cr-cr', tr).value), recognized: $('.cr-ok', tr).checked }))
