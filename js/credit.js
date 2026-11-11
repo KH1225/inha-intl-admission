@@ -98,10 +98,10 @@ function crCardHtml(a) {
      ${typeof appFileBtn === 'function' && typeof afOf === 'function' && afOf(a.id) ? `<div style="margin-top:6px">${appFileBtn(a.id, 'btn sm blue')}</div>` : ''}</div>
     <div class="cr-sum"><div><span>전공 인정</span><b class="cr-maj">${s.maj}</b></div><div><span>교양 인정</span><b class="cr-gen">${s.gen}</b></div><div><span>총계</span><b class="cr-tot">${s.total}</b></div></div></div>
    <div class="warn cr-warn ${warn ? '' : 'hide'}" style="margin-top:8px">⚠ <span>${esc(warn)}</span></div>
-   <div class="grid3" style="margin-top:10px">
+   <div class="grid2" style="margin-top:10px">
     ${field('전적교 대학명', ed ? `<input class="cr-ps" value="${v('prev_school')}" placeholder="예: Kyrgyz-Korean College">` : `<div>${v('prev_school') || '-'}</div>`)}
     ${field('전적교 학년', ed ? `<select class="cr-py"><option value="">-</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(r.prev_year) === n ? 'selected' : ''}>${n}학년</option>`).join('')}</select>` : `<div>${r.prev_year ? esc(r.prev_year) + '학년' : '-'}</div>`)}
-    ${field('본대학 주·야', ed ? `<select class="cr-dn">${['주', '야'].map(x => `<option ${(r.day_night || '주') === x ? 'selected' : ''}>${x}</option>`).join('')}</select>` : `<div>${v('day_night') || '주'}</div>`)}</div>
+   </div>
    <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:640px"><thead><tr><th>NO</th><th>구분</th><th>교과목명</th><th>학점</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
     <tbody>${rows.map((c, i) => crRowHtml(c, ed, i)).join('') || (ed ? '' : '<tr><td colspan="5" class="muted c">입력된 과목이 없습니다</td></tr>')}</tbody></table></div>
    ${ed ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn sm" onclick="crAddRow('${a.id}')">＋ 과목 추가</button>
@@ -177,7 +177,7 @@ function crPasteApply(id) {
 function crRead(id) {
   const card = $(`#cr-${id}`);
   const review = { applicant_id: id, prev_school: $('.cr-ps', card).value.trim() || null, prev_year: Number($('.cr-py', card).value) || null,
-    day_night: $('.cr-dn', card).value || '주', comment: $('.cr-cm', card).value.trim() || null, reviewer: S.user.id, updated_at: new Date().toISOString() };
+    comment: $('.cr-cm', card).value.trim() || null, reviewer: S.user.id, updated_at: new Date().toISOString() };
   const courses = $$('.cr-row', card).map((tr, i) => ({ applicant_id: id, seq: i + 1, category: $('.cr-cat', tr).value || null, course_name: $('.cr-nm', tr).value.trim() || null,
     credits: $('.cr-cr', tr).value === '' ? null : Number($('.cr-cr', tr).value), recognized: $('.cr-ok', tr).checked }))
     .filter(c => c.course_name || c.credits != null);
@@ -287,10 +287,10 @@ function crOpinionHtml(d, apps, comment) {
   return `<div class="doc sheet cr-doc">
    <div class="cr-term">${crTermTitle()}</div><h2 class="cr-title">편입학 성적인정 검토 의견서</h2>
    <h4 class="cr-h">1. 학적사항</h4>
-   <table class="cr-t"><thead><tr><th colspan="4">전 적 교</th><th colspan="4">본 대 학</th></tr>
-    <tr><th>대학명</th><th>학년</th><th>성명</th><th>영문명</th><th>지원학과</th><th>주·야</th><th>학년</th><th>성명</th></tr></thead>
+   <table class="cr-t"><thead><tr><th colspan="4">전 적 교</th><th colspan="3">본 대 학</th></tr>
+    <tr><th>대학명</th><th>학년</th><th>성명</th><th>영문명</th><th>지원학과</th><th>학년</th><th>성명</th></tr></thead>
     <tbody>${apps.map(a => { const r = crOf(a.id) || {}; return `<tr><td>${esc(r.prev_school || '')}</td><td>${r.prev_year ? esc(r.prev_year) : ''}</td><td>${esc(a.name_ko)}</td><td class="en">${esc(a.name_en || '')}</td>
-      <td>${esc(deptName(a.department_id))}</td><td>${esc(r.day_night || '주')}</td><td>${a.transfer_year ? esc(a.transfer_year) : ''}</td><td>${esc(a.name_ko)}</td></tr>`; }).join('')}</tbody></table>
+      <td>${esc(deptName(a.department_id))}</td><td>${a.transfer_year ? esc(a.transfer_year) : ''}</td><td>${esc(a.name_ko)}</td></tr>`; }).join('')}</tbody></table>
    <h4 class="cr-h">2. 성적사항</h4>
    <table class="cr-t"><thead><tr><th colspan="5">전적교 이수(취득)성적 현황</th><th colspan="5">본대학 성적인정(학점) 현황</th></tr>
     <tr><th>구분</th><th>교과목명</th><th>성적</th><th>학점</th><th>비고</th><th>구분</th><th>교과목명</th><th>성적</th><th>학점</th><th>비고</th></tr></thead>
