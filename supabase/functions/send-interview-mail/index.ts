@@ -11,7 +11,6 @@
 // 받는 사람은 항상 DB에 저장된 지원자 이메일만 씁니다 (임의 주소로는 보낼 수 없음).
 // {이름}, {등록금}, {계좌번호} 같은 값도 모두 서버가 DB에서 읽어 채웁니다.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -100,6 +99,112 @@ const fill = (tpl: string, v: Record<string, string>) => tpl.replace(/\{([^{}]+)
 const okUrl = (u: unknown) => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) && u.length < 500;
 
 type Att = { filename: string; base64: string };
+
+/* ---------- 메일 조립 (MIME) ----------
+   한글 제목·이름은 RFC 2047 base64 단위로 나눠 줄을 접고, 본문·첨부는 base64 76자 줄로 씁니다.
+   (외부 메일 라이브러리 없이 직접 조립 — 긴 한글 제목이 깨지던 문제 해결) */
+const te = new TextEncoder(), td = new TextDecoder();
+function b64Bytes(bytes: Uint8Array) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+const b64Str = (s: string) => b64Bytes(te.encode(s));
+const wrap76 = (s: string) => s.replace(/\s+/g, "").replace(/.{1,76}/g, "$&\r\n");
+function encWord(str: string) {
+  if (/^[\x20-\x7e]*$/.test(str)) return str;
+  const parts: string[] = [];
+  let cur = "";
+  for (const ch of str) {
+    if (te.encode(cur + ch).length > 36) { parts.push(cur); cur = ch; } else cur += ch;
+  }
+  if (cur) parts.push(cur);
+  return parts.map((w) => `=?UTF-8?B?${b64Str(w)}?=`).join("\r\n ");
+}
+function parseAddr(s: string) {
+  const m = s.match(/^\s*(.*?)\s*<([^<>\s]+)>\s*$/);
+  return m ? { name: m[1].replace(/^"|"$/g, "").trim(), addr: m[2] } : { name: "", addr: s.trim() };
+}
+function fmtAddr(s: string) {
+  const { name, addr } = parseAddr(s);
+  if (!name) return addr;
+  if (/^[\x20-\x7e]*$/.test(name)) return `"${name.replace(/["\\]/g, "")}" <${addr}>`;
+  return `${encWord(name)} <${addr}>`;
+}
+function buildMime(o: { from: string; to: string; cc: string[]; replyTo?: string; subject: string; text: string; html: string; atts: Att[] }) {
+  const id = crypto.randomUUID().replace(/-/g, "");
+  const alt = `alt_${id}`, mix = `mix_${id}`;
+  const domain = parseAddr(o.from).addr.split("@")[1] || "localhost";
+  const head = [
+    `From: ${fmtAddr(o.from)}`,
+    `To: ${o.to}`,
+    ...(o.cc.length ? [`Cc: ${o.cc.join(", ")}`] : []),
+    ...(o.replyTo ? [`Reply-To: ${fmtAddr(o.replyTo)}`] : []),
+    `Subject: ${encWord(o.subject)}`,
+    `Date: ${new Date().toUTCString().replace("GMT", "+0000")}`,
+    `Message-ID: <${id}@${domain}>`,
+    "MIME-Version: 1.0",
+  ];
+  const altBody =
+    `--${alt}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrap76(b64Str(o.text))}` +
+    `--${alt}\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrap76(b64Str(o.html))}` +
+    `--${alt}--\r\n`;
+  if (!o.atts.length) return [...head, `Content-Type: multipart/alternative; boundary="${alt}"`].join("\r\n") + "\r\n\r\n" + altBody;
+  let body = `--${mix}\r\nContent-Type: multipart/alternative; boundary="${alt}"\r\n\r\n${altBody}`;
+  for (const a of o.atts) {
+    body += `--${mix}\r\nContent-Type: application/pdf; name="${a.filename}"\r\nContent-Disposition: attachment; filename="${a.filename}"\r\n` +
+      `Content-Transfer-Encoding: base64\r\n\r\n${wrap76(a.base64)}`;
+  }
+  body += `--${mix}--\r\n`;
+  return [...head, `Content-Type: multipart/mixed; boundary="${mix}"`].join("\r\n") + "\r\n\r\n" + body;
+}
+
+/* ---------- SMTP 발송 (SSL 465) ---------- */
+async function smtpSend(fromAddr: string, rcpts: string[], message: string) {
+  const conn = await Deno.connectTls({ hostname: env("SMTP_HOST"), port: Number(env("SMTP_PORT") || 465) });
+  let buf = "";
+  const chunk = new Uint8Array(8192);
+  const read = async (): Promise<{ code: number; text: string }> => {
+    for (;;) {
+      const lines = buf.split("\r\n");
+      for (let i = 0; i < lines.length - 1; i++) {
+        if (/^\d{3}( |$)/.test(lines[i])) {
+          const text = lines.slice(0, i + 1).join("\n");
+          buf = lines.slice(i + 1).join("\r\n");
+          return { code: Number(lines[i].slice(0, 3)), text };
+        }
+      }
+      const n = await conn.read(chunk);
+      if (n === null) throw new Error("메일 서버 연결이 끊겼습니다.");
+      buf += td.decode(chunk.subarray(0, n), { stream: true });
+    }
+  };
+  const write = async (s: string) => { let p = te.encode(s); while (p.length) p = p.subarray(await conn.write(p)); };
+  const cmd = async (line: string | null, ok: number[], label = "") => {
+    if (line !== null) await write(line + "\r\n");
+    const r = await read();
+    if (!ok.includes(r.code)) throw new Error(`메일 서버 오류${label ? ` (${label})` : ""}: ${r.text.replace(/\n/g, " ").slice(0, 200)}`);
+    return r;
+  };
+  const timer = setTimeout(() => { try { conn.close(); } catch { /* 무시 */ } }, 60_000);
+  try {
+    await cmd(null, [220], "연결");
+    await cmd("EHLO inha-intl-admission", [250], "EHLO");
+    await cmd("AUTH LOGIN", [334], "로그인");
+    await cmd(b64Str(env("SMTP_USER")), [334], "로그인");
+    await cmd(b64Str(env("SMTP_PASS")), [235], "로그인 — SMTP_USER / SMTP_PASS(앱 비밀번호)를 확인하세요");
+    await cmd(`MAIL FROM:<${fromAddr}>`, [250], "보낸 사람");
+    for (const r of rcpts) await cmd(`RCPT TO:<${r}>`, [250, 251], `받는 사람 ${r}`);
+    await cmd("DATA", [354], "DATA");
+    const dotted = message.replace(/\r\n\./g, "\r\n..");
+    await cmd(dotted + ".", [250], "본문 전송");
+    await cmd("QUIT", [221]).catch(() => {});
+  } finally {
+    clearTimeout(timer);
+    try { conn.close(); } catch { /* 이미 닫힘 */ }
+  }
+}
+
 async function sendMail(to: string, cc: string[], subject: string, text: string, atts: Att[] = []) {
   const from = env("MAIL_FROM");
   const replyTo = env("MAIL_REPLY_TO") || undefined;
@@ -114,18 +219,8 @@ async function sendMail(to: string, cc: string[], subject: string, text: string,
     if (!r.ok) throw new Error(`Resend ${r.status}: ${(await r.text()).slice(0, 200)}`);
     return;
   }
-  const client = new SMTPClient({
-    connection: {
-      hostname: env("SMTP_HOST"), port: Number(env("SMTP_PORT") || 465), tls: true,
-      auth: { username: env("SMTP_USER"), password: env("SMTP_PASS") },
-    },
-  });
-  try {
-    await client.send({ from, to, ...(cc.length ? { cc } : {}), subject, content: text, html, ...(replyTo ? { replyTo } : {}),
-      ...(atts.length ? { attachments: atts.map((x) => ({ filename: x.filename, content: x.base64, encoding: "base64" as const, contentType: "application/pdf" })) } : {}) });
-  } finally {
-    await client.close();
-  }
+  const msg = buildMime({ from, to, cc, replyTo, subject, text: text.replace(/\r?\n/g, "\r\n"), html, atts });
+  await smtpSend(parseAddr(from).addr, [to, ...cc], msg);
 }
 
 Deno.serve(async (req) => {
