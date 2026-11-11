@@ -64,7 +64,7 @@ function evalCardView(a) {
   const done = e1 && e1.submitted;
   return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span> <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}</div>
-   <div class="kv" style="margin-top:8px"><div><span>국제교류원장</span><b>${evBadge(e1)}</b></div><div><span>학과장</span><b>${evBadge(e2)} ${e2 && e2.submitted ? signImg(e2, '22px') : ''}</b></div></div>
+   <div class="kv" style="margin-top:8px"><div><span>국제교류원장</span><b>${evBadge(e1)} ${e1 && e1.submitted ? signImg(e1, '22px') : ''}</b></div><div><span>학과장</span><b>${evBadge(e2)} ${e2 && e2.submitted ? signImg(e2, '22px') : ''}</b></div></div>
    ${e1 && e1.comment ? `<div class="muted small" style="margin-top:6px">원장 의견: ${esc(e1.comment)}</div>` : ''}
    ${can.admin() && (e1 && e1.submitted || e2 && e2.submitted) ? `<div style="margin-top:8px">
      ${e2 && e2.submitted ? `<button class="btn sm" onclick="cancelSubmit('${a.id}','학과장')">학과장 제출 취소</button>` : ''}
@@ -124,8 +124,7 @@ async function saveEval(id, submit, signature) {
     if (!complete) { toast('3개 항목을 모두 평가해야 제출할 수 있습니다.', 'err'); return; }
     const a = S.apps.find(x => x.id === id);
     const res = d.result || autoResult(d);
-    if (t === '학과장' && !signature) { openSignPad(id); return; }
-    if (t !== '학과장' && !confirm(`${a.name_ko} 지원자의 평가를 제출합니다.\n판정: ${res}\n${t === '학과장' ? '제출 후에는 수정할 수 없습니다.' : '제출 후에도 면접심사 단계에서는 수정할 수 있습니다.'}`)) return;
+    if (!signature) { openSignPad(id); return; }
   }
   const row = { item1: d.item1 || null, item2: d.item2 || null, item3: d.item3 || null, comment: d.comment.trim() || null, result: complete ? (d.result || autoResult(d)) : null };
   if (submit) { row.submitted = true; row.submitted_at = new Date().toISOString(); if (signature) row.signature = signature; }
@@ -150,10 +149,11 @@ function openSignPad(id) {
   const a = S.apps.find(x => x.id === id), d = draftOf(id);
   const res = d.result || autoResult(d);
   const prev = lastSign();
-  const bd = openModal(`${mHead('평가 제출 · 학과장 서명', `${esc(a.name_ko)} · ${esc(a.receipt_no)}`)}
+  const t = myEvalType(), who = t === '원장' ? '국제교류원장' : '학과장';
+  const bd = openModal(`${mHead(`평가 제출 · ${who} 서명`, `${esc(a.name_ko)} · ${esc(a.receipt_no)}`)}
    <div class="m-body">
     <div class="kv" style="margin-bottom:10px">${EV_ITEMS.map((nm, i) => `<div><span>${esc(nm)}</span><b>${esc(d['item' + (i + 1)])} ${esc(EV_GRADES[d['item' + (i + 1)]] || '')}</b></div>`).join('')}<div><span>판정</span><b>${esc(res)}</b></div></div>
-    <div class="warn">아래 칸에 마우스나 손가락으로 서명하세요. 제출 후에는 수정할 수 없습니다.</div>
+    <div class="warn">아래 칸에 마우스나 손가락으로 서명하세요. ${t === '원장' ? '제출 후에도 면접심사 단계에서는 수정할 수 있으며, 다시 제출할 때 새로 서명합니다.' : '제출 후에는 수정할 수 없습니다.'}</div>
     <div class="sign-wrap"><canvas id="sign-pad"></canvas><div class="sign-hint" id="sign-hint">여기에 서명</div></div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="clearSignPad()">지우기</button>
      ${prev ? `<button class="btn sm" onclick="useLastSign()">지난번 서명 사용</button>` : ''}</div></div>
@@ -217,7 +217,7 @@ const signImg = (e, h) => (e && e.signature && /^data:image\/png;base64,[A-Za-z0
 
 async function cancelSubmit(id, t) {
   if (!confirm(`${t} 평가의 제출을 취소할까요? 평가자가 다시 수정할 수 있게 됩니다.`)) return;
-  const { error } = await sb.from('interview_evaluations').update(t === '학과장' ? { submitted: false, submitted_at: null, signature: null } : { submitted: false, submitted_at: null }).eq('applicant_id', id).eq('evaluator_type', t);
+  const { error } = await sb.from('interview_evaluations').update({ submitted: false, submitted_at: null, signature: null }).eq('applicant_id', id).eq('evaluator_type', t);
   if (error) { toast(errMsg(error), 'err'); return; }
   toast('제출을 취소했습니다.');
   await loadAux(); renderShell();
@@ -297,7 +297,8 @@ function printEvalSheet() {
         ${showDir ? `<td class="nw">${lbl}</td>` : ''}<td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td class="nw">${e ? esc(e.result || '') : ''}</td>
         <td class="cmt">${e && e.comment ? esc(e.comment) : ''}</td></tr>`).join('');
     }).join('');
-    const sg = byDept[did].map(a => getEv(a.id, '학과장')).find(e => e && e.submitted && e.signature);
+    const signOf = t => byDept[did].map(a => getEv(a.id, t)).find(e => e && e.submitted && e.signature);
+    const signLine = (label, e) => `<div class="ev-sign"><span>${label}</span><span class="ln">${e ? signImg(e, '15mm') : ''}</span><span>(서명)</span></div>`;
     return `<div class="doc sheet ev-sheet">
     <h2>외국인 특별전형 면접평가표 (${esc(S.term.name)})</h2>
     <div style="margin-bottom:4mm"><b>학과:</b> ${esc(deptName(did))} &nbsp; <b>출력일:</b> ${todayYMD()}</div>
@@ -305,7 +306,7 @@ function printEvalSheet() {
       <th>${esc(EV_ITEMS[0])}</th><th>${esc(EV_ITEMS[1])}</th><th>${esc(EV_ITEMS[2])}</th><th>판정</th><th class="cmt">평가의견</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div style="margin-top:5mm;font-size:9pt">A: 우수(탁월) · B: 보통(적격) · C: 미흡(불합격) — C가 하나라도 있으면 불합격</div>
-    <div class="ev-sign"><span>학과장 (${esc(deptName(did))})</span><span class="ln">${sg ? signImg(sg, '15mm') : ''}</span><span>(서명)</span></div></div>`;
+    <div class="ev-signs">${signLine(`학과장 (${esc(deptName(did))})`, signOf('학과장'))}${showDir ? signLine('국제교류원장', signOf('원장')) : ''}</div></div>`;
   }).join('');
   printHtml(pages);
 }

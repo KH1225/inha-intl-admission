@@ -238,7 +238,8 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .ev-sheet .nw{white-space:nowrap}
 .ev-sheet td.cmt{text-align:left;width:42mm;min-width:42mm;font-size:8.5pt;white-space:pre-wrap;word-break:keep-all}
 .ev-sheet th.cmt{width:42mm}
-.ev-sign{margin-top:auto;padding-top:10mm;display:flex;justify-content:flex-end;align-items:flex-end;gap:4mm;font-size:11pt}
+.ev-signs{margin-top:auto;padding-top:8mm;display:grid;gap:4mm}
+.ev-sign{display:flex;justify-content:flex-end;align-items:flex-end;gap:4mm;font-size:11pt}
 .ev-sign .ln{display:inline-flex;align-items:flex-end;justify-content:center;min-width:55mm;height:16mm;border-bottom:.3mm solid #111}
 @media print{
   @page{size:A4;margin:0}
