@@ -332,11 +332,6 @@ function startIdleTimer() {
   ['click', 'keydown', 'mousemove', 'touchstart'].forEach(ev => window.addEventListener(ev, reset, { passive: true }));
   reset();
 }
-function setTheme(t) {
-  document.documentElement.dataset.theme = t;
-  try { localStorage.setItem('theme', t); } catch (e) { /* 무시 */ }
-}
-function toggleTheme() { setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); }
 
 /* ---------- 화면 뼈대 ---------- */
 function scopeLabel() {
@@ -371,7 +366,6 @@ function toolbarHtml() {
     b.push(`<button class="btn" onclick="openAccounts()">계정 관리</button>`);
   }
   b.push(`<div class="who"><span class="dot"></span>[${esc(ROLE_LABEL[S.role])}] <span class="muted">(${esc(scopeLabel())})</span><button onclick="logout()">로그아웃</button></div>`);
-  b.push(`<button class="btn" onclick="toggleTheme()" title="다크 모드">다크모드</button>`);
   return b.join('');
 }
 function renderShell() {
