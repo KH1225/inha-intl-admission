@@ -42,20 +42,27 @@ function creditTargets() {
       && (!S.creditPending || !(crOf(a.id) && crOf(a.id).submitted)))
     .sort((x, y) => deptName(x.department_id).localeCompare(deptName(y.department_id), 'ko') || String(x.receipt_no).localeCompare(String(y.receipt_no)));
 }
-function crSums(rows) {
+/* 인정 학점 계산: 체크한 과목 합계(r…) → 편입 학년별 최대 인정 기준 적용(전공 우선) */
+function crSums(rows, a) {
   const ok = rows.filter(c => c.recognized);
   const sum = f => ok.filter(f).reduce((t, c) => t + (Number(c.credits) || 0), 0);
-  const maj = sum(c => c.category === '전공'), gen = sum(c => c.category === '교양'), etc = sum(c => !CR_CATS.includes(c.category));
-  return { maj, gen, etc, total: maj + gen + etc, n: ok.length };
+  const rMaj = sum(c => c.category === '전공'), rGen = sum(c => c.category === '교양'), rEtc = sum(c => !CR_CATS.includes(c.category));
+  const rTotal = rMaj + rGen + rEtc;
+  const L = a ? CR_LIMIT[Number(a.transfer_year)] : null;
+  let maj = rMaj, gen = rGen, etc = rEtc;
+  if (L) {
+    maj = Math.min(rMaj, L.total);                       // 전공 우선
+    gen = Math.min(rGen, L.gen, L.total - maj);          // 교양 한도와 남은 총 한도 안에서
+    etc = Math.min(rEtc, L.total - maj - gen);           // 구분 없는 과목은 남은 범위에서
+  }
+  const total = maj + gen + etc;
+  return { maj, gen, etc, total, rMaj, rGen, rEtc, rTotal, n: ok.length, capped: total < rTotal, L };
 }
 function crWarn(a, s) {
-  const L = CR_LIMIT[Number(a.transfer_year)];
-  if (!L) return '';
-  const w = [];
-  if (s.total > L.total) w.push(`총 인정 학점 ${s.total}학점 — ${a.transfer_year}학년 편입은 최대 ${L.total}학점`);
-  if (s.gen > L.gen) w.push(`교양 인정 ${s.gen}학점 — ${a.transfer_year}학년 편입은 최대 ${L.gen}학점`);
-  return w.join(' / ');
+  if (!s.capped || !s.L) return '';
+  return `체크한 학점 ${s.rTotal}학점(전공 ${s.rMaj}, 교양 ${s.rGen}${s.rEtc ? `, 구분 없음 ${s.rEtc}` : ''}) → ${a.transfer_year}학년 편입 최대 인정 기준(총 ${s.L.total}학점, 교양 ${s.L.gen}학점)에 따라 전공 우선으로 ${s.total}학점(전공 ${s.maj}, 교양 ${s.gen}${s.etc ? `, 구분 없음 ${s.etc}` : ''})만 인정합니다.`;
 }
+const crNum = (v, raw) => `${v}${raw !== v ? ` <small class="muted" title="체크한 학점">/ ${raw}</small>` : ''}`;
 const crAutoComment = (school, s) => `${school || '전적대학'}에서 이수한 교과목을 우리대학 ${s.maj ? `전공 ${s.maj}학점` : ''}${s.maj && s.gen ? ', ' : ''}${s.gen ? `교양 ${s.gen}학점` : ''}${!s.maj && !s.gen ? `${s.total}학점` : ''}으로 인정함`;
 
 /* ---------- 화면 ---------- */
@@ -91,7 +98,7 @@ function crRowHtml(c, ed, i) {
 }
 function crCardHtml(a) {
   const r = crOf(a.id) || {}, rows = crCourses(a.id), ed = crEditable(a.id), sub = !!r.submitted;
-  const s = crSums(rows), warn = crWarn(a, s);
+  const s = crSums(rows, a), warn = crWarn(a, s);
   const v = k => esc(r[k] == null ? '' : r[k]);
   return `<div class="ev-card cr-card ${sub ? 'done' : ''}" id="cr-${a.id}">
    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
@@ -99,8 +106,8 @@ function crCardHtml(a) {
       ${sub ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${sub && r.signature ? ` <span class="sign-mini">${crSignImg(r, '24px')}</span>` : ''}</h3>
      <div class="muted small">${esc(deptName(a.department_id))} · 편입학${a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''} · ${esc(a.nationality || '')}</div>
      ${typeof appFileBtn === 'function' && typeof afOf === 'function' && afOf(a.id) ? `<div style="margin-top:6px">${appFileBtn(a.id, 'btn sm blue')}</div>` : ''}</div>
-    <div class="cr-sum"><div><span>전공 인정</span><b class="cr-maj">${s.maj}</b></div><div><span>교양 인정</span><b class="cr-gen">${s.gen}</b></div><div><span>총계</span><b class="cr-tot">${s.total}</b></div></div></div>
-   <div class="warn cr-warn ${warn ? '' : 'hide'}" style="margin-top:8px">⚠ <span>${esc(warn)}</span></div>
+    <div class="cr-sum"><div><span>전공 인정</span><b class="cr-maj">${crNum(s.maj, s.rMaj)}</b></div><div><span>교양 인정</span><b class="cr-gen">${crNum(s.gen, s.rGen)}</b></div><div><span>총계</span><b class="cr-tot">${crNum(s.total, s.rTotal)}</b></div></div></div>
+   <div class="notice small cr-warn ${warn ? '' : 'hide'}" style="margin-top:8px">ℹ <span>${esc(warn)}</span></div>
    <div class="grid2" style="margin-top:10px">
     ${field(`전적교 대학명${crPartner(a) ? ' <span class="muted small">(협약학교)</span>' : ''}`, ed ? `<input class="cr-ps" value="${esc(crSchool(a))}" placeholder="예: Kyrgyz-Korean College">` : `<div>${esc(crSchool(a)) || '-'}</div>`)}
     ${field('전적교 학년', ed ? `<select class="cr-py"><option value="">-</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(r.prev_year) === n ? 'selected' : ''}>${n}학년</option>`).join('')}</select>` : `<div>${r.prev_year ? esc(r.prev_year) + '학년' : '-'}</div>`)}
@@ -125,15 +132,15 @@ function crAddRow(id, c) {
 function crTotals(el) {
   const card = el.closest('.cr-card'); if (!card) return;
   const rows = $$('.cr-row', card).map(tr => ({ category: $('.cr-cat', tr).value, credits: $('.cr-cr', tr).value, recognized: $('.cr-ok', tr).checked }));
-  const s = crSums(rows), a = S.apps.find(x => `cr-${x.id}` === card.id), w = a ? crWarn(a, s) : '';
-  $('.cr-maj', card).textContent = s.maj; $('.cr-gen', card).textContent = s.gen; $('.cr-tot', card).textContent = s.total;
+  const a = S.apps.find(x => `cr-${x.id}` === card.id), s = crSums(rows, a), w = a ? crWarn(a, s) : '';
+  $('.cr-maj', card).innerHTML = crNum(s.maj, s.rMaj); $('.cr-gen', card).innerHTML = crNum(s.gen, s.rGen); $('.cr-tot', card).innerHTML = crNum(s.total, s.rTotal);
   $('.cr-warn', card).classList.toggle('hide', !w); $('.cr-warn span', card).textContent = w;
   $$('.cr-row', card).forEach((tr, i) => { tr.firstElementChild.textContent = i + 1; });
 }
 function crFillComment(id) {
   const card = $(`#cr-${id}`);
   const rows = $$('.cr-row', card).map(tr => ({ category: $('.cr-cat', tr).value, credits: $('.cr-cr', tr).value, recognized: $('.cr-ok', tr).checked }));
-  $('.cr-cm', card).value = crAutoComment($('.cr-ps', card).value.trim(), crSums(rows));
+  $('.cr-cm', card).value = crAutoComment($('.cr-ps', card).value.trim(), crSums(rows, S.apps.find(x => x.id === id)));
 }
 /* 붙여넣기: 한 줄에 한 과목, 칸은 탭(엑셀)으로 구분 — [구분]  교과목명  학점  [인정] */
 function crPaste(id) {
@@ -213,13 +220,13 @@ function crSubmit(id) {
   if (!review.prev_school) { toast('전적교 대학명을 입력하세요.', 'err'); return; }
   if (!courses.length) { toast('사정표에 과목을 1개 이상 입력하세요.', 'err'); return; }
   if (courses.some(c => c.credits == null)) { toast('학점이 비어 있는 과목이 있습니다.', 'err'); return; }
-  const s = crSums(courses), w = crWarn(a, s);
+  const s = crSums(courses, a), w = crWarn(a, s);
   if (!review.comment) { $(`#cr-${id} .cr-cm`).value = crAutoComment(review.prev_school, s); }
   const prev = lastSign();
   const bd = openModal(`${mHead('학점인정 심의 제출 · 학과장 서명', `${esc(a.name_ko)} · ${esc(a.receipt_no)}`)}
    <div class="m-body">
     <div class="kv"><div><span>전공 인정</span><b>${s.maj}학점</b></div><div><span>교양 인정</span><b>${s.gen}학점</b></div><div><span>총계</span><b>${s.total}학점</b></div></div>
-    ${w ? `<div class="warn">⚠ ${esc(w)}</div>` : ''}
+    ${w ? `<div class="notice small">ℹ ${esc(w)}</div>` : ''}
     <div class="warn">아래 칸에 서명하세요. 제출 후에는 수정할 수 없습니다.</div>
     <div class="sign-wrap"><canvas id="sign-pad"></canvas><div class="sign-hint" id="sign-hint">여기에 서명</div></div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="clearSignPad()">지우기</button>${prev ? '<button class="btn sm" onclick="useLastSign()">지난번 서명 사용</button>' : ''}</div></div>
@@ -305,7 +312,7 @@ function crOpinionHtml(d, apps, comment) {
 }
 /* 「편입학 지원자 학점인정 심의」 사정표 (학생별, 과목이 많으면 여러 쪽) */
 function crReviewHtml(a) {
-  const r = crOf(a.id) || {}, rows = crCourses(a.id), s = crSums(rows);
+  const r = crOf(a.id) || {}, rows = crCourses(a.id), s = crSums(rows, a);
   const PER = 36, half = PER / 2;
   const chunks = rows.length ? chunk(rows.map((c, i) => ({ ...c, no: i + 1 })), PER) : [[]];
   const cell = c => (c ? `<td>${c.no}</td><td>${esc(c.category || '-')}</td><td class="l">${esc(c.course_name || '')}</td><td>${c.credits == null ? '' : esc(c.credits)}</td><td class="ok">${c.recognized ? '인정' : ''}</td>`
