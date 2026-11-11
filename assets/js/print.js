@@ -186,7 +186,7 @@ function docBill(c) {
    <tr><th>SWIFT Code</th><td>${esc(t.swift_code)}</td></tr>
    <tr><th>주소<small>Address</small></th><td>${esc(t.bank_address)}</td></tr></tbody></table>
    <div class="doc-notes"><h4>안내 / Notes</h4><ol>${C.NOTICE_LINES.map(n => `<li>${esc(n.ko)}<br><span style="color:#5b6b88">${esc(n.en)}</span></li>`).join('')}</ol></div>`;
-  return docFrame(c, '등 록 금 고 지 서', 'TUITION PAYMENT NOTICE', info);
+  return docFrame(c, '등록금고지서', 'TUITION PAYMENT NOTICE', info, { cls: 'bill' });
 }
 
 /* ---------- 등록금납부확인서 ---------- */

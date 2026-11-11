@@ -329,3 +329,14 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 /* 국제교류원장 명의: 이름이 길어 글자 크기·직인 위치 조정 */
 .doc-pres.oia .ko{font-size:16pt}
 .doc-pres.oia .doc-seal{right:calc(50% - 53mm);top:-10mm}
+
+/* 등록금고지서: 제목을 붙여 쓰기, 안내 문구가 늘어 한 쪽에 들어가도록 간격 축소 */
+.bill .doc-border{padding-top:13mm}
+.bill .doc-title{letter-spacing:1.5mm;font-size:27pt;margin:3mm 0 1mm}
+.bill .doc-sub{margin-bottom:4mm}
+.bill .doc-tbl{font-size:9.5pt;margin-bottom:2mm}
+.bill .doc-tbl th,.bill .doc-tbl td{padding:.7mm 3mm}
+.bill .doc-notes{font-size:8pt;line-height:1.38}
+.bill .doc-date{margin:2mm 0 2mm}
+.bill .doc-date .ko{font-size:13pt}
+.bill .doc-pres{margin-bottom:1mm}

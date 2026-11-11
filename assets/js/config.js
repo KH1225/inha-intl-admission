@@ -20,7 +20,8 @@ window.CONFIG = {
   // 등록금고지서 하단 안내문 (학교 방침에 맞게 수정하세요)
   NOTICE_LINES: [
     { ko: '납부기간 내에 위 계좌로 해외송금하여 주시기 바랍니다.', en: 'Please remit the amount to the account above within the payment period.' },
-    { ko: '송금인(Sender) 란에 지원자의 영문 성명과 수험번호를 정확히 기재하여 주시기 바랍니다.', en: "Please write the applicant's full English name and application number in the sender field." },
-    { ko: '송금 수수료는 송금인이 부담하며, 학교에서 수령하는 금액이 위 납부금액과 일치해야 합니다.', en: 'Bank charges are borne by the sender; the amount received by the college must equal the amount due.' }
+    { ko: '송금인(Sender) 란에 지원자의 영문 성명을 정확히 기재하여 주시기 바랍니다.', en: "Please write the applicant's full English name in the sender field." },
+    { ko: '송금 수수료는 송금인이 부담하며, 학교에서 수령하는 금액이 위 납부금액과 일치해야 합니다.', en: 'Bank charges are borne by the sender; the amount received by the college must equal the amount due.' },
+    { ko: '해외 송금으로 인하여 차액 발생시, 초과 송금한 경우에는 입학 후 환불해 드리고, 부족 송금한 경우에는 입학 전 오리엔테이션 당일에 현금 납부해 주셔야 합니다.', en: 'If the amount received differs due to overseas remittance, any overpayment will be refunded after admission, and any shortfall must be paid in cash on the day of the orientation before admission.' }
   ]
 };

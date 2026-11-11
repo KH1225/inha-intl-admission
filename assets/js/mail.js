@@ -87,7 +87,7 @@ ${MAIL_CONTACT_EN}`
 - 주소: {은행주소}
 
 [유의사항]
-- 송금인(Sender) 란에 지원자의 영문 성명과 접수번호를 정확히 기재해 주세요.
+- 송금인(Sender) 란에 지원자의 영문 성명을 정확히 기재해 주세요.
 - 송금 수수료는 송금인이 부담하며, 학교에서 수령하는 금액이 납부할 금액과 일치해야 합니다.
 - 해외 송금으로 인하여 차액 발생시, 초과 송금한 경우에는 입학 후 환불해 드리고, 부족 송금한 경우에는 입학 전 오리엔테이션 당일에 현금 납부해 주셔야 합니다.
 - 유학(D-2) 비자가 필요한 경우 표준입학허가서 발급을 위해 재정능력 입증서류(잔고증명서) 원본을 기한 내에 제출해야 합니다.
@@ -115,7 +115,7 @@ Please check the attached Certificate of Admission and tuition invoice, and comp
 - Address: {은행주소}
 
 [Notes]
-- Please write your full English name and application number in the sender field.
+- Please write your full English name in the sender field.
 - Bank charges are borne by the sender; the amount received by the college must equal the amount due.
 - If the amount received differs due to overseas remittance, any overpayment will be refunded after admission, and any shortfall must be paid in cash on the day of the orientation before admission.
 - If you need a student (D-2) visa, please submit the original bank balance certificate for your Certificate of Admission.
