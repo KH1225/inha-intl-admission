@@ -10,6 +10,9 @@ const CR_LIMIT = { 2: { total: 36, gen: 6 }, 3: { total: 72, gen: 9 } };
 const canSeeCredit = () => ['admin', 'staff', 'director', 'dept'].includes(S.role);
 const crOf = id => (S.credit || {})[id] || null;
 const crCourses = id => (S.creditCourses || {})[id] || [];
+/* 전적교: 직접 입력한 값이 없으면 지원자의 협약학교 이름 */
+const crPartner = a => (a && a.partner_school_id && S.partnerMap && S.partnerMap[a.partner_school_id] ? S.partnerMap[a.partner_school_id].name : '');
+const crSchool = a => ((crOf(a.id) || {}).prev_school || crPartner(a));
 const crEditable = id => { const r = crOf(id); return (S.role === 'dept' && !(r && r.submitted)) || can.edit(); };
 const semKo = t => (t && t.semester === '후기' ? '2학기' : '1학기');
 const crTermTitle = () => `${esc(S.term.year)}학년도 ${semKo(S.term)}`;
@@ -99,7 +102,7 @@ function crCardHtml(a) {
     <div class="cr-sum"><div><span>전공 인정</span><b class="cr-maj">${s.maj}</b></div><div><span>교양 인정</span><b class="cr-gen">${s.gen}</b></div><div><span>총계</span><b class="cr-tot">${s.total}</b></div></div></div>
    <div class="warn cr-warn ${warn ? '' : 'hide'}" style="margin-top:8px">⚠ <span>${esc(warn)}</span></div>
    <div class="grid2" style="margin-top:10px">
-    ${field('전적교 대학명', ed ? `<input class="cr-ps" value="${v('prev_school')}" placeholder="예: Kyrgyz-Korean College">` : `<div>${v('prev_school') || '-'}</div>`)}
+    ${field(`전적교 대학명${crPartner(a) ? ' <span class="muted small">(협약학교)</span>' : ''}`, ed ? `<input class="cr-ps" value="${esc(crSchool(a))}" placeholder="예: Kyrgyz-Korean College">` : `<div>${esc(crSchool(a)) || '-'}</div>`)}
     ${field('전적교 학년', ed ? `<select class="cr-py"><option value="">-</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(r.prev_year) === n ? 'selected' : ''}>${n}학년</option>`).join('')}</select>` : `<div>${r.prev_year ? esc(r.prev_year) + '학년' : '-'}</div>`)}
    </div>
    <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:640px"><thead><tr><th>NO</th><th>구분</th><th>교과목명</th><th>학점</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
@@ -265,7 +268,7 @@ function crGroups(list) {
   return gs;
 }
 function crDeptComment(apps) {
-  const schools = [...new Set(apps.map(a => (crOf(a.id) || {}).prev_school).filter(Boolean))];
+  const schools = [...new Set(apps.map(a => crSchool(a)).filter(Boolean))];
   return `${schools.join(', ') || '전적대학'}에서 이수한 교과목을 편입학 지원자 학점인정 심의 내용과 같이 우리대학 학점으로 인정함`;
 }
 function runCreditPrint() {
@@ -289,7 +292,7 @@ function crOpinionHtml(d, apps, comment) {
    <h4 class="cr-h">1. 학적사항</h4>
    <table class="cr-t"><thead><tr><th colspan="4">전 적 교</th><th colspan="3">본 대 학</th></tr>
     <tr><th>대학명</th><th>학년</th><th>성명</th><th>영문명</th><th>지원학과</th><th>학년</th><th>성명</th></tr></thead>
-    <tbody>${apps.map(a => { const r = crOf(a.id) || {}; return `<tr><td>${esc(r.prev_school || '')}</td><td>${r.prev_year ? esc(r.prev_year) : ''}</td><td>${esc(a.name_ko)}</td><td class="en">${esc(a.name_en || '')}</td>
+    <tbody>${apps.map(a => { const r = crOf(a.id) || {}; return `<tr><td>${esc(crSchool(a))}</td><td>${r.prev_year ? esc(r.prev_year) : ''}</td><td>${esc(a.name_ko)}</td><td class="en">${esc(a.name_en || '')}</td>
       <td>${esc(deptName(a.department_id))}</td><td>${a.transfer_year ? esc(a.transfer_year) : ''}</td><td>${esc(a.name_ko)}</td></tr>`; }).join('')}</tbody></table>
    <h4 class="cr-h">2. 성적사항</h4>
    <table class="cr-t"><thead><tr><th colspan="5">전적교 이수(취득)성적 현황</th><th colspan="5">본대학 성적인정(학점) 현황</th></tr>
@@ -318,7 +321,7 @@ function crReviewHtml(a) {
      <table class="cr-t cr-grid"><colgroup>${'<col class="w-no"><col class="w-cat"><col><col class="w-cr"><col class="w-ok">'.repeat(2)}</colgroup><thead><tr><th>NO</th><th>구분</th><th>교과목명</th><th>학점</th><th>인정<br>여부</th><th>NO</th><th>구분</th><th>교과목명</th><th>학점</th><th>인정<br>여부</th></tr></thead>
       <tbody>${Array.from({ length: n }, (_, i) => `<tr>${cell(L[i])}${cell(R[i])}</tr>`).join('')}</tbody></table>
      ${lastPage ? `<div class="cr-note">※ 전적대학 학점 인정은 2학년 편입학 최대 36학점, 3학년 편입학 최대 72학점까지 가능<br>※ 교양 학점은 2학년 편입학 최대 6학점, 3학년 편입학 최대 9학점까지 인정</div>
-     <div class="cr-op">◎ 학점인정기준 및 심의의견 : <span>${esc(r.comment || crAutoComment(r.prev_school, s))}</span></div>
+     <div class="cr-op">◎ 학점인정기준 및 심의의견 : <span>${esc(r.comment || crAutoComment(crSchool(a), s))}</span></div>
      <table class="cr-t cr-tot"><tbody><tr><th>전공인정학점</th><td>${s.maj}</td><th>교양인정학점</th><td>${s.gen}</td><th>총계</th><td>${s.total}</td></tr></tbody></table>
      <div class="cr-end">위와 같이 학점인정 심의함</div>
      <div class="cr-date">${crKoDate(r.review_date || (r.submitted_at || '').slice(0, 10))}</div>
