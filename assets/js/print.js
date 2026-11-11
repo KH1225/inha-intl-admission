@@ -178,7 +178,7 @@ function docBill(c) {
    <table class="doc-tbl"><tbody>
    <tr><th>등록금<small>Tuition</small></th><td class="amt">${krw(tuition)}</td></tr>
    <tr><th>장학금<small>Scholarship${a.scholarship_type ? ' — ' + esc(a.scholarship_type) : ''}</small></th><td class="amt">${sch ? '- ' + krw(sch) : '-'}</td></tr>
-   <tr><th>납부할 금액<small>Amount Due</small></th><td class="amt" style="font-size:14pt">${krw(payable)}</td></tr></tbody></table>
+   <tr><th>납부할 금액<small>Amount Due</small></th><td class="amt due">${krw(payable)}</td></tr></tbody></table>
    <table class="doc-tbl"><tbody>
    <tr><th>은행<small>Bank</small></th><td>${esc(t.bank_name)}</td></tr>
    <tr><th>예금주<small>Account Holder</small></th><td>${esc(t.account_holder)}</td></tr>

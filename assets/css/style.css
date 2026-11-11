@@ -330,13 +330,20 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .doc-pres.oia .ko{font-size:16pt}
 .doc-pres.oia .doc-seal{right:calc(50% - 53mm);top:-10mm}
 
-/* 등록금고지서: 제목을 붙여 쓰기, 안내 문구가 늘어 한 쪽에 들어가도록 간격 축소 */
+/* 등록금고지서: 제목 붙여 쓰기 · 글씨는 작게, 줄 간격은 넉넉하게 (한 쪽 안에) */
+.doc-tbl td.amt.due{font-size:14pt}
 .bill .doc-border{padding-top:13mm}
-.bill .doc-title{letter-spacing:1.5mm;font-size:27pt;margin:3mm 0 1mm}
-.bill .doc-sub{margin-bottom:4mm}
-.bill .doc-tbl{font-size:9.5pt;margin-bottom:2mm}
-.bill .doc-tbl th,.bill .doc-tbl td{padding:.7mm 3mm}
-.bill .doc-notes{font-size:8pt;line-height:1.38}
-.bill .doc-date{margin:2mm 0 2mm}
-.bill .doc-date .ko{font-size:13pt}
+.bill .doc-title{letter-spacing:1.5mm;font-size:25pt;margin:3mm 0 1mm}
+.bill .doc-sub{font-size:9pt;margin-bottom:4.5mm}
+.bill .doc-tbl{font-size:8.8pt;margin-bottom:3mm}
+.bill .doc-tbl small{font-size:7.4pt}
+.bill .doc-tbl th small{font-size:7.2pt;margin-top:.3mm}
+.bill .doc-tbl th,.bill .doc-tbl td{padding:1.35mm 3mm;line-height:1.35}
+.bill .doc-tbl td.amt.due{font-size:12.5pt}
+.bill .doc-notes{font-size:7.5pt;line-height:1.5}
+.bill .doc-notes h4{font-size:9pt;margin-bottom:1.5mm}
+.bill .doc-notes li{margin-bottom:1mm}
+.bill .doc-date{margin:3mm 0 2.5mm}
+.bill .doc-date .ko{font-size:12.5pt}
+.bill .doc-pres .ko{font-size:15pt}
 .bill .doc-pres{margin-bottom:1mm}
