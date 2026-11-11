@@ -86,15 +86,20 @@ function renderCredit() {
   ${list.length ? `<div class="ev-list">${list.map(crCardHtml).join('')}</div>`
     : '<div class="center-msg"><div><h2>심의할 편입학 지원자가 없습니다</h2><p>입학구분이 “편입학”인 지원자가 여기에 표시됩니다.</p></div></div>'}`;
 }
+// 학과장: 구분·인정 여부만 체크 (교과목명·학점은 국제교류팀이 입력)
+const crLock = () => S.role === 'dept';
 function crRowHtml(c, ed, i) {
+  const lk = crLock();
   const v = k => esc(c[k] == null ? '' : c[k]);
-  if (!ed) return `<tr><td class="c">${i + 1}</td><td class="c">${v('category') || '-'}</td><td>${v('course_name')}</td><td class="c">${v('credits')}</td><td class="c">${c.recognized ? '<b style="color:var(--pri2)">인정</b>' : ''}</td></tr>`;
+  if (!ed) return `<tr><td class="c">${i + 1}</td><td>${v('course_name')}</td><td class="c">${v('credits')}</td><td class="c">${v('category') || '-'}</td><td class="c">${c.recognized ? '<b style="color:var(--pri2)">인정</b>' : ''}</td></tr>`;
   return `<tr class="cr-row"><td class="c">${i + 1}</td>
+    <td>${lk ? `<input class="cr-nm" value="${v('course_name')}" readonly tabindex="-1" style="border-color:transparent;background:transparent;padding-left:0">`
+      : `<input class="cr-nm" value="${v('course_name')}" placeholder="예: Introduction to Aviation(항공학개론)">`}</td>
+    <td>${lk ? `<input class="cr-cr" type="number" value="${v('credits')}" readonly tabindex="-1" style="width:64px;border-color:transparent;background:transparent;text-align:center">`
+      : `<input class="cr-cr" type="number" min="0" step="0.5" value="${v('credits')}" oninput="crTotals(this)" style="width:64px">`}</td>
     <td><select class="cr-cat" onchange="crTotals(this)"><option value="">-</option>${CR_CATS.map(x => `<option ${c.category === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
-    <td><input class="cr-nm" value="${v('course_name')}" placeholder="예: 항공학개론(Introduction to Aviation)"></td>
-    <td><input class="cr-cr" type="number" min="0" step="0.5" value="${v('credits')}" oninput="crTotals(this)" style="width:64px"></td>
     <td class="c cr-okc"><input class="cr-ok" type="checkbox" ${c.recognized ? 'checked' : ''} onchange="crTotals(this)" title="인정"></td>
-    <td><button class="btn sm" title="줄 삭제" onclick="const t=this.closest('table');this.closest('tr').remove();crTotals(t)">✕</button></td></tr>`;
+    <td>${lk ? '' : `<button class="btn sm" title="줄 삭제" onclick="const t=this.closest('table');this.closest('tr').remove();crTotals(t)">✕</button>`}</td></tr>`;
 }
 function crCardHtml(a) {
   const r = crOf(a.id) || {}, rows = crCourses(a.id), ed = crEditable(a.id), sub = !!r.submitted;
@@ -112,9 +117,10 @@ function crCardHtml(a) {
     ${field(`전적교 대학명${crPartner(a) ? ' <span class="muted small">(협약학교)</span>' : ''}`, ed ? `<input class="cr-ps" value="${esc(crSchool(a))}" placeholder="예: Kyrgyz-Korean College">` : `<div>${esc(crSchool(a)) || '-'}</div>`)}
     ${field('전적교 학년', ed ? `<select class="cr-py"><option value="">-</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(r.prev_year) === n ? 'selected' : ''}>${n}학년</option>`).join('')}</select>` : `<div>${r.prev_year ? esc(r.prev_year) + '학년' : '-'}</div>`)}
    </div>
-   <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:760px;width:100%"><colgroup><col style="width:44px"><col style="width:84px"><col><col style="width:84px"><col style="width:76px">${ed ? '<col style="width:48px">' : ''}</colgroup><thead><tr><th>NO</th><th>구분</th><th>교과목명</th><th>학점</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
-    <tbody>${rows.map((c, i) => crRowHtml(c, ed, i)).join('') || (ed ? '' : '<tr><td colspan="5" class="muted c">입력된 과목이 없습니다</td></tr>')}</tbody></table></div>
-   ${ed ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn sm" onclick="crAddRow('${a.id}')">＋ 과목 추가</button>
+   <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:760px;width:100%"><colgroup><col style="width:44px"><col><col style="width:84px"><col style="width:84px"><col style="width:76px">${ed ? '<col style="width:48px">' : ''}</colgroup><thead><tr><th>NO</th><th>교과목명</th><th>학점</th><th>구분</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
+    <tbody>${rows.map((c, i) => crRowHtml(c, ed, i)).join('') || (ed && !crLock() ? '' : `<tr><td colspan="${ed ? 6 : 5}" class="muted c">${crLock() ? '국제교류팀이 아직 성적증명서 과목을 입력하지 않았습니다' : '입력된 과목이 없습니다'}</td></tr>`)}</tbody></table></div>
+   ${ed && crLock() ? '<div class="muted small" style="margin-top:6px">교과목명과 학점은 국제교류팀이 성적증명서대로 입력합니다. 과목마다 <b>구분</b>(전공/교양)과 <b>인정 여부</b>를 체크하고 저장해 주세요.</div>' : ''}
+   ${ed && !crLock() ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn sm" onclick="crAddRow('${a.id}')">＋ 과목 추가</button>
      <button class="btn sm blue" onclick="crPaste('${a.id}')">과목 붙여넣기</button>
      <span class="muted small">성적증명서의 과목을 엑셀이나 Claude가 정리한 표에서 복사해 한 번에 넣을 수 있습니다. 인정하는 과목은 ‘인정 여부’를 체크하세요.</span></div>` : ''}
    <div style="margin-top:10px">${field('학점인정기준 및 심의의견', ed ? `<div style="display:flex;gap:6px;align-items:flex-start"><textarea class="cr-cm" rows="2" style="flex:1">${v('comment')}</textarea><button class="btn sm" onclick="crFillComment('${a.id}')">자동 문구</button></div>` : `<div style="white-space:pre-wrap">${v('comment') || '-'}</div>`)}</div>
@@ -142,12 +148,12 @@ function crFillComment(id) {
   const rows = $$('.cr-row', card).map(tr => ({ category: $('.cr-cat', tr).value, credits: $('.cr-cr', tr).value, recognized: $('.cr-ok', tr).checked }));
   $('.cr-cm', card).value = crAutoComment($('.cr-ps', card).value.trim(), crSums(rows, S.apps.find(x => x.id === id)));
 }
-/* 붙여넣기: 한 줄에 한 과목, 칸은 탭(엑셀)으로 구분 — [구분]  교과목명  학점  [인정] */
+/* 붙여넣기: 한 줄에 한 과목, 칸은 탭(엑셀) 또는 | 로 구분 — 교과목명  학점  [구분]  [인정]  (구분을 맨 앞에 둬도 인식) */
 function crPaste(id) {
   openModal(`${mHead('과목 붙여넣기', '엑셀이나 Claude가 정리한 표를 복사해 아래에 붙여 넣으세요')}
    <div class="m-body">
-    <div class="notice small">한 줄에 한 과목씩, 칸 순서는 <b>구분 · 교과목명 · 학점 · 인정여부</b>입니다. 구분(전공/교양)과 인정여부(인정/O)는 비워도 됩니다.<br>
-     예) <code>전공	Java Script	3	인정</code> · <code>Korean	2</code></div>
+    <div class="notice small">한 줄에 한 과목씩, 칸 순서는 <b>교과목명 · 학점 · 구분 · 인정여부</b>입니다. 교과목명은 <b>영어(한국어)</b>로 적고, 구분(전공/교양)과 인정여부(인정/O)는 비워도 됩니다.<br>
+     예) <code>Airline Studies(항공산업론) | 2 | 전공</code> · <code>Foundation English(기초 영어)	4</code></div>
     <textarea id="crp-in" rows="12" style="font-family:monospace" placeholder="여기에 붙여 넣기 (Ctrl+V)" oninput="crPastePreview()"></textarea>
     <label style="display:flex;gap:6px;align-items:center"><input id="crp-rep" type="checkbox" checked style="width:auto"> 기존 과목을 지우고 바꾸기 (끄면 아래에 추가)</label>
     <div id="crp-pv" class="muted small"></div></div>
@@ -163,6 +169,8 @@ function crParse(text) {
     let recognized = false;
     const last = (cells[cells.length - 1] || '').trim();
     if (/^(인정|o|O|y|Y|✓|v|V)$/.test(last)) { recognized = true; cells.pop(); }
+    // 화면 순서(교과목명 · 학점 · 구분 · 인정 여부)로 붙여 넣은 경우: 끝의 구분
+    if (!category && cells.length > 2 && (CR_CATS.includes(cells[cells.length - 1]) || cells[cells.length - 1] === '-')) { const c = cells.pop(); category = c === '-' ? '' : c; }
     let credits = null;
     if (cells.length > 1 && /^\d+(\.\d+)?$/.test(cells[cells.length - 1])) credits = Number(cells.pop());
     const course_name = cells.join(' ').trim();
@@ -218,8 +226,8 @@ async function crSave(id) {
 function crSubmit(id) {
   const a = S.apps.find(x => x.id === id), { review, courses } = crRead(id);
   if (!review.prev_school) { toast('전적교 대학명을 입력하세요.', 'err'); return; }
-  if (!courses.length) { toast('사정표에 과목을 1개 이상 입력하세요.', 'err'); return; }
-  if (courses.some(c => c.credits == null)) { toast('학점이 비어 있는 과목이 있습니다.', 'err'); return; }
+  if (!courses.length) { toast(crLock() ? '국제교류팀이 성적증명서 과목을 입력한 뒤 제출할 수 있습니다.' : '사정표에 과목을 1개 이상 입력하세요.', 'err'); return; }
+  if (courses.some(c => c.credits == null)) { toast(crLock() ? '학점이 비어 있는 과목이 있습니다. 국제교류팀에 확인해 주세요.' : '학점이 비어 있는 과목이 있습니다.', 'err'); return; }
   const s = crSums(courses, a), w = crWarn(a, s);
   if (!review.comment) { $(`#cr-${id} .cr-cm`).value = crAutoComment(review.prev_school, s); }
   const prev = lastSign();
