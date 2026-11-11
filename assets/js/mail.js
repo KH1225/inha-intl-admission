@@ -59,14 +59,17 @@ ${MAIL_CONTACT_EN}`
     desc: '최종합격자에게 합격 축하와 등록금·장학금·납부계좌·등록기간을 안내합니다. (금액은 지원자별 등록금고지서 값)',
     targets: () => S.apps.filter(a => ['최종합격', '등록완료'].includes(a.status)),
     defaultOn: a => a.status === '최종합격',
-    attach: { type: '등록금고지서', label: '등록금고지서', file: 'Tuition_Invoice', can: a => (S.payments[a.id] ? null : '등록금 정보(고지 금액)가 없습니다') },
+    attach: [
+      { type: '합격통지서', label: '합격통지서', file: 'Admission_Letter', can: a => (['최종합격', '등록완료'].includes(a.status) ? null : '최종합격자가 아닙니다') },
+      { type: '등록금고지서', label: '등록금고지서', file: 'Tuition_Invoice', can: a => (S.payments[a.id] ? null : '등록금 정보(고지 금액)가 없습니다') }
+    ],
     info: a => { const p = S.payments[a.id]; return p ? `납부할 금액 ${won(p.payable_amount)}` : '<span style="color:var(--warn)">고지 금액 없음</span>'; },
     vars: ['이름', '영문이름', '접수번호', '학과', '학기', '등록금', '등록금_영문', '장학금종류', '장학금종류_영문', '장학금', '장학금_영문', '납부금액', '납부금액_영문', '등록기간', '등록기간_영문', '은행명', '예금주', '계좌번호', 'SWIFT', '은행주소', '입학일', '입학일_영문'],
     subject: '[인하공업전문대학] 최종 합격 및 등록 안내 / Admission & Registration Notice - {영문이름}',
     body: `{이름}({영문이름}) 님, 안녕하세요.
 인하공업전문대학 국제교류팀입니다.
 {학기} 외국인 특별전형에 최종 합격하신 것을 진심으로 축하드립니다.
-첨부한 등록금고지서를 확인하시고, 아래 등록기간 내에 등록금을 납부하여 등록을 완료해 주세요.
+첨부한 합격통지서와 등록금고지서를 확인하시고, 아래 등록기간 내에 등록금을 납부하여 등록을 완료해 주세요.
 
 ■ 접수번호: {접수번호}
 ■ 합격학과: {학과}
@@ -94,7 +97,7 @@ ${MAIL_CONTACT_KO}${MAIL_SEP}Dear {영문이름},
 
 This is the International Affairs Team of Inha Technical College.
 Congratulations! You have been admitted to Inha Technical College ({학기}).
-Please check the attached tuition invoice and complete your registration by paying the tuition within the payment period below.
+Please check the attached Certificate of Admission and tuition invoice, and complete your registration by paying the tuition within the payment period below.
 
 ■ Application No.: {접수번호}
 ■ Department: {학과}
@@ -124,7 +127,7 @@ ${MAIL_CONTACT_EN}`
     label: '등록금 입금 확인',
     desc: '납부일이 입력된 지원자에게 등록금 입금이 확인되었음을 안내합니다.',
     targets: () => S.apps.filter(a => S.payments[a.id] && S.payments[a.id].paid_at),
-    attach: { type: '등록금납부확인서', label: '등록금 수납(납부)확인서', file: 'Tuition_Payment_Certificate', can: a => (a.status === '등록완료' ? null : '등록완료 처리 후 발급할 수 있습니다') },
+    attach: [{ type: '등록금납부확인서', label: '등록금 수납(납부)확인서', file: 'Tuition_Payment_Certificate', can: a => (a.status === '등록완료' ? null : '등록완료 처리 후 발급할 수 있습니다') }],
     info: a => { const p = S.payments[a.id] || {}, d = p.paid_amount != null && p.payable_amount != null ? Number(p.paid_amount) - Number(p.payable_amount) : 0;
       return `${won(p.paid_amount)} · ${esc(p.paid_at || '')}${d > 0 ? ` <span style="color:var(--pri2)">초과 ${won(d)}</span>` : d < 0 ? ` <span style="color:var(--bad)">부족 ${won(-d)}</span>` : ''}`; },
     vars: ['이름', '영문이름', '접수번호', '학과', '학기', '납입금액', '납입금액_영문', '납부일', '납부일_영문', '입학일', '입학일_영문', '차액안내', '차액안내_영문'],
@@ -250,7 +253,8 @@ async function openMailModal(kind) {
       ${depts.map(d => field(`${esc(d.name)} Zoom 주소`, `<input class="ml-zd" data-dept="${d.id}" placeholder="(기본 주소 사용)" value="${esc((sv.zoomByDept || {})[d.id] || '')}" oninput="mailPreview()">`)).join('')}</div></div>` : ''}
     ${K.extras ? `<div class="sec"><h3>안내 항목 <span class="muted small">모든 받는 사람에게 같은 내용으로 들어갑니다</span></h3><div class="grid2">
       ${K.extras.map(([k, l, ph]) => field(`${l} <code>{${k}}</code>`, `<input class="ml-ex" data-k="${k}" placeholder="${esc(ph)}" value="${esc((sv.extra || {})[k] || '')}" oninput="mailPreview()">`, { full: 1 })).join('')}</div></div>` : ''}
-    ${K.attach ? `<div class="sec"><h3>첨부 파일</h3><label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="ml-att" type="checkbox" checked style="width:auto"> ${esc(K.attach.label)} PDF 첨부 <span class="muted small" style="font-weight:500">— 지원자별로 자동 생성되며, 보낼 때마다 문서 발급 기록이 남습니다 (테스트 발송은 ‘견본’ 번호)</span></label></div>` : ''}
+    ${K.attach ? `<div class="sec"><h3>첨부 파일 <span class="muted small">지원자별로 자동 생성되며, 보낼 때마다 문서 발급 기록이 남습니다 (테스트 발송은 ‘견본’ 번호)</span></h3>
+      ${K.attach.map((x, i) => `<label style="display:flex;gap:8px;align-items:center;font-weight:600;margin:4px 0"><input class="ml-att" data-i="${i}" type="checkbox" checked style="width:auto"> ${esc(x.label)} PDF</label>`).join('')}</div>` : ''}
     <div class="sec"><h3>안내문 <span class="muted small"><a href="#" onclick="mailResetTpl();return false">기본 안내문으로 되돌리기</a></span></h3>
      <div class="muted small" style="margin-bottom:6px">아래 표시는 지원자마다 자동으로 바뀝니다: ${K.vars.map(v => `<code>{${v}}</code>`).join(' ')}</div>
      ${field('제목', `<input id="ml-subj" value="${esc(sv.subject || K.subject)}" oninput="mailPreview()">`)}
@@ -380,8 +384,9 @@ async function mailSend(test) {
     }
   }
   const nCc = ccOn ? ids.filter(id => (S.apps.find(x => x.id === id) || {}).cc_emails).length : 0;
-  const attach = K.attach && $('#ml-att') && $('#ml-att').checked ? K.attach : null;
-  if (attach && !test) { const n = ids.filter(id => attach.can(S.apps.find(x => x.id === id))).length; if (n) warns.push(`${attach.label}를 발급할 수 없는 지원자 ${n}명 (이 사람들은 발송되지 않음)`); }
+  const atts = K.attach ? $$('.ml-att').filter(c => c.checked).map(c => K.attach[Number(c.dataset.i)]) : [];
+  const attach = atts.length ? { label: atts.map(x => x.label).join(' + '), can: a => atts.map(x => x.can(a)).find(Boolean) || null } : null;
+  if (attach && !test) { const n = ids.filter(id => attach.can(S.apps.find(x => x.id === id))).length; if (n) warns.push(`첨부 문서를 발급할 수 없는 지원자 ${n}명 (이 사람들은 발송되지 않음)`); }
   if (K.extras) { const empty = K.extras.filter(([k]) => !f.extra[k]).map(([, l]) => l); if (empty.length) warns.push(`비어 있는 안내 항목: ${empty.join(', ')}`); }
   if (!test && !confirm(`[${K.label}] ${ids.length}명에게 메일을 발송합니다.` + (attach ? `\n📎 ${attach.label} PDF 첨부 (발급 기록이 남습니다)` : '') + (nCc ? `\n✉ 추가 이메일(참조)도 함께 받는 지원자 ${nCc}명` : '') + (warns.length ? '\n\n⚠ ' + warns.join('\n⚠ ') : '') + '\n\n계속할까요?')) return;
   mailRemember(mailKind, { subject: f.subject, body: f.body, zoom: f.zoom, zoomByDept: f.zoomByDept, extra: f.extra });
@@ -392,8 +397,12 @@ async function mailSend(test) {
     const withAttach = async (id, sample) => {
       const a = S.apps.find(x => x.id === id), why = attach.can(a);
       if (why) throw new Error(why);
-      const { base64 } = await docPdfBase64(id, attach.type, sample);
-      return { [id]: { filename: `${attach.file}_${a.receipt_no || id}.pdf`, base64 } };
+      const files = [];
+      for (const x of atts) {
+        const { base64 } = await docPdfBase64(id, x.type, sample);
+        files.push({ filename: `${x.file}_${a.receipt_no || id}.pdf`, base64 });
+      }
+      return { [id]: files };
     };
     if (test) {
       const first = ids[0] || mailTargets()[0].id;

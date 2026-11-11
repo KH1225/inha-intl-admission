@@ -255,13 +255,17 @@ Deno.serve(async (req) => {
   for (const [k, v] of Object.entries(body.extra ?? {})) extra[String(k).slice(0, 30)] = String(v ?? "").slice(0, 1000);
   const testTo = body.test === true ? (user.email ?? "") : "";
   const includeCc = body.include_cc === true && !testTo;
-  // 첨부: { [지원자ID]: { filename, base64 } } — PDF만, 1개당 5MB 이하
-  const attOf: Record<string, Att> = {};
+  // 첨부: { [지원자ID]: [{ filename, base64 }, …] } — PDF만, 1개당 5MB 이하, 지원자당 4개까지
+  const attOf: Record<string, Att[]> = {};
   for (const [k, v] of Object.entries(body.attachments ?? {})) {
-    const x = v as any, b64 = String(x?.base64 ?? "");
-    const name = String(x?.filename ?? "document.pdf").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 100);
-    if (!b64.startsWith("JVBER") || b64.length > 7_000_000 || !/\.pdf$/i.test(name)) return json({ error: "첨부 파일은 5MB 이하 PDF만 가능합니다." }, 400);
-    attOf[String(k)] = { filename: name, base64: b64 };
+    const list = (Array.isArray(v) ? v : [v]).slice(0, 4);
+    attOf[String(k)] = [];
+    for (const x of list as any[]) {
+      const b64 = String(x?.base64 ?? "");
+      const name = String(x?.filename ?? "document.pdf").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 100);
+      if (!b64.startsWith("JVBER") || b64.length > 7_000_000 || !/\.pdf$/i.test(name)) return json({ error: "첨부 파일은 5MB 이하 PDF만 가능합니다." }, 400);
+      attOf[String(k)].push({ filename: name, base64: b64 });
+    }
   }
   if (!ids.length || !subjectTpl || !bodyTpl) return json({ error: "대상자, 제목, 본문이 필요합니다." }, 400);
 
@@ -296,7 +300,7 @@ Deno.serve(async (req) => {
     const subject = (testTo ? "[테스트] " : "") + fill(subjectTpl, vars);
     const text = fill(bodyTpl, vars);
     try {
-      await sendMail(to, cc, subject, text, attOf[String(a.id)] ? [attOf[String(a.id)]] : []);
+      await sendMail(to, cc, subject, text, attOf[String(a.id)] ?? []);
       const toLog = cc.length ? `${to} (참조: ${cc.join(", ")})` : to;
       results.push({ id: a.id, ok: true, to: toLog });
       if (!testTo) await admin.from("mail_logs").insert({ applicant_id: a.id, kind, to_email: toLog, subject, sent_by: user.id, ok: true });
