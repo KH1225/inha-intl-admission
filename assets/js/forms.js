@@ -122,6 +122,7 @@ async function cancelApplication(id) {
   const { error } = await sb.from('applicants').update({ status: '접수취소', memo }).eq('id', id);
   setBusy(false);
   if (error) { toast(/check constraint|invalid input value/i.test(errMsg(error)) ? '데이터베이스에 접수취소 상태가 아직 없습니다. 관리자에게 SQL 적용을 요청하세요.' : errMsg(error), 'err'); return; }
+  a.status = '접수취소';
   await syncScholarships();
   toast(`${a.name_ko}: 접수취소 처리되었습니다.`);
   closeModal(); await reloadAndRender();

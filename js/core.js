@@ -231,10 +231,14 @@ async function syncScholarships() {
   if (!can.edit() || !S.term) return { changed: 0 };
   const r = await sb.rpc('auto_assign_scholarships', { p_term: S.term.id });
   if (r.error) { toast('장학금 자동 배정 실패: ' + errMsg(r.error), 'err'); return { error: r.error }; }
-  const c = await sb.from('applicants').update({ scholarship_type: null, scholarship_pct: 0 })
-    .eq('term_id', S.term.id).eq('status', '접수취소').not('scholarship_type', 'is', null)
-    .or('scholarship_source.is.null,scholarship_source.neq.수동');
-  if (c.error) toast('접수취소자 장학금 해제 실패: ' + errMsg(c.error), 'err');
+  // 접수취소자가 있을 때만, 그 지원자들의 자동 배정 장학금을 비웁니다 (직접 지정한 장학금은 그대로)
+  const cancelled = S.apps.filter(a => a.status === '접수취소').map(a => a.id);
+  for (const part of chunk(cancelled, 100)) {
+    const c = await sb.from('applicants').update({ scholarship_type: null, scholarship_pct: 0 })
+      .in('id', part).not('scholarship_type', 'is', null)
+      .or('scholarship_source.is.null,scholarship_source.neq.수동');
+    if (c.error) { console.warn('접수취소자 장학금 해제 실패', c.error); toast('접수취소자 장학금 해제 실패: ' + errMsg(c.error), 'err'); break; }
+  }
   return { changed: r.data || 0 };
 }
 async function reloadAndRender() {
