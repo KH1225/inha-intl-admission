@@ -53,6 +53,7 @@ function renderEval() {
     ${t ? `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${S.evalFilter.pending ? 'checked' : ''} onchange="S.evalFilter.pending=this.checked;renderEval()"> 미제출만 보기</label>` : ''}
     <span class="sp"></span>
     ${can.admin() ? `<button class="btn" onclick="openOrderModal()">면접 순서 · 일정 지정</button>` : ''}
+    ${can.edit() ? `<button class="btn blue" onclick="openMailModal()">면접 안내 메일</button>` : ''}
     <button class="btn" onclick="printEvalSheet()">면접평가표 인쇄</button></div>
   ${list.length ? `<div class="ev-list">${list.map(a => t ? evalCardEdit(a, t) : evalCardView(a)).join('')}</div>`
     : '<div class="center-msg"><div><h2>평가할 지원자가 없습니다</h2><p>면접심사 단계로 변경된 지원자가 여기에 표시됩니다.</p></div></div>'}`;

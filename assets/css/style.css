@@ -292,3 +292,9 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .doc-set input,.doc-set select{width:100%}
 .doc-set tr.off td{opacity:.5}
 .doc-set select.st-R{color:#b91c1c;font-weight:800}.doc-set select.st-O{color:#1d4ed8;font-weight:700}.doc-set select.st-X{color:#6b7280}
+
+/* 면접 안내 메일 */
+.nw{white-space:nowrap}
+.mail-pv{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--soft);font-size:13px;line-height:1.7;max-height:320px;overflow:auto}
+.mail-pv-subj{font-weight:800;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:8px}
+#ml-body{font-family:inherit;line-height:1.6}
