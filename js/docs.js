@@ -10,44 +10,41 @@ function docVisible(t, a) {
 function docRequired(t, a) {
   return !!a.qualification_code && docVisible(t, a) && !!(a.qualification_code === 'T2' ? t.required_t2 : t.required_t1);
 }
-const qualLabel = c => (S.qualMap[c] ? S.qualMap[c].name_ko : c === 'T2' ? '전교육과정 해외이수 외국인' : '순수외국인');
+const qualLabel = c => (S.qualMap[c] ? S.qualMap[c].name_ko : c === 'T2' ? '유형2 (해외 전 교육과정 이수)' : '유형1 (부모 모두 외국인)');
 
-/* 표준안: [서류명, 순수외국인(T1), 전교육과정 해외이수(T2)]  R=필수 O=선택 X=제외 */
+/* 2027학년도 외국인 특별전형 모집요강 「IV. 제출서류」 기준
+   [서류명, 유형1(부모 모두 외국인), 유형2(해외 전 교육과정 이수)]  R=필수 O=선택 X=해당없음(-) */
 const STD_DOCS = {
   신입학: [
-    ['입학지원서', 'R', 'R'],
-    ['자기소개서 및 학업계획서', 'R', 'R'],
-    ['여권 사본', 'R', 'R'],
-    ['증명사진 (3×4cm)', 'R', 'R'],
-    ['고등학교 졸업(예정)증명서 (아포스티유/영사확인)', 'R', 'R'],
-    ['고등학교 전 학년 성적증명서 (아포스티유/영사확인)', 'R', 'R'],
-    ['부모 국적 증명서류 (부모 여권 사본 등)', 'R', 'X'],
-    ['가족관계 증명서류 (출생증명서 등, 아포스티유)', 'R', 'X'],
-    ['초·중학교 졸업증명서 및 전 학년 성적증명서 (아포스티유)', 'X', 'R'],
-    ['출입국사실증명서', 'X', 'R'],
-    ['은행 잔고증명서 (재정능력 입증)', 'R', 'R'],
-    ['한국어능력 증빙 (TOPIK 성적표 등)', 'O', 'O'],
-    ['외국인등록증 사본 (국내 체류자)', 'O', 'O'],
-    ['개인정보 수집·이용 동의서', 'R', 'R'],
-    ['학력조회 동의서', 'R', 'R']
+    ['입학지원서 [Form 1]', 'R', 'R'],
+    ['자기소개서 [Form 2]', 'R', 'R'],
+    ['한국어능력 증빙서류 (TOPIK 성적증명서 또는 사회통합프로그램 수료증명서·성적확인서 중 택1)', 'R', 'R'],
+    ['외국학교 학력조회 동의서 [Form 3]', 'R', 'R'],
+    ['개인정보 수집 및 이용 동의서 [Form 4]', 'R', 'R'],
+    ['고등학교 졸업(예정)증명서 및 성적증명서 (아포스티유/영사확인, 국내고교는 생활기록부Ⅱ)', 'R', 'R'],
+    ['부모·학생 국적 증명 가족관계 입증서류 (번역 공증)', 'R', 'R'],
+    ['여권 사본 (지원자, 부모)', 'R', 'R'],
+    ['증명사진 3매 (흰색배경 3.5×4.5cm)', 'R', 'R'],
+    ['초등학교·중학교 재학사실증명서 및 성적증명서 (아포스티유/영사확인)', 'X', 'R'],
+    ['출입국사실증명서', 'O', 'R'],
+    ['한국어연수기관 재학(수료)·성적·출석증명서 (D-4 비자 보유자만)', 'O', 'O'],
+    ['추천서 (학교장 또는 선생님, 자유양식)', 'O', 'O']
   ],
   편입학: [
-    ['입학지원서', 'R', 'R'],
-    ['자기소개서 및 학업계획서', 'R', 'R'],
-    ['여권 사본', 'R', 'R'],
-    ['증명사진 (3×4cm)', 'R', 'R'],
-    ['대학 졸업(수료·예정)증명서 (아포스티유/영사확인)', 'R', 'R'],
-    ['대학 전 학년 성적증명서 (아포스티유/영사확인)', 'R', 'R'],
-    ['고등학교 졸업증명서 (아포스티유/영사확인)', 'O', 'X'],
-    ['부모 국적 증명서류 (부모 여권 사본 등)', 'R', 'X'],
-    ['가족관계 증명서류 (출생증명서 등, 아포스티유)', 'R', 'X'],
-    ['초·중·고등학교 졸업증명서 및 전 학년 성적증명서 (아포스티유)', 'X', 'R'],
-    ['출입국사실증명서', 'X', 'R'],
-    ['은행 잔고증명서 (재정능력 입증)', 'R', 'R'],
-    ['한국어능력 증빙 (TOPIK 성적표 등)', 'O', 'O'],
-    ['외국인등록증 사본 (국내 체류자)', 'O', 'O'],
-    ['개인정보 수집·이용 동의서', 'R', 'R'],
-    ['학력조회 동의서', 'R', 'R']
+    ['입학지원서 [Form 1]', 'R', 'R'],
+    ['자기소개서 [Form 2]', 'R', 'R'],
+    ['한국어능력 증빙서류 (TOPIK 또는 사회통합프로그램, 성적 소지자만)', 'O', 'O'],
+    ['추천서 (학교장 또는 학과장, 자유양식)', 'R', 'R'],
+    ['외국학교 학력조회 동의서 [Form 3]', 'R', 'R'],
+    ['개인정보 수집 및 이용 동의서 [Form 4]', 'R', 'R'],
+    ['고등학교 졸업증명서 (아포스티유/영사확인)', 'R', 'R'],
+    ['대학 재학증명서 및 성적증명서 (아포스티유/영사확인)', 'R', 'R'],
+    ['부모·학생 국적 증명 가족관계 입증서류 (번역 공증)', 'R', 'R'],
+    ['여권 사본 (지원자, 부모)', 'R', 'R'],
+    ['증명사진 3매 (흰색배경 3.5×4.5cm)', 'R', 'R'],
+    ['초등학교·중학교 재학사실증명서 및 성적증명서 (아포스티유/영사확인)', 'X', 'R'],
+    ['고등학교 성적증명서', 'X', 'R'],
+    ['출입국사실증명서', 'X', 'R']
   ]
 };
 
@@ -63,8 +60,8 @@ function openDocSettings() {
     <div id="doc-body"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
      <button class="btn sm" onclick="addDocRow()">＋ 서류 추가</button>
-     <button class="btn sm pur" onclick="loadStdDocs()">표준 서류 목록 불러오기</button>
-     <span class="muted small" style="align-self:center">표준 목록은 일반적인 외국인 특별전형 기준입니다. 학교 모집요강에 맞게 고쳐 주세요.</span></div></div>
+     <button class="btn sm pur" onclick="loadStdDocs()">2027 모집요강 기준으로 맞추기</button>
+     <span class="muted small" style="align-self:center">2027학년도 외국인 특별전형 모집요강 「IV. 제출서류」 기준입니다. 신입학·편입학 탭에서 각각 눌러 주세요.</span></div></div>
    <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">닫기</button><button class="btn pri" onclick="saveDocSettings()">저장</button></div>`, { wide: true, sticky: true });
   renderDocSettings();
 }
@@ -79,7 +76,7 @@ function renderDocSettings() {
      <td><input class="ds-n" value="${esc(t.name_ko || '')}" placeholder="서류명"></td>
      <td>${sel(t._s1, 'ds-1')}</td><td>${sel(t._s2, 'ds-2')}</td>
      <td style="text-align:center"><input class="ds-a" type="checkbox" ${t.active === false ? '' : 'checked'} style="width:auto"></td></tr>`).join('')
-     || `<tr><td colspan="5" class="muted" style="text-align:center;padding:20px">${docKind} 서류가 없습니다. “표준 서류 목록 불러오기”를 눌러 보세요.</td></tr>`}</tbody></table></div>`;
+     || `<tr><td colspan="5" class="muted" style="text-align:center;padding:20px">${docKind} 서류가 없습니다. “2027 모집요강 기준으로 맞추기”를 눌러 보세요.</td></tr>`}</tbody></table></div>`;
 }
 function rowByKey(k) { return docRows.find(t => (t.code != null ? 'c:' + t.code : 'n:' + t._new) === k); }
 function readDocInputs() {
@@ -99,15 +96,23 @@ function addDocRow() {
 }
 function loadStdDocs() {
   readDocInputs();
-  const norm = s => String(s || '').replace(/\s/g, '');
-  const have = new Set(docRows.filter(t => t.admission_kind === docKind).map(t => norm(t.name_ko)));
-  let n = 0, o = nextOrder();
-  STD_DOCS[docKind].forEach(([name, s1, s2]) => {
-    if (have.has(norm(name))) return;
-    docRows.push({ _new: ++docNewSeq, admission_kind: docKind, name_ko: name, sort_order: o++, _s1: s1, _s2: s2, active: true }); n++;
+  const norm = x => String(x || '').replace(/\s/g, '');
+  const std = STD_DOCS[docKind];
+  const stdNames = new Set(std.map(([n]) => norm(n)));
+  const mine = docRows.filter(t => t.admission_kind === docKind);
+  const off = mine.filter(t => t.active !== false && !stdNames.has(norm(t.name_ko)) && t.code != null);
+  if (!confirm(`${docKind} 서류를 2027학년도 모집요강 기준(${std.length}개)으로 맞춥니다.\n` +
+    (off.length ? `모집요강에 없는 기존 서류 ${off.length}개는 ‘사용 안 함’으로 바뀝니다. (지원자 체크 기록은 보존)\n` : '') + '확인 후 “저장”을 눌러야 반영됩니다.')) return;
+  docRows = docRows.filter(t => !(t.admission_kind === docKind && t.code == null && !stdNames.has(norm(t.name_ko))));
+  off.forEach(t => { t.active = false; t.sort_order = 900 + (t.sort_order || 0); });
+  let added = 0;
+  std.forEach(([name, s1, s2], k) => {
+    const ex = docRows.find(t => t.admission_kind === docKind && norm(t.name_ko) === norm(name));
+    if (ex) Object.assign(ex, { _s1: s1, _s2: s2, active: true, sort_order: k + 1 });
+    else { docRows.push({ _new: ++docNewSeq, admission_kind: docKind, name_ko: name, sort_order: k + 1, _s1: s1, _s2: s2, active: true }); added++; }
   });
   renderDocSettings();
-  toast(n ? `${docKind} 표준 서류 ${n}개를 추가했습니다. 확인 후 “저장”을 누르세요. (필요 없는 기존 서류는 ‘사용’을 끄세요)` : '이미 표준 서류가 모두 들어 있습니다.');
+  toast(`${docKind}: 모집요강 서류 ${std.length}개로 맞췄습니다 (새로 추가 ${added}개). 확인 후 “저장”을 누르세요.`);
 }
 function newDocCode(i) {
   const codes = S.docTypes.map(t => t.code).concat(docRows.map(t => t.code)).filter(c => c != null);
