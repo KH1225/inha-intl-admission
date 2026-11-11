@@ -356,6 +356,7 @@ function toolbarHtml() {
     b.push(`<button class="btn out blue" onclick="openTuitionSettings()">등록금 &amp; 등록기간 설정</button>`);
     b.push(`<button class="btn out pur" onclick="openScholarship()">장학금 관리</button>`);
     b.push(`<button class="btn out blue" onclick="openDocSettings()">제출서류 설정</button>`);
+    if (S.role === 'admin') b.push(`<button class="btn out" onclick="openSampleModal()">샘플 데이터</button>`);
   }
   b.push(`<button class="btn out blue" onclick="openProgress()">면접전형표 전송현황 <b>${pg.sent}/${pg.total} (${pg.pct}%)</b></button>`);
   if (can.admin()) b.push(`<button class="btn" onclick="exportCsv()">엑셀(CSV)</button>`);

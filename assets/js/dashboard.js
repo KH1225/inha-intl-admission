@@ -4,9 +4,10 @@ const COLORS = ['#2563eb', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
 const TOPIK_COLOR = { 6: '#059669', 5: '#2563eb', 4: '#2563eb', 3: '#ea580c', 2: '#ea580c', 1: '#8b5cf6' };
 const PAGE_SIZE = 100;
 
-const cnt = st => S.apps.filter(a => a.status === st).length;
+const cnt = st => S.apps.filter(a => a.status === st && !(typeof isSample === 'function' && isSample(a))).length;
 /* 접수취소된 지원자는 통계·차트·기본 목록에서 뺍니다 */
-const activeApps = () => S.apps.filter(a => a.status !== '접수취소');
+/* 통계용: 접수취소자와 테스트용 샘플은 빼고 셉니다 */
+const activeApps = () => S.apps.filter(a => a.status !== '접수취소' && !(typeof isSample === 'function' && isSample(a)));
 const hasFull = a => 'route' in a;
 
 function requiredDocCodes(a) {
@@ -224,7 +225,7 @@ function rowHtml(a) {
   const dots = Array.from({ length: dp.need }, (_, i) => `<i class="${i < dp.got ? '' : 'no'}"></i>`).join('');
   const ord = orderOf(a);
   return `<tr class="${a.status === '접수취소' ? 'cancelled' : ''}">
-    <td><span class="rno">${esc(a.receipt_no)}</span></td>
+    <td><span class="rno">${esc(a.receipt_no)}</span>${typeof isSample === 'function' && isSample(a) ? ' <span class="pill s-cancel">샘플</span>' : ''}</td>
     <td><div class="who-cell">${avatarHtml(a)}<div>
       <div class="nm">${esc(a.name_ko)} <span class="muted small">${a.gender === '여' ? '여' : '남'}</span>${ag}</div>
       <div class="muted small">${esc(a.name_en)}</div>
