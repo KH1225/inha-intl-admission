@@ -170,9 +170,8 @@ ${MAIL_CONTACT_EN}`
     desc: '합격자에게 기숙사 정보와 신청 방법을 안내하고, 지원자 정보에 기록된 기숙사 신청 여부를 확인하도록 합니다. (아래 안내 항목은 모두에게 같은 내용)',
     targets: () => S.apps.filter(a => ['최종합격', '등록완료'].includes(a.status)),
     info: a => (a.dorm_application ? '<span class="pill s-pass">기숙사 신청</span>' : '<span class="pill s-cancel">미신청</span>'),
-    extras: [['신청마감', '신청 마감일', '예: 2026년 12월 20일(일) / December 20, 2026'], ['입사일', '입사일', '예: 2027년 2월 26일(금) / February 26, 2027'],
-      ['신청방법', '신청 방법', '예: 희망 객실 유형과 기간(16주/24주)을 이 메일에 회신 / Reply with your preferred room type and period']],
-    vars: ['이름', '영문이름', '접수번호', '학과', '학기', '기숙사신청', '기숙사신청_영문', '입학일', '입학일_영문', '신청마감', '입사일', '신청방법'],
+    extras: [['신청마감', '신청 마감일', '예: 2026년 12월 20일(일) / December 20, 2026'], ['입사일', '입사일', '예: 2027년 2월 26일(금) / February 26, 2027']],
+    vars: ['이름', '영문이름', '접수번호', '학과', '학기', '기숙사신청', '기숙사신청_영문', '입학일', '입학일_영문', '신청마감', '입사일'],
     subject: '[인하공업전문대학] 기숙사 신청 안내 / Dormitory Application - {영문이름}',
     body: `{이름}({영문이름}) 님, 안녕하세요.
 인하공업전문대학 국제교류팀입니다.
@@ -181,7 +180,6 @@ ${MAIL_CONTACT_EN}`
 ■ 현재 기숙사 신청 여부: {기숙사신청}
 ■ 신청 마감일: {신청마감}
 ■ 입사일: {입사일}
-■ 신청 방법: {신청방법}
 
 [객실 유형 및 생활관비]
 ※ 2인실 A는 개별 욕실, 2인실 B·3인실·4인실은 공용 욕실입니다.
@@ -198,6 +196,18 @@ ${MAIL_CONTACT_EN}`
 - 3인실 (공용 욕실): 1,512,000원 → 납부금액 1,436,000원
 - 4인실 (공용 욕실): 1,200,000원 → 납부금액 1,140,000원
 
+[기숙사 신청서 — 회신용]
+희망하는 기간과 객실유형을 체크하여 메일로 회신 주시면 됩니다.
+(이 메일에 ‘답장’을 누르고, 원하는 항목의 ☐ 를 ☑ 또는 V 로 바꿔 보내 주세요.)
+
+● 기간:  ☐ 16주   ☐ 24주
+● 객실유형:
+   ☐ 2인실 A (개별 욕실)
+   ☐ 2인실 B (공용 욕실)
+   ☐ 3인실 (공용 욕실)
+   ☐ 4인실 (공용 욕실)
+● ☐ 기숙사를 신청하지 않습니다.
+
 현재 신청 여부가 본인의 희망과 다르거나 변경을 원하면, 신청 마감일까지 국제교류팀으로 알려 주세요.
 기숙사 배정은 신청 인원에 따라 달라질 수 있습니다.
 
@@ -209,7 +219,6 @@ Please find the dormitory application information for new international students
 ■ Your current dormitory application status: {기숙사신청_영문}
 ■ Application deadline: {신청마감}
 ■ Move-in date: {입사일}
-■ How to apply: {신청방법}
 
 [Room Types and Dormitory Fees]
 * Double Room A has a private bathroom. Double Room B, Triple and Quad rooms share a common bathroom.
@@ -225,6 +234,18 @@ Please find the dormitory application information for new international students
 - Double Room B (shared bathroom): KRW 1,800,000 → Amount due KRW 1,710,000
 - Triple Room (shared bathroom): KRW 1,512,000 → Amount due KRW 1,436,000
 - Quad Room (shared bathroom): KRW 1,200,000 → Amount due KRW 1,140,000
+
+[Dormitory Application — Please Reply]
+Please check your preferred period and room type and reply to this email.
+(Click 'Reply', change ☐ to ☑ or V for the items you want, and send.)
+
+● Period:  ☐ 16 weeks   ☐ 24 weeks
+● Room type:
+   ☐ Double Room A (private bathroom)
+   ☐ Double Room B (shared bathroom)
+   ☐ Triple Room (shared bathroom)
+   ☐ Quad Room (shared bathroom)
+● ☐ I do not wish to apply for the dormitory.
 
 If your current status is not what you want, or if you wish to change it, please contact the International Affairs Team by the application deadline.
 Room assignment may vary depending on the number of applicants.
