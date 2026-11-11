@@ -380,3 +380,5 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .ev-sheet tr{page-break-inside:avoid}
 .ev-sheet thead{display:table-header-group}
 .ev-signs{padding-top:6mm}
+.ev-sheet .kind{display:inline-block;margin-top:1mm;font-size:7.5pt;color:#334;border:.25mm solid #8b96ad;border-radius:1mm;padding:0 1.5mm}
+.ev-sheet .kind.tr{color:#9a3412;border-color:#ea580c;font-weight:700}
