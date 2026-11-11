@@ -10,9 +10,7 @@ const activeApps = () => S.apps.filter(a => a.status !== '접수취소');
 const hasFull = a => 'route' in a;
 
 function requiredDocCodes(a) {
-  if (!a.qualification_code) return [];
-  const key = a.qualification_code === 'T2' ? 'required_t2' : 'required_t1';
-  return S.docTypes.filter(d => d.admission_kind === a.admission_kind && d[key]).map(d => d.code);
+  return S.docTypes.filter(d => docRequired(d, a)).map(d => d.code);
 }
 function docProgress(a) {
   const req = requiredDocCodes(a);

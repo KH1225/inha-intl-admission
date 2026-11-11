@@ -286,3 +286,9 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .sign-wrap canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;border-radius:10px}
 .sign-hint{position:absolute;inset:0;display:grid;place-items:center;color:#9ca3af;font-size:15px;pointer-events:none}
 .sign-mini{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:6px;padding:1px 6px;vertical-align:middle}
+
+/* 제출서류 설정 */
+.doclist .op{font-size:10.5px;color:var(--mute);font-weight:700}
+.doc-set input,.doc-set select{width:100%}
+.doc-set tr.off td{opacity:.5}
+.doc-set select.st-R{color:#b91c1c;font-weight:800}.doc-set select.st-O{color:#1d4ed8;font-weight:700}.doc-set select.st-X{color:#6b7280}

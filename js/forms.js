@@ -16,8 +16,7 @@ function openDetail(id, focus) {
   const full = hasFull(a);
   const d = S.deptMap[a.department_id] || {};
   const iv = S.interviews[id] || {};
-  const docTypes = S.docTypes.filter(t => t.admission_kind === a.admission_kind);
-  const reqKey = a.qualification_code === 'T2' ? 'required_t2' : 'required_t1';
+  const docTypes = S.docTypes.filter(t => docVisible(t, a));
   const pay = S.payments[id];
 
   const kv = (l, v) => `<div><span>${l}</span><b>${v == null || v === '' ? '-' : esc(v)}</b></div>`;
@@ -32,10 +31,11 @@ function openDetail(id, focus) {
       <span class="secret" id="secrets"></span><div class="muted small">※ 원문을 볼 때마다 열람 기록이 남습니다. 20초 뒤 자동으로 가려집니다.</div></div>` : ''}
     ${full && a.memo ? `<div style="margin-top:10px"><span class="muted small">비고</span><div>${esc(a.memo)}</div></div>` : ''}</div>`;
 
-  const docs = full ? `<div class="sec" id="sec-docs"><h3>제출서류 체크리스트 <span class="muted small">필수 서류 ${docProgress(a).got}/${docProgress(a).need} 구비</span></h3>
+  const docs = full ? `<div class="sec" id="sec-docs"><h3>제출서류 체크리스트 <span class="muted small">${esc(a.admission_kind)} · ${a.qualification_code ? esc(qualLabel(a.qualification_code)) : '전형유형 미선택'} · 필수 서류 ${docProgress(a).got}/${docProgress(a).need} 구비</span></h3>
+    ${a.qualification_code ? '' : '<div class="warn" style="margin-bottom:8px">전형유형(순수외국인 / 전교육과정 해외이수)을 선택해야 필수 서류가 정해집니다. “정보 수정”에서 선택하세요.</div>'}
     ${docTypes.length ? `<div class="doclist">${docTypes.map(t => {
       const r = S.docs[id] && S.docs[id][t.code];
-      return `<label><input type="checkbox" ${r && r.received ? 'checked' : ''} ${can.edit() ? '' : 'disabled'} onchange="toggleDoc('${id}','${t.code}',this.checked)"><span>${esc(t.name_ko)} ${t[reqKey] ? '<span class="rq">필수</span>' : ''}</span></label>`;
+      return `<label><input type="checkbox" ${r && r.received ? 'checked' : ''} ${can.edit() ? '' : 'disabled'} onchange="toggleDoc('${id}','${t.code}',this.checked)"><span>${esc(t.name_ko)} ${docRequired(t, a) ? '<span class="rq">필수</span>' : '<span class="op">선택</span>'}</span></label>`;
     }).join('')}</div>` : '<div class="muted">등록된 서류 항목이 없습니다.</div>'}</div>` : '';
 
   const interview = `<div class="sec"><h3>면접</h3><div class="kv">
