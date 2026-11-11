@@ -72,26 +72,51 @@ function listButtons() {
 /* ---------- 차트 ---------- */
 function chartsHtml() {
   const apps = activeApps(), total = apps.length;
-  // 국적
+  // 국가 색: 전체 지원자 기준 상위 6개국에 고정 색, 나머지는 회색(기타) — 두 그래프에서 같은 색을 씁니다
+  const natAll = {};
+  apps.forEach(a => { natAll[a.nationality || '미상'] = (natAll[a.nationality || '미상'] || 0) + 1; });
+  const natRank = Object.entries(natAll).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko')).map(([k]) => k);
+  const OTHER = COLORS[6];
+  const natColor = k => { const r = natRank.indexOf(k); return r >= 0 && r < 6 ? COLORS[r] : OTHER; };
+  // 국적 원그래프 (학과 선택 가능)
+  const deptIds = [...new Set(apps.map(a => a.department_id))];
+  if (S.dashDept && !deptIds.some(id => String(id) === String(S.dashDept))) S.dashDept = '';
+  const sub = S.dashDept ? apps.filter(a => String(a.department_id) === String(S.dashDept)) : apps;
+  const subTotal = sub.length;
   const nat = {};
-  apps.forEach(a => { nat[a.nationality] = (nat[a.nationality] || 0) + 1; });
-  let items = Object.entries(nat).map(([k, n]) => ({ k, n })).sort((a, b) => b.n - a.n);
-  if (items.length > 6) { const rest = items.slice(6).reduce((s, x) => s + x.n, 0); items = items.slice(0, 6).concat([{ k: '기타', n: rest }]); }
+  sub.forEach(a => { nat[a.nationality || '미상'] = (nat[a.nationality || '미상'] || 0) + 1; });
+  let items = Object.entries(nat).map(([k, n]) => ({ k, n, c: natColor(k) })).sort((a, b) => b.n - a.n || natRank.indexOf(a.k) - natRank.indexOf(b.k));
+  if (items.length > 7 || items.some(x => x.c === OTHER)) {
+    const keep = items.filter(x => x.c !== OTHER).slice(0, 6), rest = items.filter(x => !keep.includes(x));
+    items = keep.concat(rest.length ? [{ k: '기타', n: rest.reduce((t, x) => t + x.n, 0), c: OTHER, list: rest.map(x => `${x.k} ${x.n}`).join(', ') }] : []);
+  }
   const R = 54, CIRC = 2 * Math.PI * R; let off = 0;
-  const segs = items.map((it, i) => {
-    const len = total ? it.n / total * CIRC : 0;
-    const s = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="22" stroke-dasharray="${len} ${CIRC - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`;
+  const segs = items.map(it => {
+    const len = subTotal ? it.n / subTotal * CIRC : 0;
+    const s = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${it.c}" stroke-width="22" stroke-dasharray="${len} ${CIRC - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(it.k)} ${it.n}명</title></circle>`;
     off += len; return s;
   }).join('');
   const donut = `<svg viewBox="0 0 140 140" class="donut"><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--line)" stroke-width="22"/>${segs}
-    <text x="70" y="70" text-anchor="middle" class="dn">${total}</text><text x="70" y="86" text-anchor="middle" class="dl">총 지원자</text></svg>`;
-  const legend = items.map((it, i) => `<div><span><i style="background:${COLORS[i % COLORS.length]}"></i>${esc(it.k)}</span><b>${it.n}명 <span class="muted">(${total ? Math.round(it.n / total * 100) : 0}%)</span></b></div>`).join('');
-  // 학과 Top5
+    <text x="70" y="70" text-anchor="middle" class="dn">${subTotal}</text><text x="70" y="86" text-anchor="middle" class="dl">${S.dashDept ? '학과 지원자' : '총 지원자'}</text></svg>`;
+  const legend = items.map(it => `<div ${it.list ? `title="${esc(it.list)}"` : ''}><span><i style="background:${it.c}"></i>${esc(it.k)}</span><b>${it.n}명 <span class="muted">(${subTotal ? Math.round(it.n / subTotal * 100) : 0}%)</span></b></div>`).join('');
+  const deptSel = `<select class="dash-dept" onchange="S.dashDept=this.value;renderDash()"><option value="">전체 학과</option>${deptIds.map(id => ({ id, nm: deptName(id) })).sort((a, b) => a.nm.localeCompare(b.nm, 'ko'))
+    .map(d => `<option value="${d.id}" ${String(S.dashDept) === String(d.id) ? 'selected' : ''}>${esc(d.nm)}</option>`).join('')}</select>`;
+  // 학과별: 국가별로 나눈 막대 + 국가별 인원
   const dc = {};
-  apps.forEach(a => { dc[a.department_id] = (dc[a.department_id] || 0) + 1; });
-  const top = Object.entries(dc).map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n || deptName(Number(a.id)).localeCompare(deptName(Number(b.id)), 'ko'));
+  apps.forEach(a => { (dc[a.department_id] = dc[a.department_id] || []).push(a); });
+  const top = Object.entries(dc).map(([id, list]) => ({ id, n: list.length, list })).sort((a, b) => b.n - a.n || deptName(Number(a.id)).localeCompare(deptName(Number(b.id)), 'ko'));
   const max = top.length ? top[0].n : 1;
-  const bars = top.map((t, i) => `<div class="bar"><div class="row"><span>${i + 1}&nbsp; ${esc(deptName(Number(t.id)))}</span><span>${t.n}명</span></div><div class="tr"><b style="width:${t.n / max * 100}%"></b></div></div>`).join('') || '<div class="muted">데이터가 없습니다</div>';
+  const bars = top.map((t, i) => {
+    const cnt = {};
+    t.list.forEach(a => { cnt[a.nationality || '미상'] = (cnt[a.nationality || '미상'] || 0) + 1; });
+    const ns = Object.entries(cnt).sort((a, b) => b[1] - a[1] || natRank.indexOf(a[0]) - natRank.indexOf(b[0]));
+    const segsB = ns.map(([k, n]) => `<b style="width:${n / max * 100}%;background:${natColor(k)}" title="${esc(k)} ${n}명"></b>`).join('');
+    const on = String(S.dashDept) === String(t.id);
+    return `<div class="bar dbar ${on ? 'on' : ''}" onclick="S.dashDept=${on ? "''" : `'${t.id}'`};renderDash()" title="눌러서 국적별 분포 보기">
+      <div class="row"><span>${i + 1}&nbsp; ${esc(deptName(Number(t.id)))}</span><span>${t.n}명</span></div>
+      <div class="tr stack">${segsB}</div>
+      <div class="nat-line">${ns.map(([k, n]) => `<span><i style="background:${natColor(k)}"></i>${esc(k)} ${n}</span>`).join('')}</div></div>`;
+  }).join('') || '<div class="muted">데이터가 없습니다</div>';
   // TOPIK
   const lv = {}; apps.forEach(a => { if (a.topik_level) lv[a.topik_level] = (lv[a.topik_level] || 0) + 1; });
   const tp = [6, 5, 4, 3, 2, 1].map(l => {
@@ -99,8 +124,8 @@ function chartsHtml() {
     return `<div class="tp"><span class="tag" style="background:${TOPIK_COLOR[l]}">TOPIK ${l}급</span><div class="tr"><b style="width:${total ? n / total * 100 : 0}%;background:${TOPIK_COLOR[l]}"></b></div><span><b>${n}명</b> <span class="muted small">(${total ? Math.round(n / total * 100) : 0}%)</span></span></div>`;
   }).join('');
   return `
-   <div class="panel"><h3>국적별 지원 분포 <small>다국적 국가별 비율</small></h3><div class="donut-wrap">${donut}<div class="legend">${legend || '<span class="muted">데이터가 없습니다</span>'}</div></div></div>
-   <div class="panel"><h3>학과별 지원 현황 <small>지원자가 있는 ${top.length}개 학과</small></h3><div class="bars scroll">${bars}</div></div>
+   <div class="panel"><h3>국적별 지원 분포 ${deptSel}</h3><div class="donut-wrap">${donut}<div class="legend">${legend || '<span class="muted">데이터가 없습니다</span>'}</div></div></div>
+   <div class="panel"><h3>학과별 지원 현황 <small>국가별 인원 · 학과를 누르면 왼쪽에 국적 분포</small></h3><div class="bars scroll">${bars}</div></div>
    <div class="panel"><h3>한국어(TOPIK) 어학 현황 <small>급수별 보유 인원</small></h3>${tp}</div>`;
 }
 
