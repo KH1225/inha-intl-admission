@@ -417,7 +417,7 @@ function evalSheetHtml(list) {
       const rs = `rowspan="${rowsEv.length}"`;
       return rowsEv.map(([lbl, e], i) => `<tr>${i === 0 ? `<td ${rs} class="nw">${o == null ? '' : o}</td><td ${rs} class="nw">${esc(a.receipt_no)}</td>
         <td ${rs}>${photoUrl(a) ? `<img src="${esc(photoUrl(a))}" style="width:14mm;height:18.6mm;object-fit:cover" alt="">` : ''}</td>
-        <td ${rs}>${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td ${rs} class="nw">${esc(a.nationality)}</td><td ${rs} class="nw">${a.topik_level ? a.topik_level + '급' : ''}</td>` : ''}
+        <td ${rs} class="nm">${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td ${rs} class="nw">${esc(a.nationality)}</td><td ${rs} class="nw">${a.topik_level ? a.topik_level + '급' : ''}</td><td ${rs} class="hs">${esc(a.high_school || '')}</td>` : ''}
         ${showDir ? `<td class="nw">${lbl}</td>` : ''}<td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td class="nw">${e ? esc(e.result || '') : ''}</td>
         <td class="cmt">${e && e.comment ? esc(e.comment) : ''}</td></tr>`).join('');
     }).join('');
@@ -426,8 +426,8 @@ function evalSheetHtml(list) {
     return `<div class="doc sheet ev-sheet">
     <h2>외국인 특별전형 면접평가표 (${esc(S.term.name)})</h2>
     <div style="margin-bottom:4mm"><b>학과:</b> ${esc(deptName(did))} &nbsp; <b>출력일:</b> ${todayYMD()}</div>
-    <table><thead><tr><th class="nw">순서</th><th class="nw">접수번호</th><th class="nw">사진</th><th class="nw">성명</th><th class="nw">국적</th><th class="nw">TOPIK</th>${showDir ? '<th>구분</th>' : ''}
-      <th>${esc(EV_ITEMS[0])}</th><th>${esc(EV_ITEMS[1])}</th><th>${esc(EV_ITEMS[2])}</th><th>판정</th><th class="cmt">평가의견</th></tr></thead>
+    <table><thead><tr><th class="nw">순서</th><th class="nw">접수번호</th><th class="nw">사진</th><th class="nm">성명</th><th class="nw">국적</th><th class="nw">TOPIK</th><th class="hs">출신고교</th>${showDir ? '<th>구분</th>' : ''}
+      <th class="it">${esc(EV_ITEMS[0])}</th><th class="it">${esc(EV_ITEMS[1])}</th><th class="it">${esc(EV_ITEMS[2])}</th><th class="nw">판정</th><th class="cmt">평가의견</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div style="margin-top:5mm;font-size:9pt">A: 우수(탁월) · B: 보통(적격) · C: 미흡(불합격) — C가 하나라도 있으면 불합격</div>
     <div class="ev-signs">${signLine(`학과장 (${esc(deptName(did))})`, signOf('학과장'))}${showDir ? signLine('국제교류원장', signOf('원장')) : ''}</div></div>`;
