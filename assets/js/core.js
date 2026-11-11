@@ -188,6 +188,7 @@ async function loadAux() {
   S.payments = {}; S.docs = {};
   await loadPhotos();
   if (typeof loadAppFiles === 'function') await loadAppFiles();
+  if (typeof loadCredit === 'function') await loadCredit();
   if (can.broad()) {
     const pays = await selectAll('payments', ['applicant_id']);
     pays.forEach(r => { if (ids.has(r.applicant_id)) S.payments[r.applicant_id] = r; });
@@ -381,13 +382,14 @@ function renderShell() {
     <div class="sub">${esc(C.SCHOOL_EN.toUpperCase())} (Est. 1958) · Global Admissions Management Portal</div></div></header>
   <div class="toolbar">${toolbarHtml()}</div>
   <nav class="tabs"><button class="${S.tab === 'dash' ? 'on' : ''}" onclick="switchTab('dash')">지원 현황</button>
-    <button class="${S.tab === 'eval' ? 'on' : ''}" onclick="switchTab('eval')">면접 평가</button></nav>
+    <button class="${S.tab === 'eval' ? 'on' : ''}" onclick="switchTab('eval')">면접 평가</button>
+    ${typeof canSeeCredit === 'function' && canSeeCredit() ? `<button class="${S.tab === 'credit' ? 'on' : ''}" onclick="switchTab('credit')">학점인정심사</button>` : ''}</nav>
   <main id="main"></main>`;
   renderMain();
 }
 function renderMain() {
   if (!S.term) { $('#main').innerHTML = '<div class="center-msg"><div><h2>등록된 모집학기가 없습니다</h2><p>총괄관리자가 “새 학기”를 먼저 만들어 주세요.</p></div></div>'; return; }
-  if (S.tab === 'eval') renderEval(); else renderDash();
+  if (S.tab === 'eval') renderEval(); else if (S.tab === 'credit' && typeof renderCredit === 'function') renderCredit(); else renderDash();
 }
 function switchTab(t) { S.tab = t; renderShell(); }
 async function changeTerm(id) {
