@@ -168,6 +168,7 @@ async function loadAux() {
   evs.forEach(r => { if (ids.has(r.applicant_id)) S.evals[r.applicant_id + '|' + r.evaluator_type] = r; });
   S.payments = {}; S.docs = {};
   await loadPhotos();
+  if (typeof loadAppFiles === 'function') await loadAppFiles();
   if (can.broad()) {
     const pays = await selectAll('payments', ['applicant_id']);
     pays.forEach(r => { if (ids.has(r.applicant_id)) S.payments[r.applicant_id] = r; });

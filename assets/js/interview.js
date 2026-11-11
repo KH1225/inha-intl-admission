@@ -54,7 +54,7 @@ function renderEval() {
     <span class="sp"></span>
     ${can.admin() ? `<button class="btn" onclick="openOrderModal()">면접 순서 · 일정 지정</button>` : ''}
     ${can.edit() ? `<button class="btn blue" onclick="openMailModal('면접안내')">면접 안내 메일</button>` : ''}
-    <button class="btn" onclick="printEvalSheet()">면접평가표 인쇄</button></div>
+    <button class="btn" onclick="openEvalPrint()">면접평가표 인쇄</button></div>
   ${list.length ? `<div class="ev-list">${list.map(a => t ? evalCardEdit(a, t) : evalCardView(a)).join('')}</div>`
     : '<div class="center-msg"><div><h2>평가할 지원자가 없습니다</h2><p>면접심사 단계로 변경된 지원자가 여기에 표시됩니다.</p></div></div>'}`;
 }
@@ -63,11 +63,16 @@ function evBadge(e) {
   if (!e) return '<span class="muted">미작성</span>';
   return `${[e.item1, e.item2, e.item3].map(x => x || '-').join(' / ')} → <b>${esc(e.result || '-')}</b>${e.submitted ? ' (제출됨)' : ' (임시저장)'}`;
 }
+function evAppFileLine(a) {
+  if (typeof afOf !== 'function' || !canSeeAppFile()) return '';
+  return `<div style="margin-top:6px">${afOf(a.id) ? appFileBtn(a.id, 'btn sm blue') : '<span class="muted small">입학지원서 PDF 없음</span>'}</div>`;
+}
 function evalCardView(a) {
   const e1 = getEv(a.id, '원장'), e2 = getEv(a.id, '학과장'), o = orderOf(a);
   const done = e1 && e1.submitted;
   return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span> <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}</div>
+   ${evAppFileLine(a)}
    <div class="kv" style="margin-top:8px"><div><span>국제교류원장</span><b>${evBadge(e1)} ${e1 && e1.submitted ? signImg(e1, '22px') : ''}</b></div><div><span>학과장</span><b>${evBadge(e2)} ${e2 && e2.submitted ? signImg(e2, '22px') : ''}</b></div></div>
    ${e1 && e1.comment ? `<div class="muted small" style="margin-top:6px">원장 의견: ${esc(e1.comment)}</div>` : ''}
    ${can.admin() && (e1 && e1.submitted || e2 && e2.submitted) ? `<div style="margin-top:8px">
@@ -97,7 +102,7 @@ function evalCardEdit(a, t) {
   }
   return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>
     ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${e.submitted && signImg(e, '26px') ? ` <span class="sign-mini">${signImg(e, '26px')}</span>` : ''}</h3>
-   <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''}</div></div></div>
+   <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${a.topik_level ? ' · TOPIK ' + a.topik_level + '급' : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''}</div>${evAppFileLine(a)}</div></div>
    <div class="ev-3">${items}</div>
    ${ref ? `<div class="ev-ref"><span>학과장 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
    <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (선택)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value">${esc(d.comment)}</textarea>
@@ -358,9 +363,48 @@ function openProgress() {
 }
 
 /* ---------- 면접평가표 인쇄 ---------- */
-function printEvalSheet() {
+/* 인쇄 선택: 면접평가표 + 입학지원서 */
+function openEvalPrint() {
   const list = evalTargets();
   if (!list.length) { toast('인쇄할 지원자가 없습니다.', 'err'); return; }
+  const withF = list.filter(a => typeof afOf === 'function' && afOf(a.id));
+  const noF = list.filter(a => !(typeof afOf === 'function' && afOf(a.id)));
+  openModal(`${mHead('면접평가표 인쇄', `${S.evalFilter.dept ? esc(deptName(S.evalFilter.dept)) : '전체 학과'} · 지원자 ${list.length}명`)}
+   <div class="m-body">
+    <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="ep-sheet" type="checkbox" checked style="width:auto"> 면접평가표</label>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="ep-af" type="checkbox" ${withF.length ? 'checked' : 'disabled'} style="width:auto"> 입학지원서 <span class="muted small" style="font-weight:500">— PDF가 있는 지원자 ${withF.length}명${noF.length ? `, 없는 지원자 ${noF.length}명 (${esc(noF.slice(0, 5).map(a => a.name_ko).join(', '))}${noF.length > 5 ? ' 외' : ''})` : ''}</span></label>
+    <div class="muted small">학과별로 면접평가표 다음에 그 학과 지원자의 입학지원서가 면접 순서대로 이어서 출력됩니다. 인쇄 창에서 “배경 그래픽”을 켜 주세요.</div>
+    <div id="ep-prog"></div></div>
+   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" id="ep-go" onclick="runEvalPrint()">인쇄</button></div>`, { sticky: true });
+}
+async function runEvalPrint() {
+  const sheet = $('#ep-sheet').checked, af = $('#ep-af').checked;
+  if (!sheet && !af) { toast('인쇄할 항목을 고르세요.', 'err'); return; }
+  const list = evalTargets();
+  // 학과별로 묶어서: [학과 A 면접평가표 → 학과 A 입학지원서] → [학과 B …]
+  const groups = [];
+  list.forEach(a => { let g = groups.find(x => x.d === a.department_id); if (!g) groups.push(g = { d: a.department_id, apps: [] }); g.apps.push(a); });
+  const targets = af ? list.filter(a => afOf(a.id)) : [];
+  if (af) $('#ep-go').disabled = true;
+  let html = '', k = 0;
+  const fails = [];
+  for (const g of groups) {
+    if (sheet) html += evalSheetHtml(g.apps);
+    if (!af) continue;
+    for (const a of g.apps.filter(x => afOf(x.id))) {
+      k++;
+      try {
+        const pages = await appFilePages(a.id, (i, n) => { $('#ep-prog').innerHTML = `<div class="notice">입학지원서 준비 중… ${k}/${targets.length}명 (${esc(a.name_ko)} ${i}/${n}쪽)</div>`; });
+        html += appFilePrintHtml(a, pages);
+      } catch (e) { fails.push(`${a.name_ko}: ${errMsg(e)}`); }
+    }
+  }
+  if (fails.length) toast('일부 입학지원서를 불러오지 못했습니다 — ' + fails.join(' / '), 'err');
+  closeModal();
+  if (html) printHtml(html);
+}
+function printEvalSheet() { const list = evalTargets(); if (!list.length) { toast('인쇄할 지원자가 없습니다.', 'err'); return; } printHtml(evalSheetHtml(list)); }
+function evalSheetHtml(list) {
   const byDept = {};
   list.forEach(a => { (byDept[a.department_id] = byDept[a.department_id] || []).push(a); });
   const showDir = S.role !== 'dept';
@@ -386,5 +430,5 @@ function printEvalSheet() {
     <div style="margin-top:5mm;font-size:9pt">A: 우수(탁월) · B: 보통(적격) · C: 미흡(불합격) — C가 하나라도 있으면 불합격</div>
     <div class="ev-signs">${signLine(`학과장 (${esc(deptName(did))})`, signOf('학과장'))}${showDir ? signLine('국제교류원장', signOf('원장')) : ''}</div></div>`;
   }).join('');
-  printHtml(pages);
+  return pages;
 }
