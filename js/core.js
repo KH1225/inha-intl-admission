@@ -133,7 +133,15 @@ const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nation
 async function loadTermData() {
   if (!S.term) { S.apps = []; return; }
   if (can.broad()) {
-    S.apps = await fetchAll(() => sb.from('applicants').select(APP_COLS).eq('term_id', S.term.id).order('id'));
+    // domestic_hs(국내 고교 출신) 칸은 SQL 적용 전에는 없을 수 있어, 없으면 빼고 다시 불러옵니다
+    try {
+      S.apps = await fetchAll(() => sb.from('applicants').select(APP_COLS + ',domestic_hs').eq('term_id', S.term.id).order('id'));
+      S.noDomHs = false;
+    } catch (e) {
+      if (!/domestic_hs/.test(errMsg(e))) throw e;
+      S.noDomHs = true;
+      S.apps = await fetchAll(() => sb.from('applicants').select(APP_COLS).eq('term_id', S.term.id).order('id'));
+    }
   } else {
     S.apps = await fetchAll(() => sb.from('interview_targets').select('*').eq('term_id', S.term.id).order('id'));
   }
