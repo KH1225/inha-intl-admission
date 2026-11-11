@@ -25,10 +25,11 @@ function orderOf(a) {
 
 function renderDash() {
   const total = activeApps().length;
+  const kindN = k => activeApps().filter(a => a.admission_kind === k).length;
   const passed = cnt('최종합격'), reg = cnt('등록완료');
   const regRate = passed + reg ? (reg / (passed + reg) * 100).toFixed(1) : '0.0';
   const cards = [
-    { st: '', l: '총 지원자 수', n: total, s: `전체 모집단위 (${S.term.name} 기준)`, c: '#2563eb' },
+    { st: '', l: '총 지원자 수', n: total, s: `<b>신입학 ${kindN('신입학')}명</b> · <b>편입학 ${kindN('편입학')}명</b>`, c: '#2563eb' },
     { st: '서류심사', l: '서류 심사중', n: cnt('서류심사'), s: '입학자격 및 아포스티유 확인', c: '#0ea5e9' },
     { st: '보완요청', l: '서류 보완요청', n: cnt('보완요청'), s: '잔고증명 / 성적표 등 미비', c: '#ea580c' },
     { st: '면접심사', l: '면접 대상자', n: cnt('면접심사'), s: '구술면접 및 화상 심사', c: '#7c3aed' },
@@ -119,10 +120,9 @@ function chartsHtml() {
   }).join('') || '<div class="muted">데이터가 없습니다</div>';
   // TOPIK
   const lv = {}; apps.forEach(a => { if (a.topik_level) lv[a.topik_level] = (lv[a.topik_level] || 0) + 1; });
-  const tp = [6, 5, 4, 3, 2, 1].map(l => {
-    const n = lv[l] || 0;
-    return `<div class="tp"><span class="tag" style="background:${TOPIK_COLOR[l]}">TOPIK ${l}급</span><div class="tr"><b style="width:${total ? n / total * 100 : 0}%;background:${TOPIK_COLOR[l]}"></b></div><span><b>${n}명</b> <span class="muted small">(${total ? Math.round(n / total * 100) : 0}%)</span></span></div>`;
-  }).join('');
+  const tpRow = (tag, color, n) => `<div class="tp"><span class="tag" style="background:${color}">${tag}</span><div class="tr"><b style="width:${total ? n / total * 100 : 0}%;background:${color}"></b></div><span><b>${n}명</b> <span class="muted small">(${total ? Math.round(n / total * 100) : 0}%)</span></span></div>`;
+  const tp = [6, 5, 4, 3, 2, 1].map(l => tpRow(`TOPIK ${l}급`, TOPIK_COLOR[l], lv[l] || 0)).join('')
+    + tpRow('TOPIK 없음', '#94a3b8', apps.filter(a => !a.topik_level).length);
   return `
    <div class="panel"><h3>국적별 지원 분포 ${deptSel}</h3><div class="donut-wrap">${donut}<div class="legend">${legend || '<span class="muted">데이터가 없습니다</span>'}</div></div></div>
    <div class="panel"><h3>학과별 지원 현황 <small>국가별 인원 · 학과를 누르면 왼쪽에 국적 분포</small></h3><div class="bars scroll">${bars}</div></div>
