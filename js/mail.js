@@ -208,8 +208,7 @@ ${MAIL_CONTACT_EN}`
    ☐ 4인실 (공용 욕실)
 ● ☐ 기숙사를 신청하지 않습니다.
 
-현재 신청 여부가 본인의 희망과 다르거나 변경을 원하면, 신청 마감일까지 국제교류팀으로 알려 주세요.
-기숙사 배정은 신청 인원에 따라 달라질 수 있습니다.
+신청 마감일 이후에는 기숙사 배정이 어렵습니다. 반드시 신청 마감일({신청마감})까지 메일을 회신해 주세요.
 
 ${MAIL_CONTACT_KO}${MAIL_SEP}Dear {영문이름},
 
@@ -247,8 +246,7 @@ Please check your preferred period and room type and reply to this email.
    ☐ Quad Room (shared bathroom)
 ● ☐ I do not wish to apply for the dormitory.
 
-If your current status is not what you want, or if you wish to change it, please contact the International Affairs Team by the application deadline.
-Room assignment may vary depending on the number of applicants.
+Dormitory placement is difficult after the application deadline. Please be sure to reply to this email by the deadline ({신청마감}).
 
 ${MAIL_CONTACT_EN}`
   },
@@ -302,7 +300,9 @@ const MAIL_UPGRADES = [
   ['문의: 인하공업전문대학 국제교류팀 (본관 412호)', MAIL_CONTACT_KO],
   ['Contact: International Affairs Team, Inha Technical College (Main Building Room 412)', MAIL_CONTACT_EN],
   ['첨부한 등록금고지서를 확인하시고,', '첨부한 합격통지서와 등록금고지서를 확인하시고,'],
-  ['Please check the attached tuition invoice and complete', 'Please check the attached Certificate of Admission and tuition invoice, and complete']
+  ['Please check the attached tuition invoice and complete', 'Please check the attached Certificate of Admission and tuition invoice, and complete'],
+  ['현재 신청 여부가 본인의 희망과 다르거나 변경을 원하면, 신청 마감일까지 국제교류팀으로 알려 주세요.\n기숙사 배정은 신청 인원에 따라 달라질 수 있습니다.', '신청 마감일 이후에는 기숙사 배정이 어렵습니다. 반드시 신청 마감일({신청마감})까지 메일을 회신해 주세요.'],
+  ['If your current status is not what you want, or if you wish to change it, please contact the International Affairs Team by the application deadline.\nRoom assignment may vary depending on the number of applicants.', 'Dormitory placement is difficult after the application deadline. Please be sure to reply to this email by the deadline ({신청마감}).']
 ];
 function mailUpgrade(t) { return typeof t === 'string' ? MAIL_UPGRADES.reduce((x, [o, n]) => x.split(o).join(n), t) : t; }
 function mailSaved(k) {
