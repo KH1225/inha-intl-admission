@@ -233,6 +233,13 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .sheet h2{text-align:center;margin:0 0 6mm}
 .sheet table{width:100%;border-collapse:collapse;font-size:10pt}
 .sheet th,.sheet td{border:.3mm solid #777;padding:2mm 2.5mm;text-align:center}
+.ev-sheet{display:flex;flex-direction:column;height:auto;min-height:296mm;overflow:visible;box-sizing:border-box}
+.ev-sheet table{font-size:8.5pt}.ev-sheet th,.ev-sheet td{padding:1.6mm 1.4mm}
+.ev-sheet .nw{white-space:nowrap}
+.ev-sheet td.cmt{text-align:left;width:42mm;min-width:42mm;font-size:8.5pt;white-space:pre-wrap;word-break:keep-all}
+.ev-sheet th.cmt{width:42mm}
+.ev-sign{margin-top:auto;padding-top:10mm;display:flex;justify-content:flex-end;align-items:flex-end;gap:4mm;font-size:11pt}
+.ev-sign .ln{display:inline-flex;align-items:flex-end;justify-content:center;min-width:55mm;height:16mm;border-bottom:.3mm solid #111}
 @media print{
   @page{size:A4;margin:0}
   html,body{background:#fff!important}

@@ -286,16 +286,26 @@ function printEvalSheet() {
   const byDept = {};
   list.forEach(a => { (byDept[a.department_id] = byDept[a.department_id] || []).push(a); });
   const showDir = S.role !== 'dept';
-  const pages = Object.keys(byDept).map(did => `<div class="doc sheet" style="height:auto;min-height:280mm">
+  const pages = Object.keys(byDept).map(did => {
+    const rows = byDept[did].map(a => {
+      const o = orderOf(a);
+      const rowsEv = [['학과장', getEv(a.id, '학과장')]].concat(showDir ? [['원장', getEv(a.id, '원장')]] : []);
+      const rs = `rowspan="${rowsEv.length}"`;
+      return rowsEv.map(([lbl, e], i) => `<tr>${i === 0 ? `<td ${rs} class="nw">${o == null ? '' : o}</td><td ${rs} class="nw">${esc(a.receipt_no)}</td>
+        <td ${rs}>${photoUrl(a) ? `<img src="${esc(photoUrl(a))}" style="width:14mm;height:18.6mm;object-fit:cover" alt="">` : ''}</td>
+        <td ${rs}>${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td ${rs} class="nw">${esc(a.nationality)}</td><td ${rs} class="nw">${a.topik_level ? a.topik_level + '급' : ''}</td>` : ''}
+        ${showDir ? `<td class="nw">${lbl}</td>` : ''}<td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td class="nw">${e ? esc(e.result || '') : ''}</td>
+        <td class="cmt">${e && e.comment ? esc(e.comment) : ''}</td></tr>`).join('');
+    }).join('');
+    const sg = byDept[did].map(a => getEv(a.id, '학과장')).find(e => e && e.submitted && e.signature);
+    return `<div class="doc sheet ev-sheet">
     <h2>외국인 특별전형 면접평가표 (${esc(S.term.name)})</h2>
     <div style="margin-bottom:4mm"><b>학과:</b> ${esc(deptName(did))} &nbsp; <b>출력일:</b> ${todayYMD()}</div>
-    <table><thead><tr><th>순서</th><th>사진</th><th>접수번호</th><th>성명</th><th>국적</th><th>TOPIK</th><th>${esc(EV_ITEMS[0])}</th><th>${esc(EV_ITEMS[1])}</th><th>${esc(EV_ITEMS[2])}</th><th>판정</th>${showDir ? '<th>구분</th>' : ''}<th>서명</th></tr></thead><tbody>
-    ${byDept[did].map(a => { const o = orderOf(a); const rowsEv = [['학과장', getEv(a.id, '학과장')]].concat(showDir ? [['원장', getEv(a.id, '원장')]] : []);
-      return rowsEv.map(([lbl, e], i) => `<tr>${i === 0 ? `<td rowspan="${rowsEv.length}">${o == null ? '' : o}</td><td rowspan="${rowsEv.length}">${photoUrl(a) ? `<img src="${esc(photoUrl(a))}" style="width:16mm;height:21mm;object-fit:cover" alt="">` : ''}</td><td rowspan="${rowsEv.length}">${esc(a.receipt_no)}</td><td rowspan="${rowsEv.length}">${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td rowspan="${rowsEv.length}">${esc(a.nationality)}</td><td rowspan="${rowsEv.length}">${a.topik_level ? a.topik_level + '급' : ''}</td>` : ''}
-      <td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td>${e ? esc(e.result || '') : ''}</td>${showDir ? `<td>${lbl}</td>` : ''}<td>${lbl === '학과장' && e && e.submitted ? signImg(e, '9mm') : ''}</td></tr>`).join(''); }).join('')}
-    </tbody></table>
-    <div style="margin-top:6mm;font-size:9pt">A: 우수(탁월) · B: 보통(적격) · C: 미흡(불합격) — C가 하나라도 있으면 불합격</div>
-    ${(() => { const sg = byDept[did].map(a => getEv(a.id, '학과장')).find(e => e && e.submitted && e.signature);
-      return `<div style="margin-top:14mm;text-align:right">학과장 서명: ${sg ? signImg(sg, '14mm') : '____________________'}</div>`; })()}</div>`).join('');
+    <table><thead><tr><th class="nw">순서</th><th class="nw">접수번호</th><th class="nw">사진</th><th class="nw">성명</th><th class="nw">국적</th><th class="nw">TOPIK</th>${showDir ? '<th>구분</th>' : ''}
+      <th>${esc(EV_ITEMS[0])}</th><th>${esc(EV_ITEMS[1])}</th><th>${esc(EV_ITEMS[2])}</th><th>판정</th><th class="cmt">평가의견</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div style="margin-top:5mm;font-size:9pt">A: 우수(탁월) · B: 보통(적격) · C: 미흡(불합격) — C가 하나라도 있으면 불합격</div>
+    <div class="ev-sign"><span>학과장 (${esc(deptName(did))})</span><span class="ln">${sg ? signImg(sg, '15mm') : ''}</span><span>(서명)</span></div></div>`;
+  }).join('');
   printHtml(pages);
 }
