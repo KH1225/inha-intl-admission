@@ -93,7 +93,7 @@ function crRowHtml(c, ed, i) {
     <td><select class="cr-cat" onchange="crTotals(this)"><option value="">-</option>${CR_CATS.map(x => `<option ${c.category === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
     <td><input class="cr-nm" value="${v('course_name')}" placeholder="예: 항공학개론(Introduction to Aviation)"></td>
     <td><input class="cr-cr" type="number" min="0" step="0.5" value="${v('credits')}" oninput="crTotals(this)" style="width:70px"></td>
-    <td class="c"><input class="cr-ok" type="checkbox" ${c.recognized ? 'checked' : ''} onchange="crTotals(this)" style="width:auto"></td>
+    <td class="c cr-okc"><input class="cr-ok" type="checkbox" ${c.recognized ? 'checked' : ''} onchange="crTotals(this)" title="인정"></td>
     <td><button class="btn sm" title="줄 삭제" onclick="const t=this.closest('table');this.closest('tr').remove();crTotals(t)">✕</button></td></tr>`;
 }
 function crCardHtml(a) {

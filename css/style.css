@@ -414,3 +414,7 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .cr-date{text-align:center;font-size:11pt;margin:5mm 0}
 .cr-sig{display:flex;justify-content:center;align-items:flex-end;gap:3mm;font-size:10.5pt}
 .cr-sig .nm{min-width:18mm;text-align:center}.cr-sig .ln{display:inline-flex;align-items:flex-end;min-width:22mm;height:14mm}
+/* 학점인정심사: 인정 여부 체크칸 크게, 가운데 */
+.cr-tbl td.cr-okc{text-align:center;vertical-align:middle;width:72px}
+.cr-tbl input.cr-ok{display:block;margin:0 auto;width:22px;height:22px;padding:0;cursor:pointer;accent-color:#2563eb}
+.cr-tbl th:nth-child(5){text-align:center}
