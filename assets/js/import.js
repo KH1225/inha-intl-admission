@@ -81,8 +81,15 @@ function buildImportPreview(rows) {
     if (!passport) errs.push('여권번호 없음');
     else { if (seen.has(passport)) errs.push('파일 안에서 여권번호 중복'); seen.add(passport); }
     const routeRaw = cellStr(get(r, '지원경로'));
-    let route = '개별지원', agency_id = null, agencyNew = null;
-    if (/유학원/.test(routeRaw)) {
+    let route = '개별지원', agency_id = null, agencyNew = null, partnerId = null;
+    if (/우리대학|본교/.test(routeRaw)) {
+      route = ROUTE_ALUMNI;
+    } else if (/협약/.test(routeRaw)) {
+      route = ROUTE_PARTNER;
+      const m = routeRaw.match(/\((.+)\)/);
+      const ps = m ? S.partners.find(x => x.name.replace(/\s/g, '').toLowerCase() === m[1].replace(/\s/g, '').toLowerCase()) : null;
+      if (ps) partnerId = ps.id; else errs.push(m ? `협약학교 불일치(${m[1].trim()})` : '협약학교 추천: 괄호 안에 학교명 필요');
+    } else if (/유학원/.test(routeRaw)) {
       route = '유학원';
       const m = routeRaw.match(/\((.+)\)/);
       if (m) { const nm = m[1].trim(); const ag = S.agencies.find(x => x.name.toLowerCase() === nm.toLowerCase()); if (ag) agency_id = ag.id; else agencyNew = nm; }
@@ -101,7 +108,7 @@ function buildImportPreview(rows) {
     const gpa = gpaRaw !== '' && !isNaN(Number(gpaRaw)) ? Number(gpaRaw) : null;
     const rec = {
       name_ko, name_en, gender, birth_date: birth, nationality: nat, admission_kind: kind, department_id: dept ? dept.id : null,
-      route, agency_id, qualification_code: qual || null, topik_level: topik, passport_no: passport,
+      route, agency_id, ...(partnerId ? { partner_school_id: partnerId } : {}), qualification_code: qual || null, topik_level: topik, passport_no: passport,
       alien_reg_no: cellStr(get(r, '외국인등록번호')) || null, visa_type: cellStr(get(r, '비자종류')) || null,
       email: email || null, phone: cellStr(get(r, '연락처')) || null, high_school: cellStr(get(r, '출신고교')) || null, gpa,
       memo: cellStr(get(r, '비고메모')) || null, term_id: S.term.id

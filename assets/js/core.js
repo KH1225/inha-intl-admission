@@ -128,6 +128,15 @@ function rebuildMaps() {
 const deptName = id => (S.deptMap[id] ? S.deptMap[id].name_ko : '-');
 const qualName = code => (S.qualMap[code] ? S.qualMap[code].name_ko : '-');
 
+const ROUTE_PARTNER = '협약학교 추천';
+const ROUTE_ALUMNI = '우리대학 졸업';
+const ROUTES = ['개별지원', '유학원', ROUTE_PARTNER, ROUTE_ALUMNI];
+/* 지원경로 표시: 개별지원 / 유학원(이름) / 협약학교 추천(학교명) */
+function routeLabel(a) {
+  if (a.route === '유학원') return `유학원${a.agency_id && S.agencyMap[a.agency_id] ? ` (${S.agencyMap[a.agency_id].name})` : ''}`;
+  if (a.route === ROUTE_PARTNER) return `${ROUTE_PARTNER}${a.partner_school_id && S.partnerMap[a.partner_school_id] ? ` (${S.partnerMap[a.partner_school_id].name})` : ''}`;
+  return a.route || '개별지원';
+}
 const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,passport_last4,passport_expiry,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
 
 const OPT_COLS = ['domestic_hs', 'cc_emails'];

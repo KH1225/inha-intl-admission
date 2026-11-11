@@ -13,9 +13,14 @@ function docVisible(t, a) {
   if (!a.qualification_code) return true;
   return a.qualification_code === 'T2' ? t.show_t2 !== false : t.show_t1 !== false;
 }
-/* 면제: 신입학 국내 고교 출신자는 외국학교 학력조회 동의서 제출 불요 */
+/* 면제 사유 (없으면 '')
+   - 신입학 국내 고교 출신: 외국학교 학력조회 동의서
+   - 지원경로 '우리대학 졸업': 서류명에 '본교 졸업(예정)자 제출 불요'가 적힌 서류 (전공심화 모집요강) */
 function docExempt(t, a) {
-  return docKindOf(a) === '신입학' && !!a.domestic_hs && /학력조회\s*동의서/.test(t.name_ko || '');
+  const nm = t.name_ko || '';
+  if (docKindOf(a) === '신입학' && a.domestic_hs && /학력조회\s*동의서/.test(nm)) return '국내 고교 출신';
+  if (a.route === ROUTE_ALUMNI && /본교\s*졸업\(예정\)자\s*제출\s*불요/.test(nm)) return '우리대학 졸업';
+  return '';
 }
 function docRequired(t, a) {
   return !!a.qualification_code && docVisible(t, a) && !docExempt(t, a) && !!(a.qualification_code === 'T2' ? t.required_t2 : t.required_t1);

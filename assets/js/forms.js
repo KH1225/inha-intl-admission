@@ -23,7 +23,7 @@ function openDetail(id, focus) {
   const basic = `<div class="sec"><h3>기본 정보</h3><div class="basic-wrap">${photoUrl(a) ? `<img class="photo" src="${esc(photoUrl(a))}" alt="사진">` : `<div class="photo none">사진 없음</div>`}<div style="flex:1"><div class="kv">
     ${kv('한글 성명', a.name_ko)}${kv('영문 성명', a.name_en)}${kv('성별', a.gender)}${kv('생년월일', a.birth_date)}${kv('국적', a.nationality)}
     ${kv('입학구분', a.admission_kind + (a.transfer_year ? ` (${a.transfer_year}학년 편입)` : ''))}${kv('지원학과', d.name_ko)}${kv('전형', qualName(a.qualification_code))}
-    ${full ? kv('지원경로', a.route === '유학원' ? `유학원${a.agency_id && S.agencyMap[a.agency_id] ? ' (' + S.agencyMap[a.agency_id].name + ')' : ''}` : a.route) : ''}
+    ${full ? kv('지원경로', routeLabel(a)) : ''}
     ${kv('어학능력', a.topik_level ? `TOPIK ${a.topik_level}급` : '')}${kv('출신 고교', (a.high_school || '') + (a.domestic_hs ? ' (국내 고교)' : ''))}${kv('GPA(내신)', a.gpa)}
     ${full ? kv('여권번호', a.passport_last4 ? '****' + a.passport_last4 : '') + kv('여권 만료일', a.passport_expiry) + kv('비자', a.visa_type) + kv('이메일', a.email) + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' : '미신청') : ''}
     ${kv('지원일자', fmtDate(a.created_at))}</div></div></div>
@@ -35,7 +35,7 @@ function openDetail(id, focus) {
     ${a.qualification_code ? '' : '<div class="warn" style="margin-bottom:8px">전형유형(순수외국인 / 전교육과정 해외이수)을 선택해야 필수 서류가 정해집니다. “정보 수정”에서 선택하세요.</div>'}
     ${docTypes.length ? `<div class="doclist">${docTypes.map(t => {
       const r = S.docs[id] && S.docs[id][t.code];
-      return `<label><input type="checkbox" ${r && r.received ? 'checked' : ''} ${can.edit() ? '' : 'disabled'} onchange="toggleDoc('${id}','${t.code}',this.checked)"><span>${esc(t.name_ko)} ${docExempt(t, a) ? '<span class="op">면제 (국내 고교 출신)</span>' : docRequired(t, a) ? '<span class="rq">필수</span>' : '<span class="op">선택</span>'}</span></label>`;
+      return `<label><input type="checkbox" ${r && r.received ? 'checked' : ''} ${can.edit() ? '' : 'disabled'} onchange="toggleDoc('${id}','${t.code}',this.checked)"><span>${esc(t.name_ko)} ${docExempt(t, a) ? `<span class="op">면제 (${esc(docExempt(t, a))})</span>` : docRequired(t, a) ? '<span class="rq">필수</span>' : '<span class="op">선택</span>'}</span></label>`;
     }).join('')}</div>` : '<div class="muted">등록된 서류 항목이 없습니다.</div>'}</div>` : '';
 
   const interview = `<div class="sec"><h3>면접</h3><div class="kv">
@@ -246,10 +246,10 @@ function openApplicantForm(id) {
     <label class="fld ${a.admission_kind === '편입학' ? '' : 'hide'}" id="af-ty"><span>편입 학년</span><select id="af-transfer_year"><option value="">선택</option><option value="2" ${sel('transfer_year', 2)}>2학년</option><option value="3" ${sel('transfer_year', 3)}>3학년</option></select></label>
     ${field('지원학과', `<select id="af-department_id"><option value="">선택</option>${deptOpts}</select>`, { req: 1 })}
     ${field('전형유형', `<select id="af-qualification_code"><option value="">선택</option>${S.quals.map(q => `<option value="${q.code}" ${sel('qualification_code', q.code)}>${esc(q.name_ko)}</option>`).join('')}</select>`)}
-    ${field('지원경로', `<select id="af-route" onchange="$('#af-ag').classList.toggle('hide',this.value!=='유학원')"><option ${sel('route', '개별지원')}>개별지원</option><option ${sel('route', '유학원')}>유학원</option></select>`)}
+    ${field('지원경로', `<select id="af-route" onchange="$('#af-ag').classList.toggle('hide',this.value!=='유학원');$('#af-ps-lbl').textContent=this.value===ROUTE_PARTNER?'추천 협약학교 *':'협약학교 (협약 장학금 대상)'"><option ${sel('route', '개별지원')}>개별지원</option><option ${sel('route', '유학원')}>유학원</option><option ${sel('route', ROUTE_PARTNER)}>${ROUTE_PARTNER}</option><option ${sel('route', ROUTE_ALUMNI)}>${ROUTE_ALUMNI}</option></select>`)}
     <label class="fld ${a.route === '유학원' ? '' : 'hide'}" id="af-ag"><span>유학원</span><select id="af-agency_id" onchange="onAgencySel(this)"><option value="">선택</option>${S.agencies.filter(x => x.active || x.id === a.agency_id).map(x => `<option value="${x.id}" ${sel('agency_id', x.id)}>${esc(x.name)}</option>`).join('')}${can.edit() ? '<option value="__new">+ 새 유학원 추가</option>' : ''}</select></label>
     ${field('어학능력 (TOPIK)', `<select id="af-topik_level"><option value="">없음</option>${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${sel('topik_level', n)}>${n}급</option>`).join('')}</select>`)}
-    ${field('협약학교 (협약 장학금 대상)', `<select id="af-partner_school_id"><option value="">해당 없음</option>${S.partners.filter(p => p.active || p.id === a.partner_school_id).map(p => `<option value="${p.id}" ${sel('partner_school_id', p.id)}>${esc(p.name)}</option>`).join('')}</select>`)}
+    ${field(`<span id="af-ps-lbl">${a.route === ROUTE_PARTNER ? '추천 협약학교 *' : '협약학교 (협약 장학금 대상)'}</span>`, `<select id="af-partner_school_id"><option value="">해당 없음</option>${S.partners.filter(p => p.active || p.id === a.partner_school_id).map(p => `<option value="${p.id}" ${sel('partner_school_id', p.id)}>${esc(p.name)}</option>`).join('')}</select>`)}
    </div></div>
    <div class="sec"><h3>신원 · 연락처 <span class="muted small">민감정보 · 저장 시 암호화됩니다</span></h3><div class="grid2">
     ${field(edit ? '여권번호 (바꿀 때만 입력)' : '여권번호', `<input id="af-passport_no" autocomplete="off" placeholder="${edit && a.passport_last4 ? '현재: ****' + esc(a.passport_last4) : ''}">`, { req: !edit })}
@@ -299,6 +299,7 @@ async function saveApplicant(id) {
   if (!p.department_id) errs.push('지원학과를 선택하세요.');
   if (kind === '편입학' && !p.transfer_year) errs.push('편입 학년을 선택하세요.');
   if (route === '유학원' && !p.agency_id) errs.push('유학원을 선택하세요.');
+  if (route === ROUTE_PARTNER && !p.partner_school_id) errs.push('추천한 협약학교를 선택하세요.');
   if (p.email && !/^\S+@\S+\.\S+$/.test(p.email)) errs.push('이메일 형식을 확인하세요.');
   if (!id && !g('passport_no')) errs.push('여권번호를 입력하세요.');
   const box = $('#af-err');
