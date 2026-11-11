@@ -192,15 +192,28 @@ function docBill(c) {
 /* ---------- 등록금납부확인서 ---------- */
 function docReceipt(c) {
   const { a, t, d, pay } = c;
-  const fields = fieldRows([
-    ['성 명', 'Name', esc(a.name_ko), esc(a.name_en)],
-    ['생년월일', 'Date of Birth', esc(krDate(a.birth_date)), esc(enDate(a.birth_date))],
-    ['국 적', 'Nationality', esc(a.nationality)],
-    ['학 과', 'Department', esc(d.name_ko), esc(d.name_en)],
-    ['납부 금액', 'Amount Paid', esc(krw(pay && pay.paid_amount != null ? pay.paid_amount : (pay && pay.payable_amount))), ''],
-    ['납부일', 'Date of Payment', esc(krDate(pay && pay.paid_at)), esc(enDate(pay && pay.paid_at))]
-  ]);
-  const body = `<div class="doc-body"><div class="ko">위 사람은 ${esc(C.SCHOOL_KO)} ${esc(t.year)}학년도 ${esc(t.semester)} 등록금을<br>위와 같이 납부하였음을 확인합니다.</div>
-   <div class="en">This is to certify that the above-named student has paid the tuition fee<br>for the ${semEn(t)} Semester of Academic Year ${esc(t.year)} at ${esc(C.SCHOOL_EN)}<br>as stated above.</div></div>`;
-  return docFrame(c, '등록금 납부 확인서', 'CERTIFICATE OF TUITION PAYMENT', fields + body);
+  const p = pay || {};
+  const paid = p.paid_amount != null ? p.paid_amount : p.payable_amount;
+  const due = p.payable_amount, sch = Number(p.scholarship_amount || 0);
+  const diff = paid != null && due != null ? Number(paid) - Number(due) : 0;
+  const sem = semEn(t);
+  const info = `<table class="doc-tbl"><tbody>
+   <tr><th>성명<small>Name</small></th><td>${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td></tr>
+   <tr><th>접수번호<small>Application No.</small></th><td>${esc(a.receipt_no)}</td></tr>
+   <tr><th>생년월일<small>Date of Birth</small></th><td>${esc(krDate(a.birth_date))}<br><small>${esc(enDate(a.birth_date))}</small></td></tr>
+   <tr><th>국적<small>Nationality</small></th><td>${esc(a.nationality)}${NATION_EN[a.nationality] ? `<br><small>${esc(NATION_EN[a.nationality])}</small>` : ''}</td></tr>
+   <tr><th>학과<small>Department</small></th><td>${esc(d.name_ko)}<br><small>${esc(d.name_en)}</small></td></tr></tbody></table>
+   <table class="doc-tbl"><tbody>
+   <tr><th>등록금<small>Tuition</small></th><td class="amt">${krw(p.tuition_amount)}</td></tr>
+   <tr><th>장학금<small>Scholarship${a.scholarship_type ? ' — ' + esc(a.scholarship_type) : ''}</small></th><td class="amt">${sch ? '- ' + krw(sch) : '-'}</td></tr>
+   <tr><th>납부할 금액<small>Amount Due</small></th><td class="amt">${krw(due)}</td></tr>
+   <tr><th>수납 금액<small>Amount Received</small></th><td class="amt due">${krw(paid)}</td></tr>
+   ${diff ? `<tr class="${diff < 0 ? 'short' : 'over'}"><th>${diff < 0 ? '부족 금액<small>Shortfall</small>' : '초과 금액<small>Overpayment</small>'}</th><td class="amt">${krw(Math.abs(diff))}</td></tr>` : ''}
+   <tr><th>납부일<small>Date of Payment</small></th><td>${esc(krDate(p.paid_at))}<br><small>${esc(enDate(p.paid_at))}</small></td></tr></tbody></table>
+   ${diff ? `<div class="doc-alert ${diff < 0 ? 'short' : 'over'}">${diff < 0
+      ? `<b>부족송금액 ${esc(krw(-diff))}은 입학 전 오리엔테이션 당일에 현금으로 추가 납부해 주셔야 합니다.</b><br><span>The shortfall of ${esc(krw(-diff))} must be paid in cash on the day of the orientation before admission.</span>`
+      : `<b>초과송금액 ${esc(krw(diff))}은 입학 후에 환불해 드립니다.</b><br><span>The overpaid amount of ${esc(krw(diff))} will be refunded after admission.</span>`}</div>` : ''}
+   <div class="doc-body"><div class="ko">위 사람의 ${esc(C.SCHOOL_KO)} ${esc(t.year)}학년도 ${esc(t.semester)} 등록금을<br>위와 같이 수납하였음을 확인합니다.</div>
+   <div class="en">This is to certify that the tuition fee for the ${sem} Semester of Academic Year ${esc(t.year)}<br>at ${esc(C.SCHOOL_EN)} has been received from the above-named student as stated above.</div></div>`;
+  return docFrame(c, '등록금납부확인서', 'CERTIFICATE OF TUITION PAYMENT', info, { cls: 'bill rcpt' });
 }

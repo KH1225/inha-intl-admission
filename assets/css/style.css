@@ -347,3 +347,13 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .bill .doc-date .ko{font-size:12.5pt}
 .bill .doc-pres .ko{font-size:15pt}
 .bill .doc-pres{margin-bottom:1mm}
+
+/* 등록금납부확인서 (고지서와 같은 표 양식) */
+.rcpt .doc-tbl tr.short td,.rcpt .doc-tbl tr.short th{color:#b91c1c}
+.rcpt .doc-tbl tr.over td,.rcpt .doc-tbl tr.over th{color:#1d4ed8}
+.doc-alert{width:100%;box-sizing:border-box;border:.4mm solid #b91c1c;background:#fef2f2;border-radius:2mm;padding:2.5mm 4mm;font-size:9pt;line-height:1.5;margin:1mm 0 3mm;position:relative}
+.doc-alert.over{border-color:#1d4ed8;background:#eff6ff}
+.doc-alert span{color:#5b6b88;font-size:8pt}
+.rcpt .doc-body{margin:3mm 0}
+.rcpt .doc-body .ko{font-size:12.5pt}
+.rcpt .doc-body .en{font-size:8pt;margin-top:2mm}
