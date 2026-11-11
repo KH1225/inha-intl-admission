@@ -265,8 +265,8 @@ function openApplicantForm(id) {
    <div class="sec"><h3>신원 · 연락처 <span class="muted small">민감정보 · 저장 시 암호화됩니다</span></h3><div class="grid2">
     ${field(edit ? '여권번호 (바꿀 때만 입력)' : '여권번호', `<input id="af-passport_no" autocomplete="off" placeholder="${edit && a.passport_last4 ? '현재: ****' + esc(a.passport_last4) : ''}">`, { req: !edit })}
     ${field('여권 만료일', `<input id="af-passport_expiry" type="date" min="1900-01-01" max="9999-12-31" value="${v('passport_expiry')}">`)}
-    ${field(edit ? '외국인등록번호 (바꿀 때만 입력)' : '외국인등록번호', `<input id="af-alien_reg_no" autocomplete="off">`)}
     ${field('비자 종류', `<input id="af-visa_type" value="${v('visa_type')}" placeholder="예: D-4, H-1 · 등록완료">`)}
+    ${field(edit ? '외국인등록번호 (바꿀 때만 입력)' : '외국인등록번호', `<input id="af-alien_reg_no" autocomplete="off">`)}
     ${field('이메일', `<input id="af-email" type="email" value="${v('email')}">`)}
     ${field('연락처', `<input id="af-phone" value="${v('phone')}">`)}
     ${S.hasCol && S.hasCol.cc_emails ? field('추가 이메일 (보호자·유학원 등, 쉼표로 구분 · 최대 3개)', `<input id="af-cc_emails" value="${v('cc_emails')}" placeholder="예: parent@example.com, agency@example.com">`, { full: 1 }) : ''}
