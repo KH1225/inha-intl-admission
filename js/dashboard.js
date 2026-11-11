@@ -63,7 +63,7 @@ function listButtons() {
   const b = [];
   b.push(`<button class="btn pur" onclick="switchTab('eval')">면접평가표 (전체 평가)</button>`);
   if (can.admin()) b.push(`<button class="btn blue" onclick="openOrderModal()">면접 순서 지정</button>`);
-  if (can.edit()) b.push(`<button class="btn blue" onclick="openMailModal()">면접 안내 메일</button>`);
+  if (can.edit()) b.push(`<button class="btn blue" onclick="openMailModal()">안내 메일 발송</button>`);
   if (S.role === 'admin' || S.role === 'staff' || S.role === 'director') b.push(`<button class="btn" onclick="printEvalSheet()">면접평가표 인쇄</button>`);
   return b.join('');
 }
