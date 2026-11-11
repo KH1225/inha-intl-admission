@@ -280,7 +280,8 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .cert .doc-body .en{font-size:8.5pt;line-height:1.6;margin-top:3mm}
 .cert .doc-pres .ko{font-size:17pt}
 .cert .doc-seal{right:calc(50% - 47mm);top:-6mm;width:21mm;height:21mm}
-.cert .doc-no{top:auto;bottom:4mm;left:8mm;right:auto}
+.cert .doc-no{font-size:9pt;color:#334;font-weight:600}
+.cert .doc-body .ko{white-space:nowrap}
 
 /* 학과장 서명 */
 .sign-wrap{position:relative;margin-top:10px;border:2px dashed var(--line);border-radius:12px;background:#fff;height:180px}

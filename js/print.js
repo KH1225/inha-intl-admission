@@ -146,16 +146,15 @@ function fieldRows(rows) {
 function docNotice(c) {
   const { a, t, d, q } = c;
   const fields = fieldRows([
-    ['수험번호', 'Application No.', esc(a.receipt_no)],
     ['이름', 'Name', esc(a.name_ko), esc(a.name_en)],
     ['생년월일', 'Date of Birth', esc(krDate(a.birth_date)), esc(enDate(a.birth_date))],
     ['국적', 'Nationality', esc(a.nationality), esc(NATION_EN[a.nationality] || '')],
     ['학과', 'Department', esc(d.name_ko), esc(d.name_en)],
     ['전형', 'Admission Type', esc(q.name_ko || '외국인 특별전형'), esc(q.name_en || '')]
   ]);
-  const body = `<div class="doc-body"><div class="ko">위 사람은 ${esc(C.SCHOOL_KO)}<br>${esc(t.year)}학년도 외국인 특별전형 ${a.admission_kind === '편입학' ? '편입학 ' : ''}모집에<br>합격하였음을 통지합니다.</div>
+  const body = `<div class="doc-body"><div class="ko">위 사람은 ${esc(C.SCHOOL_KO)} ${esc(t.year)}학년도<br>외국인 특별전형 ${a.admission_kind === '편입학' ? '편입학 ' : ''}모집에 합격하였음을 통지합니다.</div>
    <div class="en">This is to certify that the applicant above has been officially admitted to<br>${esc(C.SCHOOL_EN)} for the ${esc(t.year)} Academic Year Special Admissions for<br>International Students.</div></div>`;
-  return docFrame(c, '합 격 통 지 서', 'CERTIFICATE OF ADMISSION', fields + body, { cls: 'cert' });
+  return docFrame(c, '합 격 통 지 서', 'CERTIFICATE OF ADMISSION', fields + body, { cls: 'cert', noLabel: '문서발급번호 :' });
 }
 
 /* ---------- 등록금고지서 ---------- */
