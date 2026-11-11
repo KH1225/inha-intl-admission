@@ -256,7 +256,7 @@ ${MAIL_CONTACT_EN}`
     targets: () => S.apps.filter(a => a.status === '등록완료'),
     info: () => '',
     extras: [['OT일시', '오리엔테이션 일시', '예: 2027년 2월 24일(수) 10:00 / Feb 24, 2027 10:00'], ['OT장소', '장소', '예: 본관 2층 대강당 / Main Building Auditorium (2F)'], ['준비물', '준비물', '예: 여권, 외국인등록증(소지자), 필기구 / Passport, ARC, pen']],
-    vars: ['이름', '영문이름', '접수번호', '학과', '학기', '입학일', '입학일_영문', 'OT일시', 'OT장소', '준비물'],
+    vars: ['이름', '영문이름', '접수번호', '학기', '입학일', '입학일_영문', 'OT일시', 'OT장소', '준비물'],
     subject: '[인하공업전문대학] 신입생 오리엔테이션 안내 / New Student Orientation - {영문이름}',
     body: `{이름}({영문이름}) 님, 안녕하세요.
 인하공업전문대학 국제교류팀입니다.
@@ -265,7 +265,6 @@ ${MAIL_CONTACT_EN}`
 ■ 일시: {OT일시}
 ■ 장소: {OT장소}
 ■ 준비물: {준비물}
-■ 학과: {학과}
 ■ 입학일: {입학일}
 
 오리엔테이션에서는 학사 일정, 수강신청, 비자·외국인등록, 기숙사 및 학교생활 안내가 진행됩니다.
@@ -279,7 +278,6 @@ Welcome to Inha Technical College! Please attend the orientation for new interna
 ■ Date & Time: {OT일시}
 ■ Place: {OT장소}
 ■ What to bring: {준비물}
-■ Department: {학과}
 ■ Entrance Date: {입학일_영문}
 
 The orientation covers the academic calendar, course registration, visa and alien registration, dormitory and campus life.
@@ -300,6 +298,8 @@ const MAIL_UPGRADES = [
   ['문의: 인하공업전문대학 국제교류팀 (본관 412호)', MAIL_CONTACT_KO],
   ['Contact: International Affairs Team, Inha Technical College (Main Building Room 412)', MAIL_CONTACT_EN],
   ['첨부한 등록금고지서를 확인하시고,', '첨부한 합격통지서와 등록금고지서를 확인하시고,'],
+  ['■ 준비물: {준비물}\n■ 학과: {학과}\n', '■ 준비물: {준비물}\n'],
+  ['■ What to bring: {준비물}\n■ Department: {학과}\n', '■ What to bring: {준비물}\n'],
   ['Please check the attached tuition invoice and complete', 'Please check the attached Certificate of Admission and tuition invoice, and complete'],
   ['현재 신청 여부가 본인의 희망과 다르거나 변경을 원하면, 신청 마감일까지 국제교류팀으로 알려 주세요.\n기숙사 배정은 신청 인원에 따라 달라질 수 있습니다.', '신청 마감일 이후에는 기숙사 배정이 어렵습니다. 반드시 신청 마감일({신청마감})까지 메일을 회신해 주세요.'],
   ['If your current status is not what you want, or if you wish to change it, please contact the International Affairs Team by the application deadline.\nRoom assignment may vary depending on the number of applicants.', 'Dormitory placement is difficult after the application deadline. Please be sure to reply to this email by the deadline ({신청마감}).']
