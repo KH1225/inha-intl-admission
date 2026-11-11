@@ -165,6 +165,44 @@ We will send you further information, including the orientation schedule, separa
 
 ${MAIL_CONTACT_EN}`
   },
+  기숙사안내: {
+    label: '기숙사 신청 안내',
+    desc: '합격자에게 기숙사 정보와 신청 방법을 안내하고, 지원자 정보에 기록된 기숙사 신청 여부를 확인하도록 합니다. (아래 안내 항목은 모두에게 같은 내용)',
+    targets: () => S.apps.filter(a => ['최종합격', '등록완료'].includes(a.status)),
+    info: a => (a.dorm_application ? '<span class="pill s-pass">기숙사 신청</span>' : '<span class="pill s-cancel">미신청</span>'),
+    extras: [['신청마감', '신청 마감일', '예: 2026년 12월 20일(일) / December 20, 2026'], ['입사일', '입사일', '예: 2027년 2월 26일(금) / February 26, 2027'],
+      ['기숙사비', '기숙사비', '예: 1학기 1,200,000원(2인실, 식비 별도) / KRW 1,200,000 per semester'], ['신청방법', '신청 방법', '예: 이 메일에 신청 여부를 회신 / Reply to this email']],
+    vars: ['이름', '영문이름', '접수번호', '학과', '학기', '기숙사신청', '기숙사신청_영문', '입학일', '입학일_영문', '신청마감', '입사일', '기숙사비', '신청방법'],
+    subject: '[인하공업전문대학] 기숙사 신청 안내 / Dormitory Application - {영문이름}',
+    body: `{이름}({영문이름}) 님, 안녕하세요.
+인하공업전문대학 국제교류팀입니다.
+신입 유학생 기숙사 신청을 아래와 같이 안내드립니다.
+
+■ 현재 기숙사 신청 여부: {기숙사신청}
+■ 신청 마감일: {신청마감}
+■ 입사일: {입사일}
+■ 기숙사비: {기숙사비}
+■ 신청 방법: {신청방법}
+
+현재 신청 여부가 본인의 희망과 다르거나 변경을 원하면, 신청 마감일까지 국제교류팀으로 알려 주세요.
+기숙사 배정은 신청 인원에 따라 달라질 수 있습니다.
+
+${MAIL_CONTACT_KO}${MAIL_SEP}Dear {영문이름},
+
+This is the International Affairs Team of Inha Technical College.
+Please find the dormitory application information for new international students below.
+
+■ Your current dormitory application status: {기숙사신청_영문}
+■ Application deadline: {신청마감}
+■ Move-in date: {입사일}
+■ Dormitory fee: {기숙사비}
+■ How to apply: {신청방법}
+
+If your current status is not what you want, or if you wish to change it, please contact the International Affairs Team by the application deadline.
+Room assignment may vary depending on the number of applicants.
+
+${MAIL_CONTACT_EN}`
+  },
   OT안내: {
     label: '오리엔테이션 안내',
     desc: '등록완료자에게 신입생 오리엔테이션 일시·장소·준비물을 안내합니다. (아래 항목은 모두에게 같은 내용)',
@@ -346,6 +384,7 @@ function mailVars(a, f) {
     납입금액: mailWonKo(pay && pay.paid_amount), 납입금액_영문: mailWonEn(pay && pay.paid_amount),
     납부일: mailDKo(pay && pay.paid_at), 납부일_영문: mailDEn(pay && pay.paid_at),
     입학일: mailDKo(t.entry_date), 입학일_영문: mailDEn(t.entry_date),
+    기숙사신청: a.dorm_application ? '신청' : '미신청', 기숙사신청_영문: a.dorm_application ? 'Applied' : 'Not applied',
     차액안내: dn.ko, 차액안내_영문: dn.en
   };
 }

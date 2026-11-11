@@ -30,6 +30,7 @@ const KINDS: Record<string, (a: Row, pay: Row | undefined) => string | null> = {
   합격등록안내: (a) => (["최종합격", "등록완료"].includes(a.status) ? null : "최종합격자가 아닙니다"),
   입금확인: (_a, p) => (p && p.paid_at ? null : "납부일이 입력되지 않았습니다"),
   OT안내: (a) => (a.status === "등록완료" ? null : "등록완료자가 아닙니다"),
+  기숙사안내: (a) => (["최종합격", "등록완료"].includes(a.status) ? null : "최종합격자·등록완료자가 아닙니다"),
 };
 
 /* ---------- 날짜·금액 표기 (사이트 미리보기와 같은 규칙) ---------- */
@@ -88,6 +89,7 @@ function buildVars(a: Row, t: Row, deptName: string, iv: Row | undefined, pay: R
     납입금액: wonKo(pay?.paid_amount), 납입금액_영문: wonEn(pay?.paid_amount),
     납부일: dKo(pay?.paid_at ?? null), 납부일_영문: dEn(pay?.paid_at ?? null),
     입학일: dKo(t.entry_date ?? null), 입학일_영문: dEn(t.entry_date ?? null),
+    기숙사신청: a.dorm_application ? "신청" : "미신청", 기숙사신청_영문: a.dorm_application ? "Applied" : "Not applied",
     차액안내: dn.ko, 차액안내_영문: dn.en,
   } as Record<string, string>;
 }
@@ -270,7 +272,7 @@ Deno.serve(async (req) => {
   if (!ids.length || !subjectTpl || !bodyTpl) return json({ error: "대상자, 제목, 본문이 필요합니다." }, 400);
 
   // 3) 지원자·학기·학과·면접·납부 정보 (DB 값만 사용)
-  const baseCols = "id,term_id,receipt_no,name_ko,name_en,email,department_id,status,scholarship_type";
+  const baseCols = "id,term_id,receipt_no,name_ko,name_en,email,department_id,status,scholarship_type,dorm_application";
   let { data: apps, error: e1 } = await admin.from("applicants").select(baseCols + ",cc_emails").in("id", ids);
   if (e1 && /cc_emails/.test(e1.message)) ({ data: apps, error: e1 } = await admin.from("applicants").select(baseCols).in("id", ids));
   if (e1) return json({ error: e1.message }, 500);
