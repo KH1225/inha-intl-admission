@@ -25,7 +25,7 @@ function openDetail(id, focus) {
     ${kv('입학구분', a.admission_kind + (a.transfer_year ? ` (${a.transfer_year}학년 편입)` : ''))}${kv('지원학과', d.name_ko)}${kv('전형', qualName(a.qualification_code))}
     ${full ? kv('지원경로', routeLabel(a)) : ''}
     ${kv('어학능력', a.topik_level ? `TOPIK ${a.topik_level}급` : '')}${kv('출신 고교', (a.high_school || '') + (a.domestic_hs ? ' (국내 고교)' : ''))}${kv('GPA(내신)', a.gpa)}
-    ${full ? kv('여권번호', a.passport_last4 ? '****' + a.passport_last4 : '') + kv('여권 만료일', a.passport_expiry) + kv('비자', a.visa_type) + kv('이메일', a.email) + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' : '미신청') : ''}
+    ${full ? kv('여권번호', a.passport_last4 ? '****' + a.passport_last4 : '') + kv('여권 만료일', a.passport_expiry) + kv('비자', a.visa_type) + kv('이메일', a.email) + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' + (dormRoom(a.dorm_room) ? ` — ${dormRoom(a.dorm_room).ko}` : '') : '미신청') : ''}
     ${kv('지원일자', fmtDate(a.created_at))}</div></div></div>
     ${full && can.edit() ? `<div style="margin-top:10px"><button class="btn sm" onclick="showSecrets('${id}')">여권번호·외국인등록번호 원문 보기</button>
       <span class="secret" id="secrets"></span><div class="muted small">※ 원문을 볼 때마다 열람 기록이 남습니다. 20초 뒤 자동으로 가려집니다.</div></div>` : ''}
@@ -273,7 +273,8 @@ function openApplicantForm(id) {
     ${field('출신 고교', `<input id="af-high_school" value="${v('high_school')}">`)}
     ${S.noDomHs ? '' : `<label class="fld"><span>국내 고교 출신 (신입학)</span><label style="display:flex;gap:6px;align-items:center;font-weight:500"><input id="af-domestic_hs" type="checkbox" style="width:auto" ${a.domestic_hs ? 'checked' : ''}> 한국 고등학교 졸업(예정) — 외국학교 학력조회 동의서 면제</label></label>`}
     ${field('GPA (내신)', `<input id="af-gpa" type="number" step="0.01" min="0" value="${v('gpa')}">`)}
-    <label class="fld"><span>기숙사</span><label style="display:flex;gap:6px;align-items:center;font-weight:500"><input id="af-dorm" type="checkbox" style="width:auto" ${a.dorm_application ? 'checked' : ''}> 기숙사 신청</label></label>
+    <label class="fld"><span>기숙사</span><label style="display:flex;gap:6px;align-items:center;font-weight:500"><input id="af-dorm" type="checkbox" style="width:auto" ${a.dorm_application ? 'checked' : ''} onchange="if(!this.checked&&$('#af-dorm_room'))$('#af-dorm_room').value=''"> 기숙사 신청</label></label>
+    ${S.hasCol && S.hasCol.dorm_room ? field('기숙사 기간 · 객실 유형', `<select id="af-dorm_room" onchange="if(this.value)$('#af-dorm').checked=true"><option value="">미정</option>${DORM_FEES.map(x => `<option value="${x.k}" ${a.dorm_room === x.k ? 'selected' : ''}>${esc(x.ko)} — ${won(x.amt)}</option>`).join('')}</select>`) : ''}
     ${field('비고 메모', `<textarea id="af-memo" rows="2">${v('memo')}</textarea>`, { full: 1 })}
    </div></div></div>
   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" id="af-save" onclick="saveApplicant('${id || ''}')">저장</button></div>`;
@@ -298,6 +299,7 @@ async function saveApplicant(id) {
     if (cc.length > 3) errs.push('추가 이메일은 3개까지 넣을 수 있습니다.');
     p.cc_emails = cc.join(', ') || null;
   }
+  if ($('#af-dorm_room')) p.dorm_room = p.dorm_application ? ($('#af-dorm_room').value || null) : null;
   if (!S.noDomHs && $('#af-domestic_hs')) p.domestic_hs = kind === '신입학' && $('#af-domestic_hs').checked;
   if (!p.name_ko) errs.push('한글 성명을 입력하세요.');
   if (!p.name_en) errs.push('영문 성명을 입력하세요.');

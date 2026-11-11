@@ -25,3 +25,16 @@ window.CONFIG = {
     { ko: '해외 송금으로 인하여 차액 발생시, 초과 송금한 경우에는 입학 후 환불해 드리고, 부족 송금한 경우에는 입학 전 오리엔테이션 당일에 현금 납부해 주셔야 합니다.', en: 'If the amount received differs due to overseas remittance, any overpayment will be refunded after admission, and any shortfall must be paid in cash on the day of the orientation before admission.' }
   ]
 };
+
+/* 기숙사 객실·기간과 이용료 (24주는 5% 감면 후 금액) — 지원자 정보의 dorm_room 값 */
+const DORM_FEES = [
+  { k: '16-2A', ko: '16주 · 2인실 A (개별 욕실)', en: '16 weeks · Double Room A (private bathroom)', amt: 1408000 },
+  { k: '16-2B', ko: '16주 · 2인실 B (공용 욕실)', en: '16 weeks · Double Room B (shared bathroom)', amt: 1200000 },
+  { k: '16-3', ko: '16주 · 3인실 (공용 욕실)', en: '16 weeks · Triple Room (shared bathroom)', amt: 1008000 },
+  { k: '16-4', ko: '16주 · 4인실 (공용 욕실)', en: '16 weeks · Quad Room (shared bathroom)', amt: 800000 },
+  { k: '24-2A', ko: '24주 · 2인실 A (개별 욕실)', en: '24 weeks · Double Room A (private bathroom)', amt: 2006000 },
+  { k: '24-2B', ko: '24주 · 2인실 B (공용 욕실)', en: '24 weeks · Double Room B (shared bathroom)', amt: 1710000 },
+  { k: '24-3', ko: '24주 · 3인실 (공용 욕실)', en: '24 weeks · Triple Room (shared bathroom)', amt: 1436000 },
+  { k: '24-4', ko: '24주 · 4인실 (공용 욕실)', en: '24 weeks · Quad Room (shared bathroom)', amt: 1140000 }
+];
+const dormRoom = k => DORM_FEES.find(x => x.k === k) || null;

@@ -169,7 +169,7 @@ ${MAIL_CONTACT_EN}`
     label: '기숙사 신청 안내',
     desc: '합격자에게 기숙사 정보와 신청 방법을 안내하고, 지원자 정보에 기록된 기숙사 신청 여부를 확인하도록 합니다. (아래 안내 항목은 모두에게 같은 내용)',
     targets: () => S.apps.filter(a => ['최종합격', '등록완료'].includes(a.status)),
-    info: a => (a.dorm_application ? '<span class="pill s-pass">기숙사 신청</span>' : '<span class="pill s-cancel">미신청</span>'),
+    info: a => (a.dorm_application ? `<span class="pill s-pass">기숙사 신청</span>${dormRoom(a.dorm_room) ? ` <span class="small">${esc(dormRoom(a.dorm_room).ko)}</span>` : ''}` : '<span class="pill s-cancel">미신청</span>'),
     extras: [['신청마감', '신청 마감일', '예: 2026년 12월 20일(일) / December 20, 2026'], ['입사일', '입사일', '예: 2027년 2월 26일(금) / February 26, 2027']],
     vars: ['이름', '영문이름', '접수번호', '학과', '학기', '기숙사신청', '기숙사신청_영문', '입학일', '입학일_영문', '신청마감', '입사일'],
     subject: '[인하공업전문대학] 기숙사 신청 안내 / Dormitory Application - {영문이름}',
@@ -565,24 +565,15 @@ async function mailSend(test) {
 /* ---------- 사람별 납부 비용 (오리엔테이션 안내) ----------
    등록금 부족분: 고지 금액 − 수납 금액 (자동)
    외국인등록비: 비자가 없거나(국외 체류) 현재 비자로 유학할 수 없는 사람에게 자동 체크
-   기숙사비: 기숙사 신청자에게 체크, 객실·기간을 고르면 금액이 들어감 (선택은 이 브라우저에 기억) */
+   기숙사비: 지원자 정보의 기숙사 기간·객실 유형(dorm_room)으로 자동 — 여기서 고르면 지원자 정보에도 저장
+            (DB에 dorm_room 칸이 없을 때만 이 브라우저에 기억) */
 const ARC_FEE_DEFAULT = 35000;
-const DORM_FEES = [
-  { k: '16-2A', ko: '16주 · 2인실 A (개별 욕실)', en: '16 weeks · Double Room A (private bathroom)', amt: 1408000 },
-  { k: '16-2B', ko: '16주 · 2인실 B (공용 욕실)', en: '16 weeks · Double Room B (shared bathroom)', amt: 1200000 },
-  { k: '16-3', ko: '16주 · 3인실 (공용 욕실)', en: '16 weeks · Triple Room (shared bathroom)', amt: 1008000 },
-  { k: '16-4', ko: '16주 · 4인실 (공용 욕실)', en: '16 weeks · Quad Room (shared bathroom)', amt: 800000 },
-  { k: '24-2A', ko: '24주 · 2인실 A (개별 욕실)', en: '24 weeks · Double Room A (private bathroom)', amt: 2006000 },
-  { k: '24-2B', ko: '24주 · 2인실 B (공용 욕실)', en: '24 weeks · Double Room B (shared bathroom)', amt: 1710000 },
-  { k: '24-3', ko: '24주 · 3인실 (공용 욕실)', en: '24 weeks · Triple Room (shared bathroom)', amt: 1436000 },
-  { k: '24-4', ko: '24주 · 4인실 (공용 욕실)', en: '24 weeks · Quad Room (shared bathroom)', amt: 1140000 }
-];
 let mailFees = {};
 const feeKey = () => 'mailFees:' + ((S.term && S.term.id) || '');
 function feeSaved() { try { return JSON.parse(localStorage.getItem(feeKey()) || 'null') || {}; } catch (e) { return {}; } }
 function feeSave() {
   const o = { arc: feeArcAmt(), dorm: {} };
-  Object.entries(mailFees).forEach(([id, x]) => { if (x.dorm.opt) o.dorm[id] = x.dorm.opt; });
+  if (!feeDb()) Object.entries(mailFees).forEach(([id, x]) => { if (x.dorm.opt) o.dorm[id] = x.dorm.opt; });
   try { localStorage.setItem(feeKey(), JSON.stringify(o)); } catch (e) { /* 무시 */ }
 }
 function feeArcAmt() { const el = $('#fe-arc'); const n = el ? Number(String(el.value).replace(/[^\d]/g, '')) : NaN; return Number.isFinite(n) && n > 0 ? n : (feeSaved().arc || ARC_FEE_DEFAULT); }
@@ -603,10 +594,19 @@ function feeShort(a) {
 function feeInit(list) {
   const sv = feeSaved(); mailFees = {};
   list.forEach(a => {
-    const sh = feeShort(a), arc = feeArcWhy(a), opt = (sv.dorm || {})[a.id] || '', d = DORM_FEES.find(x => x.k === opt);
+    const sh = feeShort(a), arc = feeArcWhy(a), opt = a.dorm_room || (feeDb() ? '' : (sv.dorm || {})[a.id]) || '', d = dormRoom(opt);
     mailFees[a.id] = { sh: { on: sh.amt > 0, amt: sh.amt, why: sh.why }, arc: { on: arc.on, why: arc.why },
       dorm: { on: !!a.dorm_application, opt: d ? opt : '', amt: d ? d.amt : 0 } };
   });
+}
+const feeDb = () => !!(S.hasCol && S.hasCol.dorm_room);
+async function feeDormStore(id, k) {
+  const a = S.apps.find(x => x.id === id); if (!a || !feeDb() || (a.dorm_room || null) === (k || null)) return;
+  const p = { dorm_room: k || null }; if (k) p.dorm_application = true;
+  const { error } = await sb.from('applicants').update(p).eq('id', id);
+  if (error) { toast(`${a.name_ko} 기숙사 객실 저장 실패: ${errMsg(error)}`, 'err'); return; }
+  Object.assign(a, p);
+  toast(`${a.name_ko}: 기숙사 ${k ? dormRoom(k).ko : '객실 미정'} — 지원자 정보에 저장했습니다.`);
 }
 function feeTotal(x) { return (x.sh.on ? x.sh.amt : 0) + (x.arc.on ? feeArcAmt() : 0) + (x.dorm.on ? x.dorm.amt : 0); }
 function feeSection(list) {
@@ -621,11 +621,11 @@ function feeSection(list) {
       <td class="nw">${ck('arc', x.arc.on)} <span class="fe-arc-amt">${won(arcAmt)}</span><div class="muted small">${esc(x.arc.why)}</div></td>
       <td class="nw">${ck('dorm', x.dorm.on)} <select class="fe-dorm" data-id="${a.id}" onchange="feeRead()" style="width:auto;padding:5px 7px;font-size:12px">
           <option value="">객실·기간 선택</option>${DORM_FEES.map(d => `<option value="${d.k}" ${d.k === x.dorm.opt ? 'selected' : ''}>${esc(d.ko)} — ${won(d.amt)}</option>`).join('')}</select>
-        <div class="muted small">${a.dorm_application ? '기숙사 신청' : '기숙사 미신청'}</div></td>
+        <div class="muted small">${a.dorm_application ? (dormRoom(a.dorm_room) ? '지원자 정보에 저장된 객실' : '기숙사 신청 · 객실 미정') : '기숙사 미신청'}</div></td>
       <td class="nw" style="font-weight:700" id="fe-tot-${a.id}">${won(feeTotal(x))}</td></tr>`;
   }).join('');
   return `<div class="sec"><h3>납부 비용 (사람별) <span class="muted small">체크한 항목만 본문의 <code>{납부비용}</code> 자리에 들어가고, 하나도 없으면 그 부분이 빠집니다</span></h3>
-    <div class="muted small" style="margin-bottom:6px">등록금 부족분은 수납 금액으로 자동 계산 · 외국인등록비는 비자가 없거나(국외 체류) 현재 비자로 유학할 수 없는 사람에게 자동 체크 · 기숙사비는 기숙사 신청자에게 체크되며 객실·기간을 고르면 금액이 들어갑니다 (고른 객실은 이 브라우저에 기억)</div>
+    <div class="muted small" style="margin-bottom:6px">등록금 부족분은 수납 금액으로 자동 계산 · 외국인등록비는 비자가 없거나(국외 체류) 현재 비자로 유학할 수 없는 사람에게 자동 체크 · 기숙사비는 지원자 정보의 기숙사 기간·객실 유형으로 자동으로 들어갑니다${feeDb() ? ' (여기서 고르면 지원자 정보에도 저장)' : ' (DB에 객실 칸이 없어 고른 객실은 이 브라우저에만 기억 — sql/2026-11-11_기숙사_객실유형.sql 실행 필요)'}</div>
     <div class="grid2">${field('외국인등록비 (1인)', `<input id="fe-arc" type="number" min="0" step="1000" value="${arcAmt}" oninput="feeRead()">`)}</div>
     ${list.length ? `<div class="tbl-wrap" style="max-height:300px;overflow:auto"><table class="tbl" style="min-width:900px"><thead><tr><th>접수번호</th><th>성명</th><th>등록금 부족분</th><th>외국인등록비</th><th>기숙사비</th><th>합계</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}</div>`;
 }
@@ -640,6 +640,7 @@ function feeRead() {
     x.arc.on = c2.checked;
     const d = DORM_FEES.find(o => o.k === sel.value);
     if (d && d.k !== x.dorm.opt) c3.checked = true; // 객실을 고르면 자동 체크
+    if ((d ? d.k : '') !== x.dorm.opt) feeDormStore(id, d ? d.k : '');
     x.dorm.opt = d ? d.k : ''; x.dorm.amt = d ? d.amt : 0; x.dorm.on = c3.checked;
     const t = $(`#fe-tot-${id}`); if (t) t.textContent = won(feeTotal(x));
   });
