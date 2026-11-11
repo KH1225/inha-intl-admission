@@ -227,12 +227,12 @@ function rowHtml(a) {
   return `<tr class="${a.status === '접수취소' ? 'cancelled' : ''}">
     <td><span class="rno">${esc(a.receipt_no)}</span>${typeof isSample === 'function' && isSample(a) ? ' <span class="pill s-cancel">샘플</span>' : ''}</td>
     <td><div class="who-cell">${avatarHtml(a)}<div>
-      <div class="nm">${esc(a.name_ko)} <span class="muted small">${a.gender === '여' ? '여' : '남'}</span>${ag}</div>
+      <div class="nm"><span class="nw">${esc(a.name_ko)}</span> <span class="muted small">${a.gender === '여' ? '여' : '남'}</span>${ag}</div>
       <div class="muted small">${esc(a.name_en)}</div>
       ${a.visa_type ? `<div class="small" style="color:var(--pri2);font-weight:700">비자: ${esc(a.visa_type)}</div>` : ''}
       ${full && a.dorm_application ? `<div class="small" style="color:#0d9488;font-weight:700">기숙사: ${esc(dormRoom(a.dorm_room) ? dormRoom(a.dorm_room).ko : '신청 (객실 미정)')}</div>` : ''}</div></div></td>
     <td style="white-space:nowrap">${esc(a.nationality)}</td>
-    <td><div class="nm">${esc(d.name_ko || '-')} <span class="badge kind">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
+    <td><div class="nm"><span class="nw">${esc(d.name_ko || '-')}</span> <span class="badge kind">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
       ${d.program_type ? `<div class="muted small">${esc(d.program_type === '전공심화' ? '전공심화과정' : d.program_type)}</div>` : ''}</td>
     <td><span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span></td>
     <td style="white-space:nowrap">${a.topik_level ? `<b>TOPIK ${a.topik_level}급</b>` : '<span class="muted">-</span>'}</td>
