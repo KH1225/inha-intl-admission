@@ -78,6 +78,7 @@ function buildImportPreview(rows) {
     if (!birth || birth === 'INVALID') errs.push('생년월일 형식 오류');
     if (!nat) errs.push('국적 없음');
     if (!dept) errs.push(`학과명 불일치(${dname || '비어 있음'})`);
+    else if (/편입/.test(String(kind)) && !isTransferDept(dept)) errs.push(`편입학 불가 학과(${dept.name_ko}) — ${TRANSFER_DEPTS.join(', ')}만 가능`);
     if (!passport) errs.push('여권번호 없음');
     else { if (seen.has(passport)) errs.push('파일 안에서 여권번호 중복'); seen.add(passport); }
     const routeRaw = cellStr(get(r, '지원경로'));

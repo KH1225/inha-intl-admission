@@ -219,14 +219,24 @@ async function onAgencySel(el) {
   el.value = String(ag.id);
   toast(dup ? `이미 있는 유학원 “${ag.name}”을 선택했습니다.` : `유학원 “${ag.name}”을 추가했습니다.`);
 }
+/* 지원학과 목록: 편입학이면 편입 모집 학과만 */
+function afDeptOptions(kind, curId) {
+  return S.depts.filter(d => (d.active || d.id === curId) && (kind !== '편입학' || isTransferDept(d)))
+    .map(d => `<option value="${d.id}" ${String(curId) === String(d.id) ? 'selected' : ''}>${esc(d.name_ko)}${d.program_type === '전공심화' ? ' [전공심화]' : ''}</option>`).join('');
+}
+function afRefreshDepts() {
+  const kind = $('#af-admission_kind').value, el = $('#af-department_id'), cur = el.value;
+  el.innerHTML = `<option value="">선택</option>${afDeptOptions(kind, cur)}`;
+  if (cur && !el.querySelector(`option[value="${cur}"]`)) { el.value = ''; toast(`편입학은 ${TRANSFER_DEPTS.join(', ')}만 지원할 수 있어 지원학과 선택을 비웠습니다.`); }
+  $('#af-tr-note').classList.toggle('hide', kind !== '편입학');
+}
 function openApplicantForm(id) {
   pendingPhoto = null;
   const edit = !!id;
   const a = edit ? S.apps.find(x => x.id === id) : { admission_kind: '신입학', route: '개별지원', gender: '' };
   const v = k => esc(a[k] == null ? '' : a[k]);
   const sel = (k, val) => (String(a[k]) === String(val) ? 'selected' : '');
-  const deptOpts = S.depts.filter(d => d.active || d.id === a.department_id)
-    .map(d => `<option value="${d.id}" ${sel('department_id', d.id)}>${esc(d.name_ko)}${d.program_type === '전공심화' ? ' [전공심화]' : ''}</option>`).join('');
+  const deptOpts = afDeptOptions(a.admission_kind, a.department_id);
   const html = `${mHead(edit ? '지원자 정보 수정' : '지원자 추가', edit ? esc(a.receipt_no) : `${esc(S.term.name)} 모집`)}
   <div class="m-body"><div id="af-err" class="err-box hide"></div>
    <div class="sec"><h3>사진 <span class="muted small">여권용 사진 (JPG·PNG, 자동으로 줄여서 저장됩니다)</span></h3>
@@ -242,9 +252,10 @@ function openApplicantForm(id) {
     ${field('접수번호 (비우면 자동 부여)', `<input id="af-receipt_no" value="${v('receipt_no')}" ${edit ? 'disabled' : ''} placeholder="ITC-${S.term.year}-000">`)}
    </div></div>
    <div class="sec"><h3>지원 정보</h3><div class="grid2">
-    ${field('입학구분', `<select id="af-admission_kind" onchange="$('#af-ty').classList.toggle('hide',this.value!=='편입학')"><option ${sel('admission_kind', '신입학')}>신입학</option><option ${sel('admission_kind', '편입학')}>편입학</option></select>`, { req: 1 })}
+    ${field('입학구분', `<select id="af-admission_kind" onchange="$('#af-ty').classList.toggle('hide',this.value!=='편입학');afRefreshDepts()"><option ${sel('admission_kind', '신입학')}>신입학</option><option ${sel('admission_kind', '편입학')}>편입학</option></select>`, { req: 1 })}
     <label class="fld ${a.admission_kind === '편입학' ? '' : 'hide'}" id="af-ty"><span>편입 학년</span><select id="af-transfer_year"><option value="">선택</option><option value="2" ${sel('transfer_year', 2)}>2학년</option><option value="3" ${sel('transfer_year', 3)}>3학년</option></select></label>
     ${field('지원학과', `<select id="af-department_id"><option value="">선택</option>${deptOpts}</select>`, { req: 1 })}
+    <div class="muted small ${a.admission_kind === '편입학' ? '' : 'hide'}" id="af-tr-note" style="grid-column:1/-1;margin-top:-6px">편입학은 ${esc(TRANSFER_DEPTS.join(', '))}만 지원할 수 있습니다.</div>
     ${field('전형유형', `<select id="af-qualification_code"><option value="">선택</option>${S.quals.map(q => `<option value="${q.code}" ${sel('qualification_code', q.code)}>${esc(q.name_ko)}</option>`).join('')}</select>`)}
     ${field('지원경로', `<select id="af-route" onchange="$('#af-ag').classList.toggle('hide',this.value!=='유학원');$('#af-ps-lbl').textContent=this.value===ROUTE_PARTNER?'추천 협약학교 *':'협약학교 (협약 장학금 대상)'"><option ${sel('route', '개별지원')}>개별지원</option><option ${sel('route', '유학원')}>유학원</option><option ${sel('route', ROUTE_PARTNER)}>${ROUTE_PARTNER}</option><option ${sel('route', ROUTE_ALUMNI)}>${ROUTE_ALUMNI}</option></select>`)}
     <label class="fld ${a.route === '유학원' ? '' : 'hide'}" id="af-ag"><span>유학원</span><select id="af-agency_id" onchange="onAgencySel(this)"><option value="">선택</option>${S.agencies.filter(x => x.active || x.id === a.agency_id).map(x => `<option value="${x.id}" ${sel('agency_id', x.id)}>${esc(x.name)}</option>`).join('')}${can.edit() ? '<option value="__new">+ 새 유학원 추가</option>' : ''}</select></label>
@@ -298,6 +309,7 @@ async function saveApplicant(id) {
   if (!p.nationality) errs.push('국적을 입력하세요.');
   if (!p.department_id) errs.push('지원학과를 선택하세요.');
   if (kind === '편입학' && !p.transfer_year) errs.push('편입 학년을 선택하세요.');
+  if (kind === '편입학' && p.department_id && !isTransferDept(S.deptMap[p.department_id])) errs.push(`편입학은 ${TRANSFER_DEPTS.join(', ')}만 지원할 수 있습니다.`);
   if (route === '유학원' && !p.agency_id) errs.push('유학원을 선택하세요.');
   if (route === ROUTE_PARTNER && !p.partner_school_id) errs.push('추천한 협약학교를 선택하세요.');
   if (p.email && !/^\S+@\S+\.\S+$/.test(p.email)) errs.push('이메일 형식을 확인하세요.');

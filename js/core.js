@@ -135,6 +135,9 @@ function rebuildMaps() {
 const deptName = id => (S.deptMap[id] ? S.deptMap[id].name_ko : '-');
 const qualName = code => (S.qualMap[code] ? S.qualMap[code].name_ko : '-');
 
+/* 편입학 모집 학과 (학과명 기준) */
+const TRANSFER_DEPTS = ['항공운항과', '항공경영학과'];
+const isTransferDept = d => !!d && TRANSFER_DEPTS.includes(String(d.name_ko || '').replace(/\s/g, ''));
 const ROUTE_PARTNER = '협약학교 추천';
 const ROUTE_ALUMNI = '우리대학 졸업';
 const ROUTES = ['개별지원', '유학원', ROUTE_PARTNER, ROUTE_ALUMNI];
