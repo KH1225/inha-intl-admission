@@ -225,12 +225,14 @@ async function openMailModal(kind) {
   } catch (e) { /* 기록 테이블이 없어도 화면은 엽니다 */ }
   const sv = mailSaved(mailKind);
   const depts = [...new Set(list.map(a => a.department_id))].map(id => ({ id, name: deptName(id) })).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  const hasCc = !!(S.hasCol && S.hasCol.cc_emails);
   const rows = list.map(a => {
     const ok = emailOk(a.email), sent = mailLogs[a.id], on = ok && !sent && (!K.defaultOn || K.defaultOn(a));
     return `<tr><td><input type="checkbox" class="ml-ck" data-id="${a.id}" ${on ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="mailCount()" style="width:auto"></td>
       <td class="nw">${esc(a.receipt_no)}</td><td>${esc(a.name_ko)}<div class="muted small">${esc(a.name_en)}</div></td>
       <td>${esc(deptName(a.department_id))}</td><td><span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></td>
       <td>${ok ? esc(a.email) : '<span style="color:var(--bad)">이메일 없음</span>'}</td>
+      ${hasCc ? `<td><input class="ml-cc" data-id="${a.id}" value="${esc(a.cc_emails || '')}" placeholder="보호자·유학원 이메일" style="min-width:190px;padding:5px 7px;font-size:12px"></td>` : ''}
       <td class="nw small">${K.info(a)}</td>
       <td class="nw">${sent ? `<span class="pill s-pass">${fmtDateTime(sent)}</span>` : '<span class="muted">-</span>'}</td></tr>`;
   }).join('');
@@ -240,7 +242,8 @@ async function openMailModal(kind) {
    <div class="m-body">
     <div class="notice small" style="margin-bottom:10px">${esc(K.desc)}</div>
     <div class="sec"><h3>받는 사람 <span class="muted small">${list.length ? `<a href="#" onclick="mailAll(true);return false">전체 선택</a> · <a href="#" onclick="mailAll(false);return false">전체 해제</a> · 이미 보낸 사람과 이메일이 없는 사람은 처음에 선택되지 않습니다` : ''}</span></h3>
-     ${list.length ? `<div class="tbl-wrap" style="max-height:260px;overflow:auto"><table class="tbl" style="min-width:820px"><thead><tr><th></th><th>접수번호</th><th>성명</th><th>학과</th><th>상태</th><th>이메일</th><th>정보</th><th>보낸 시각</th></tr></thead><tbody>${rows}</tbody></table></div>`
+     ${hasCc && list.length ? `<label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:8px"><input id="ml-cc-on" type="checkbox" checked style="width:auto"> 추가 이메일에도 같은 내용 보내기 (참조/CC) <span class="muted small" style="font-weight:500">— 쉼표로 여러 개(최대 3개), 입력한 주소는 지원자 정보에 저장됩니다</span></label>` : ''}
+     ${list.length ? `<div class="tbl-wrap" style="max-height:260px;overflow:auto"><table class="tbl" style="min-width:${hasCc ? 1020 : 820}px"><thead><tr><th></th><th>접수번호</th><th>성명</th><th>학과</th><th>상태</th><th>이메일</th>${hasCc ? '<th>추가 이메일 (참조)</th>' : ''}<th>정보</th><th>보낸 시각</th></tr></thead><tbody>${rows}</tbody></table></div>`
        : '<div class="muted">이 메일을 받을 지원자가 없습니다.</div>'}</div>
     ${K.zoom ? `<div class="sec"><h3>Zoom 주소 <span class="muted small">학과별 주소를 비워 두면 기본 주소가 들어갑니다</span></h3>
      <div class="grid2">${field('기본 Zoom 주소', `<input id="ml-zoom" placeholder="https://us06web.zoom.us/j/..." value="${esc(sv.zoom || '')}" oninput="mailPreview()">`, { full: 1 })}
@@ -358,12 +361,31 @@ async function mailSend(test) {
     const n = ids.filter(id => !S.payments[id]).length; if (n) warns.push(`고지 금액이 없는 지원자 ${n}명 (금액이 ‘-’로 표시됨)`);
     if (!S.term.account_no) warns.push('학기 설정에 납부 계좌번호가 비어 있습니다 (등록금 & 등록기간 설정)');
   }
+  // 추가 이메일(참조): 형식 확인 후 바뀐 값은 지원자 정보에 저장
+  const ccOn = !test && !!$('#ml-cc-on') && $('#ml-cc-on').checked;
+  if (ccOn) {
+    const bad = [], changed = [];
+    for (const id of ids) {
+      const el = $(`.ml-cc[data-id="${id}"]`); if (!el) continue;
+      const list = splitEmails(el.value), a = S.apps.find(x => x.id === id);
+      if (list.some(e => !emailValid(e)) || list.length > 3) { bad.push(a.name_ko); continue; }
+      const v = list.join(', ') || null;
+      if ((a.cc_emails || null) !== v) changed.push([a, v]);
+    }
+    if (bad.length) { toast(`추가 이메일 형식을 확인하세요 (최대 3개): ${bad.join(', ')}`, 'err'); return; }
+    for (const [a, v] of changed) {
+      const { error } = await sb.from('applicants').update({ cc_emails: v }).eq('id', a.id);
+      if (error) { toast(`${a.name_ko} 추가 이메일 저장 실패: ${errMsg(error)}`, 'err'); return; }
+      a.cc_emails = v;
+    }
+  }
+  const nCc = ccOn ? ids.filter(id => (S.apps.find(x => x.id === id) || {}).cc_emails).length : 0;
   const attach = K.attach && $('#ml-att') && $('#ml-att').checked ? K.attach : null;
   if (attach && !test) { const n = ids.filter(id => attach.can(S.apps.find(x => x.id === id))).length; if (n) warns.push(`${attach.label}를 발급할 수 없는 지원자 ${n}명 (이 사람들은 발송되지 않음)`); }
   if (K.extras) { const empty = K.extras.filter(([k]) => !f.extra[k]).map(([, l]) => l); if (empty.length) warns.push(`비어 있는 안내 항목: ${empty.join(', ')}`); }
-  if (!test && !confirm(`[${K.label}] ${ids.length}명에게 메일을 발송합니다.` + (attach ? `\n📎 ${attach.label} PDF 첨부 (발급 기록이 남습니다)` : '') + (warns.length ? '\n\n⚠ ' + warns.join('\n⚠ ') : '') + '\n\n계속할까요?')) return;
+  if (!test && !confirm(`[${K.label}] ${ids.length}명에게 메일을 발송합니다.` + (attach ? `\n📎 ${attach.label} PDF 첨부 (발급 기록이 남습니다)` : '') + (nCc ? `\n✉ 추가 이메일(참조)도 함께 받는 지원자 ${nCc}명` : '') + (warns.length ? '\n\n⚠ ' + warns.join('\n⚠ ') : '') + '\n\n계속할까요?')) return;
   mailRemember(mailKind, { subject: f.subject, body: f.body, zoom: f.zoom, zoomByDept: f.zoomByDept, extra: f.extra });
-  const req = { kind: mailKind, subject: f.subject, body: f.body, zoom_default: f.zoom, zoom_by_dept: f.zoomByDept, extra: f.extra };
+  const req = { kind: mailKind, include_cc: ccOn, subject: f.subject, body: f.body, zoom_default: f.zoom, zoom_by_dept: f.zoomByDept, extra: f.extra };
   const btns = ['#ml-go', '#ml-test'].map(s => $(s)); btns.forEach(b => { b.disabled = true; });
   const res = $('#ml-res');
   try {

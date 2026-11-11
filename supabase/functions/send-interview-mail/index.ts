@@ -100,7 +100,7 @@ const fill = (tpl: string, v: Record<string, string>) => tpl.replace(/\{([^{}]+)
 const okUrl = (u: unknown) => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) && u.length < 500;
 
 type Att = { filename: string; base64: string };
-async function sendMail(to: string, subject: string, text: string, atts: Att[] = []) {
+async function sendMail(to: string, cc: string[], subject: string, text: string, atts: Att[] = []) {
   const from = env("MAIL_FROM");
   const replyTo = env("MAIL_REPLY_TO") || undefined;
   const html = `<div style="font-family:'Malgun Gothic',Arial,sans-serif;font-size:14px;line-height:1.7;color:#111">${linkify(escHtml(text)).replace(/\n/g, "<br>")}</div>`;
@@ -108,7 +108,7 @@ async function sendMail(to: string, subject: string, text: string, atts: Att[] =
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [to], subject, text, html, ...(replyTo ? { reply_to: replyTo } : {}),
+      body: JSON.stringify({ from, to: [to], ...(cc.length ? { cc } : {}), subject, text, html, ...(replyTo ? { reply_to: replyTo } : {}),
         ...(atts.length ? { attachments: atts.map((x) => ({ filename: x.filename, content: x.base64 })) } : {}) }),
     });
     if (!r.ok) throw new Error(`Resend ${r.status}: ${(await r.text()).slice(0, 200)}`);
@@ -121,7 +121,7 @@ async function sendMail(to: string, subject: string, text: string, atts: Att[] =
     },
   });
   try {
-    await client.send({ from, to, subject, content: text, html, ...(replyTo ? { replyTo } : {}),
+    await client.send({ from, to, ...(cc.length ? { cc } : {}), subject, content: text, html, ...(replyTo ? { replyTo } : {}),
       ...(atts.length ? { attachments: atts.map((x) => ({ filename: x.filename, content: x.base64, encoding: "base64" as const, contentType: "application/pdf" })) } : {}) });
   } finally {
     await client.close();
@@ -159,6 +159,7 @@ Deno.serve(async (req) => {
   const extra: Record<string, string> = {};
   for (const [k, v] of Object.entries(body.extra ?? {})) extra[String(k).slice(0, 30)] = String(v ?? "").slice(0, 1000);
   const testTo = body.test === true ? (user.email ?? "") : "";
+  const includeCc = body.include_cc === true && !testTo;
   // 첨부: { [지원자ID]: { filename, base64 } } — PDF만, 1개당 5MB 이하
   const attOf: Record<string, Att> = {};
   for (const [k, v] of Object.entries(body.attachments ?? {})) {
@@ -170,8 +171,9 @@ Deno.serve(async (req) => {
   if (!ids.length || !subjectTpl || !bodyTpl) return json({ error: "대상자, 제목, 본문이 필요합니다." }, 400);
 
   // 3) 지원자·학기·학과·면접·납부 정보 (DB 값만 사용)
-  const { data: apps, error: e1 } = await admin.from("applicants")
-    .select("id,term_id,receipt_no,name_ko,name_en,email,department_id,status,scholarship_type").in("id", ids);
+  const baseCols = "id,term_id,receipt_no,name_ko,name_en,email,department_id,status,scholarship_type";
+  let { data: apps, error: e1 } = await admin.from("applicants").select(baseCols + ",cc_emails").in("id", ids);
+  if (e1 && /cc_emails/.test(e1.message)) ({ data: apps, error: e1 } = await admin.from("applicants").select(baseCols).in("id", ids));
   if (e1) return json({ error: e1.message }, 500);
   const uniq = (xs: unknown[]) => [...new Set(xs.filter((x) => x != null))];
   const termIds = uniq((apps ?? []).map((a) => a.term_id));
@@ -191,15 +193,18 @@ Deno.serve(async (req) => {
     if (bad && !testTo) { results.push({ id: a.id, ok: false, error: bad }); continue; }
     const to = testTo || (a.email ?? "").trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { results.push({ id: a.id, ok: false, error: "이메일 없음/형식 오류" }); continue; }
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cc = includeCc ? String(a.cc_emails ?? "").split(/[\s,;]+/).filter((e) => emailRe.test(e) && e !== to).slice(0, 3) : [];
     const t = terms?.find((x) => x.id === a.term_id) ?? {};
     const vars = buildVars(a, t, depts?.find((d) => d.id === a.department_id)?.name_ko ?? "", by(ivs, a.id), pay,
       zoomByDept[String(a.department_id)] || zoomDefault, extra);
     const subject = (testTo ? "[테스트] " : "") + fill(subjectTpl, vars);
     const text = fill(bodyTpl, vars);
     try {
-      await sendMail(to, subject, text, attOf[String(a.id)] ? [attOf[String(a.id)]] : []);
-      results.push({ id: a.id, ok: true, to });
-      if (!testTo) await admin.from("mail_logs").insert({ applicant_id: a.id, kind, to_email: to, subject, sent_by: user.id, ok: true });
+      await sendMail(to, cc, subject, text, attOf[String(a.id)] ? [attOf[String(a.id)]] : []);
+      const toLog = cc.length ? `${to} (참조: ${cc.join(", ")})` : to;
+      results.push({ id: a.id, ok: true, to: toLog });
+      if (!testTo) await admin.from("mail_logs").insert({ applicant_id: a.id, kind, to_email: toLog, subject, sent_by: user.id, ok: true });
     } catch (err) {
       const msg = String((err as Error)?.message ?? err).slice(0, 300);
       results.push({ id: a.id, ok: false, to, error: msg });

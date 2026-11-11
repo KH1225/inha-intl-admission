@@ -130,18 +130,27 @@ const qualName = code => (S.qualMap[code] ? S.qualMap[code].name_ko : '-');
 
 const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,passport_last4,passport_expiry,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
 
+const OPT_COLS = ['domestic_hs', 'cc_emails'];
+/* 쉼표·공백·세미콜론으로 구분된 이메일 목록 */
+const splitEmails = s => String(s || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+const emailValid = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 async function loadTermData() {
   if (!S.term) { S.apps = []; return; }
   if (can.broad()) {
-    // domestic_hs(국내 고교 출신) 칸은 SQL 적용 전에는 없을 수 있어, 없으면 빼고 다시 불러옵니다
-    try {
-      S.apps = await fetchAll(() => sb.from('applicants').select(APP_COLS + ',domestic_hs').eq('term_id', S.term.id).order('id'));
-      S.noDomHs = false;
-    } catch (e) {
-      if (!/domestic_hs/.test(errMsg(e))) throw e;
-      S.noDomHs = true;
-      S.apps = await fetchAll(() => sb.from('applicants').select(APP_COLS).eq('term_id', S.term.id).order('id'));
+    // 나중에 추가된 칸(국내 고교 출신, 추가 이메일)은 SQL 적용 전에는 없을 수 있어, 없는 칸은 빼고 다시 불러옵니다
+    let opt = OPT_COLS.slice();
+    for (;;) {
+      try {
+        S.apps = await fetchAll(() => sb.from('applicants').select([APP_COLS, ...opt].join(',')).eq('term_id', S.term.id).order('id'));
+        break;
+      } catch (e) {
+        const miss = opt.find(c => errMsg(e).includes(c));
+        if (!miss) throw e;
+        opt = opt.filter(c => c !== miss);
+      }
     }
+    S.hasCol = Object.fromEntries(OPT_COLS.map(c => [c, opt.includes(c)]));
+    S.noDomHs = !S.hasCol.domestic_hs;
   } else {
     S.apps = await fetchAll(() => sb.from('interview_targets').select('*').eq('term_id', S.term.id).order('id'));
   }
