@@ -88,7 +88,8 @@ const linkify = (h: string) => h.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">
 const fill = (tpl: string, v: Record<string, string>) => tpl.replace(/\{([^{}]+)\}/g, (m, k) => (k in v ? v[k] : m));
 const okUrl = (u: unknown) => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) && u.length < 500;
 
-async function sendMail(to: string, subject: string, text: string) {
+type Att = { filename: string; base64: string };
+async function sendMail(to: string, subject: string, text: string, atts: Att[] = []) {
   const from = env("MAIL_FROM");
   const replyTo = env("MAIL_REPLY_TO") || undefined;
   const html = `<div style="font-family:'Malgun Gothic',Arial,sans-serif;font-size:14px;line-height:1.7;color:#111">${linkify(escHtml(text)).replace(/\n/g, "<br>")}</div>`;
@@ -96,7 +97,8 @@ async function sendMail(to: string, subject: string, text: string) {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [to], subject, text, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
+      body: JSON.stringify({ from, to: [to], subject, text, html, ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(atts.length ? { attachments: atts.map((x) => ({ filename: x.filename, content: x.base64 })) } : {}) }),
     });
     if (!r.ok) throw new Error(`Resend ${r.status}: ${(await r.text()).slice(0, 200)}`);
     return;
@@ -108,7 +110,8 @@ async function sendMail(to: string, subject: string, text: string) {
     },
   });
   try {
-    await client.send({ from, to, subject, content: text, html, ...(replyTo ? { replyTo } : {}) });
+    await client.send({ from, to, subject, content: text, html, ...(replyTo ? { replyTo } : {}),
+      ...(atts.length ? { attachments: atts.map((x) => ({ filename: x.filename, content: x.base64, encoding: "base64" as const, contentType: "application/pdf" })) } : {}) });
   } finally {
     await client.close();
   }
@@ -145,6 +148,14 @@ Deno.serve(async (req) => {
   const extra: Record<string, string> = {};
   for (const [k, v] of Object.entries(body.extra ?? {})) extra[String(k).slice(0, 30)] = String(v ?? "").slice(0, 1000);
   const testTo = body.test === true ? (user.email ?? "") : "";
+  // 첨부: { [지원자ID]: { filename, base64 } } — PDF만, 1개당 5MB 이하
+  const attOf: Record<string, Att> = {};
+  for (const [k, v] of Object.entries(body.attachments ?? {})) {
+    const x = v as any, b64 = String(x?.base64 ?? "");
+    const name = String(x?.filename ?? "document.pdf").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 100);
+    if (!b64.startsWith("JVBER") || b64.length > 7_000_000 || !/\.pdf$/i.test(name)) return json({ error: "첨부 파일은 5MB 이하 PDF만 가능합니다." }, 400);
+    attOf[String(k)] = { filename: name, base64: b64 };
+  }
   if (!ids.length || !subjectTpl || !bodyTpl) return json({ error: "대상자, 제목, 본문이 필요합니다." }, 400);
 
   // 3) 지원자·학기·학과·면접·납부 정보 (DB 값만 사용)
@@ -175,7 +186,7 @@ Deno.serve(async (req) => {
     const subject = (testTo ? "[테스트] " : "") + fill(subjectTpl, vars);
     const text = fill(bodyTpl, vars);
     try {
-      await sendMail(to, subject, text);
+      await sendMail(to, subject, text, attOf[String(a.id)] ? [attOf[String(a.id)]] : []);
       results.push({ id: a.id, ok: true, to });
       if (!testTo) await admin.from("mail_logs").insert({ applicant_id: a.id, kind, to_email: to, subject, sent_by: user.id, ok: true });
     } catch (err) {

@@ -66,6 +66,65 @@ async function printDoc(id, type) {
   toast(`${type}를 발급했습니다. (${docNo})`);
 }
 
+/* ---------- 메일 첨부용 PDF ----------
+   인쇄용 문서(HTML)를 화면 밖에서 그려 A4 PDF로 만듭니다.
+   sample=true 이면 발급 기록 없이 '견본' 번호로 만듭니다 (테스트 발송용). */
+const PDF_LIBS = ['https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'];
+let pdfLibsReady = null;
+function loadPdfLibs() {
+  if (!pdfLibsReady) {
+    pdfLibsReady = Promise.all(PDF_LIBS.map(src => new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('PDF 도구를 불러오지 못했습니다.')); document.head.appendChild(s);
+    }))).catch(e => { pdfLibsReady = null; throw e; });
+  }
+  return pdfLibsReady;
+}
+async function toDataUrl(url) {
+  try {
+    const r = await fetch(url); if (!r.ok) return null;
+    const b = await r.blob();
+    return await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(b); });
+  } catch (e) { return null; }
+}
+let pdfAssets = null;
+async function pdfAssetsOnce() {
+  if (!pdfAssets) {
+    const [logo, seal] = await Promise.all([toDataUrl(C.LOGO), sealUrl().then(u => (u ? toDataUrl(u) : null))]);
+    pdfAssets = { logo, seal };
+    setTimeout(() => { pdfAssets = null; }, 10 * 60 * 1000);
+  }
+  return pdfAssets;
+}
+async function docPdfBase64(id, type, sample) {
+  await loadPdfLibs();
+  const a = S.apps.find(x => x.id === id);
+  let docNo = '견본 SAMPLE', issueDate = todayYMD();
+  if (!sample) {
+    const { data: issued, error } = await sb.rpc('issue_document', { p_applicant: id, p_type: type });
+    if (error) throw new Error(`${type} 발급 실패: ${errMsg(error)}`);
+    const iss = Array.isArray(issued) ? issued[0] : issued;
+    docNo = iss.doc_no + (iss.reissue_no ? `-R${iss.reissue_no}` : '');
+    issueDate = (iss.issued_at || '').slice(0, 10) || todayYMD();
+  }
+  const as = await pdfAssetsOnce();
+  const c = { a, t: S.term, d: S.deptMap[a.department_id] || {}, q: S.qualMap[a.qualification_code] || {}, docNo, issueDate, seal: as.seal, hasLogo: !!as.logo, pay: S.payments[id] };
+  let html = type === '등록금고지서' ? docBill(c) : type === '등록금납부확인서' ? docReceipt(c) : docNotice(c);
+  if (as.logo) html = html.split(`src="${esc(C.LOGO)}"`).join(`src="${as.logo}"`);
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;background:#fff;z-index:-1';
+  host.innerHTML = html;
+  document.body.appendChild(host);
+  try {
+    await Promise.all($$('img', host).map(im => (im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; }))));
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const canvas = await window.html2canvas(host.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+    const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, 297);
+    const b64 = pdf.output('datauristring').split(',')[1];
+    return { base64: b64, docNo };
+  } finally { host.remove(); }
+}
+
 /* ---------- 공통 틀 ---------- */
 function docFrame(c, titleKo, titleEn, inner, opts = {}) {
   return `<div class="doc ${opts.cls || ''}"><div class="doc-border">
