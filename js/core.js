@@ -57,6 +57,13 @@ function errMsg(e) {
     return '이미 같은 값이 등록되어 있습니다.';
   }
   if (/row-level security|permission denied/i.test(m)) return '이 작업을 할 권한이 없습니다.';
+  // 새 기능용 DB 설정(SQL)을 아직 실행하지 않았을 때
+  const sqlHint = [
+    [/applicants_route_check|enum .*route/i, '지원경로', '2026-11-11_지원경로_추가.sql'],
+    [/applicants_status_check|enum .*status/i, '접수취소 상태', '2026-11-10_접수취소_상태추가.sql'],
+    [/document_types_admission_kind/i, '전공심화 서류 구분', '2026-11-11_전공심화_제출서류.sql']
+  ].find(([re]) => re.test(m));
+  if (sqlHint) return `DB에 새 ${sqlHint[1]} 설정이 아직 없습니다. 총괄관리자가 Supabase SQL Editor에서 sql/${sqlHint[2]} 를 실행해야 합니다.`;
   return m;
 }
 function toast(msg, type = 'ok') {
