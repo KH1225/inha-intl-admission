@@ -92,7 +92,7 @@ function crRowHtml(c, ed, i) {
   return `<tr class="cr-row"><td class="c">${i + 1}</td>
     <td><select class="cr-cat" onchange="crTotals(this)"><option value="">-</option>${CR_CATS.map(x => `<option ${c.category === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
     <td><input class="cr-nm" value="${v('course_name')}" placeholder="예: 항공학개론(Introduction to Aviation)"></td>
-    <td><input class="cr-cr" type="number" min="0" step="0.5" value="${v('credits')}" oninput="crTotals(this)" style="width:70px"></td>
+    <td><input class="cr-cr" type="number" min="0" step="0.5" value="${v('credits')}" oninput="crTotals(this)" style="width:64px"></td>
     <td class="c cr-okc"><input class="cr-ok" type="checkbox" ${c.recognized ? 'checked' : ''} onchange="crTotals(this)" title="인정"></td>
     <td><button class="btn sm" title="줄 삭제" onclick="const t=this.closest('table');this.closest('tr').remove();crTotals(t)">✕</button></td></tr>`;
 }
@@ -112,7 +112,7 @@ function crCardHtml(a) {
     ${field(`전적교 대학명${crPartner(a) ? ' <span class="muted small">(협약학교)</span>' : ''}`, ed ? `<input class="cr-ps" value="${esc(crSchool(a))}" placeholder="예: Kyrgyz-Korean College">` : `<div>${esc(crSchool(a)) || '-'}</div>`)}
     ${field('전적교 학년', ed ? `<select class="cr-py"><option value="">-</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(r.prev_year) === n ? 'selected' : ''}>${n}학년</option>`).join('')}</select>` : `<div>${r.prev_year ? esc(r.prev_year) + '학년' : '-'}</div>`)}
    </div>
-   <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:640px"><thead><tr><th>NO</th><th>구분</th><th>교과목명</th><th>학점</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
+   <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:760px;width:100%"><colgroup><col style="width:44px"><col style="width:84px"><col><col style="width:84px"><col style="width:76px">${ed ? '<col style="width:48px">' : ''}</colgroup><thead><tr><th>NO</th><th>구분</th><th>교과목명</th><th>학점</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
     <tbody>${rows.map((c, i) => crRowHtml(c, ed, i)).join('') || (ed ? '' : '<tr><td colspan="5" class="muted c">입력된 과목이 없습니다</td></tr>')}</tbody></table></div>
    ${ed ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn sm" onclick="crAddRow('${a.id}')">＋ 과목 추가</button>
      <button class="btn sm blue" onclick="crPaste('${a.id}')">과목 붙여넣기</button>

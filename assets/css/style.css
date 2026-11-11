@@ -379,6 +379,7 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 /* 학점인정심사 */
 .cr-card.done{border-left-color:var(--ok,#059669)}
 .cr-sum{display:flex;gap:14px}.cr-sum div{text-align:center}.cr-sum span{display:block;font-size:11px;color:var(--mute)}.cr-sum b{font-size:20px}
+.cr-tbl{table-layout:fixed}.cr-tbl input.cr-nm{width:100%;min-width:0}.cr-tbl select.cr-cat{width:100%}
 .cr-tbl td.c{text-align:center}.cr-tbl input,.cr-tbl select{padding:5px 7px;font-size:13px}
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 @media (max-width:760px){.grid3{grid-template-columns:1fr}}
