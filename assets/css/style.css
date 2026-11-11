@@ -130,10 +130,11 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .m-head{display:flex;justify-content:space-between;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);align-items:flex-start}
 .m-head h2{font-size:17px}
 .m-head .x{border:1px solid var(--line);background:var(--card);border-radius:9px;width:32px;height:32px;font-size:16px}
-.m-body{padding:18px 20px;display:grid;gap:16px}
+.m-body{padding:18px 20px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.m-body>*{min-width:0}
 .m-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;background:var(--soft)}
 .sec{border:1px solid var(--line);border-radius:12px;padding:14px}
-.sec h3{font-size:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sec h3{font-size:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
 @media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
@@ -298,4 +299,5 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .mail-pv{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--soft);font-size:13px;line-height:1.7;max-height:320px;overflow:auto}
 .mail-pv-subj{font-weight:800;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:8px}
 #ml-body{font-family:inherit;line-height:1.6}
-.mail-tabs{padding:0 18px}
+.mail-tabs{padding:0 18px;overflow-x:auto;flex-wrap:nowrap}
+.modal.mail{max-width:1180px}

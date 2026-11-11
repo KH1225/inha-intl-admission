@@ -243,7 +243,7 @@ async function openMailModal(kind) {
     <div class="notice small" style="margin-bottom:10px">${esc(K.desc)}</div>
     <div class="sec"><h3>받는 사람 <span class="muted small">${list.length ? `<a href="#" onclick="mailAll(true);return false">전체 선택</a> · <a href="#" onclick="mailAll(false);return false">전체 해제</a> · 이미 보낸 사람과 이메일이 없는 사람은 처음에 선택되지 않습니다` : ''}</span></h3>
      ${hasCc && list.length ? `<label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:8px"><input id="ml-cc-on" type="checkbox" checked style="width:auto"> 추가 이메일에도 같은 내용 보내기 (참조/CC) <span class="muted small" style="font-weight:500">— 쉼표로 여러 개(최대 3개), 입력한 주소는 지원자 정보에 저장됩니다</span></label>` : ''}
-     ${list.length ? `<div class="tbl-wrap" style="max-height:260px;overflow:auto"><table class="tbl" style="min-width:${hasCc ? 1020 : 820}px"><thead><tr><th></th><th>접수번호</th><th>성명</th><th>학과</th><th>상태</th><th>이메일</th>${hasCc ? '<th>추가 이메일 (참조)</th>' : ''}<th>정보</th><th>보낸 시각</th></tr></thead><tbody>${rows}</tbody></table></div>`
+     ${list.length ? `<div class="tbl-wrap" style="max-height:260px;overflow:auto"><table class="tbl" style="min-width:${hasCc ? 960 : 780}px"><thead><tr><th></th><th>접수번호</th><th>성명</th><th>학과</th><th>상태</th><th>이메일</th>${hasCc ? '<th>추가 이메일 (참조)</th>' : ''}<th>정보</th><th>보낸 시각</th></tr></thead><tbody>${rows}</tbody></table></div>`
        : '<div class="muted">이 메일을 받을 지원자가 없습니다.</div>'}</div>
     ${K.zoom ? `<div class="sec"><h3>Zoom 주소 <span class="muted small">학과별 주소를 비워 두면 기본 주소가 들어갑니다</span></h3>
      <div class="grid2">${field('기본 Zoom 주소', `<input id="ml-zoom" placeholder="https://us06web.zoom.us/j/..." value="${esc(sv.zoom || '')}" oninput="mailPreview()">`, { full: 1 })}
@@ -260,7 +260,7 @@ async function openMailModal(kind) {
    <div class="m-foot"><span class="muted small" id="ml-cnt" style="margin-right:auto"></span>
     <button class="btn" onclick="closeModal(this.closest('.backdrop'))">닫기</button>
     <button class="btn" id="ml-test" onclick="mailSend(true)" ${list.length ? '' : 'disabled'}>내 메일로 테스트 발송</button>
-    <button class="btn pri" id="ml-go" onclick="mailSend(false)">발송</button></div>`, { wide: true, sticky: true });
+    <button class="btn pri" id="ml-go" onclick="mailSend(false)">발송</button></div>`, { wide: true, sticky: true }).firstElementChild.classList.add('mail');
   mailCount();
 }
 function mailAll(on) { $$('.ml-ck').forEach(c => { if (!c.disabled) c.checked = on; }); mailCount(); }
