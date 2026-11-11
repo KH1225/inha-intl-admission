@@ -54,7 +54,8 @@ function renderEval() {
     <span class="sp"></span>
     ${can.admin() ? `<button class="btn" onclick="openOrderModal()">면접 순서 · 일정 지정</button>` : ''}
     ${can.edit() ? `<button class="btn blue" onclick="openMailModal('면접안내')">면접 안내 메일</button>` : ''}
-    <button class="btn" onclick="openEvalPrint()">면접평가표 인쇄</button></div>
+    <button class="btn" onclick="openEvalPrint()">면접평가표 인쇄</button>
+    ${typeof canSeeAppFile === 'function' && canSeeAppFile() ? '<button class="btn" onclick="openEvalPrint(true)">입학지원서 인쇄</button>' : ''}</div>
   ${list.length ? `<div class="ev-list">${list.map(a => t ? evalCardEdit(a, t) : evalCardView(a)).join('')}</div>`
     : '<div class="center-msg"><div><h2>평가할 지원자가 없습니다</h2><p>면접심사 단계로 변경된 지원자가 여기에 표시됩니다.</p></div></div>'}`;
 }
@@ -364,16 +365,17 @@ function openProgress() {
 
 /* ---------- 면접평가표 인쇄 ---------- */
 /* 인쇄 선택: 면접평가표 + 입학지원서 */
-function openEvalPrint() {
+function openEvalPrint(onlyAf) {
   const list = evalTargets();
   if (!list.length) { toast('인쇄할 지원자가 없습니다.', 'err'); return; }
   const withF = list.filter(a => typeof afOf === 'function' && afOf(a.id));
   const noF = list.filter(a => !(typeof afOf === 'function' && afOf(a.id)));
-  openModal(`${mHead('면접평가표 인쇄', `${S.evalFilter.dept ? esc(deptName(S.evalFilter.dept)) : '전체 학과'} · 지원자 ${list.length}명`)}
+  if (onlyAf && !withF.length) { toast('입학지원서 PDF가 올라온 지원자가 없습니다.', 'err'); return; }
+  openModal(`${mHead(onlyAf ? '입학지원서 인쇄' : '면접평가표 인쇄', `${S.evalFilter.dept ? esc(deptName(S.evalFilter.dept)) : '전체 학과'} · 지원자 ${list.length}명`)}
    <div class="m-body">
-    <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="ep-sheet" type="checkbox" checked style="width:auto"> 면접평가표</label>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="ep-sheet" type="checkbox" ${onlyAf ? '' : 'checked'} style="width:auto"> 면접평가표</label>
     <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input id="ep-af" type="checkbox" ${withF.length ? 'checked' : 'disabled'} style="width:auto"> 입학지원서 <span class="muted small" style="font-weight:500">— PDF가 있는 지원자 ${withF.length}명${noF.length ? `, 없는 지원자 ${noF.length}명 (${esc(noF.slice(0, 5).map(a => a.name_ko).join(', '))}${noF.length > 5 ? ' 외' : ''})` : ''}</span></label>
-    <div class="muted small">학과별로 면접평가표 다음에 그 학과 지원자의 입학지원서가 면접 순서대로 이어서 출력됩니다. 인쇄 창에서 “배경 그래픽”을 켜 주세요.</div>
+    <div class="muted small">${onlyAf ? '학과별로 면접 순서대로 지원자의 입학지원서가 출력됩니다.' : '학과별로 면접평가표 다음에 그 학과 지원자의 입학지원서가 면접 순서대로 이어서 출력됩니다.'} 인쇄 창에서 “배경 그래픽”을 켜 주세요.</div>
     <div id="ep-prog"></div></div>
    <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" id="ep-go" onclick="runEvalPrint()">인쇄</button></div>`, { sticky: true });
 }
