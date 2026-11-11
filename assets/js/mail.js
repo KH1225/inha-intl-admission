@@ -206,7 +206,26 @@ ${MAIL_CONTACT_EN}`
 
 let mailKind = '면접안내', mailLogs = {};
 const mailKey = k => `mailTpl:${S.term ? S.term.id : ''}:${k}`;
-function mailSaved(k) { try { return JSON.parse(localStorage.getItem(mailKey(k)) || 'null') || {}; } catch (e) { return {}; } }
+/* 예전에 저장해 둔 안내문에 남아 있는 옛 문구를 새 문구로 바꿉니다 (직접 고친 다른 내용은 그대로) */
+const MAIL_UPGRADES = [
+  ['송금인(Sender) 란에 지원자의 영문 성명과 접수번호를 정확히 기재해 주세요.', '송금인(Sender) 란에 지원자의 영문 성명을 정확히 기재해 주세요.'],
+  ['Please write your full English name and application number in the sender field.', 'Please write your full English name in the sender field.'],
+  ['Zoom 표시 이름은 "접수번호_영문이름"으로 설정해 주세요.', 'Zoom 표시 이름은 영문이름("{영문이름}")으로 설정해 주세요.'],
+  ['Set your Zoom display name to "ApplicationNo_EnglishName".', 'Set your Zoom display name to your English name ("{영문이름}").'],
+  ['문의: 인하공업전문대학 국제교류팀 (본관 412호)', MAIL_CONTACT_KO],
+  ['Contact: International Affairs Team, Inha Technical College (Main Building Room 412)', MAIL_CONTACT_EN],
+  ['첨부한 등록금고지서를 확인하시고,', '첨부한 합격통지서와 등록금고지서를 확인하시고,'],
+  ['Please check the attached tuition invoice and complete', 'Please check the attached Certificate of Admission and tuition invoice, and complete']
+];
+function mailUpgrade(t) { return typeof t === 'string' ? MAIL_UPGRADES.reduce((x, [o, n]) => x.split(o).join(n), t) : t; }
+function mailSaved(k) {
+  try {
+    const sv = JSON.parse(localStorage.getItem(mailKey(k)) || 'null') || {};
+    if (sv.body) sv.body = mailUpgrade(sv.body);
+    if (sv.subject) sv.subject = mailUpgrade(sv.subject);
+    return sv;
+  } catch (e) { return {}; }
+}
 function mailRemember(k, o) { try { localStorage.setItem(mailKey(k), JSON.stringify(o)); } catch (e) { /* 무시 */ } }
 const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || '').trim());
 const zoomOk = u => !u || /^https:\/\/[^\s"'<>]+$/.test(u);
