@@ -256,7 +256,8 @@ ${MAIL_CONTACT_EN}`
     targets: () => S.apps.filter(a => a.status === '등록완료'),
     info: () => '',
     extras: [['OT일시', '오리엔테이션 일시', '예: 2027년 2월 24일(수) 10:00 / Feb 24, 2027 10:00'], ['OT장소', '장소', '예: 본관 2층 대강당 / Main Building Auditorium (2F)'], ['준비물', '준비물', '예: 여권, 외국인등록증(소지자), 필기구 / Passport, ARC, pen']],
-    vars: ['이름', '영문이름', '접수번호', '학기', '입학일', '입학일_영문', 'OT일시', 'OT장소', '준비물'],
+    fees: true,
+    vars: ['이름', '영문이름', '접수번호', '학기', '입학일', '입학일_영문', 'OT일시', 'OT장소', '준비물', '납부비용', '납부비용_영문'],
     subject: '[인하공업전문대학] 신입생 오리엔테이션 안내 / New Student Orientation - {영문이름}',
     body: `{이름}({영문이름}) 님, 안녕하세요.
 인하공업전문대학 국제교류팀입니다.
@@ -266,6 +267,8 @@ ${MAIL_CONTACT_EN}`
 ■ 장소: {OT장소}
 ■ 준비물: {준비물}
 ■ 입학일: {입학일}
+
+{납부비용}
 
 오리엔테이션에서는 학사 일정, 수강신청, 비자·외국인등록, 기숙사 및 학교생활 안내가 진행됩니다.
 신입 유학생은 반드시 참석해 주세요.
@@ -279,6 +282,8 @@ Welcome to Inha Technical College! Please attend the orientation for new interna
 ■ Place: {OT장소}
 ■ What to bring: {준비물}
 ■ Entrance Date: {입학일_영문}
+
+{납부비용_영문}
 
 The orientation covers the academic calendar, course registration, visa and alien registration, dormitory and campus life.
 Attendance is mandatory for all new international students.
@@ -300,6 +305,8 @@ const MAIL_UPGRADES = [
   ['첨부한 등록금고지서를 확인하시고,', '첨부한 합격통지서와 등록금고지서를 확인하시고,'],
   ['■ 준비물: {준비물}\n■ 학과: {학과}\n', '■ 준비물: {준비물}\n'],
   ['■ What to bring: {준비물}\n■ Department: {학과}\n', '■ What to bring: {준비물}\n'],
+  ['■ 입학일: {입학일}\n\n오리엔테이션에서는', '■ 입학일: {입학일}\n\n{납부비용}\n\n오리엔테이션에서는'],
+  ['■ Entrance Date: {입학일_영문}\n\nThe orientation covers', '■ Entrance Date: {입학일_영문}\n\n{납부비용_영문}\n\nThe orientation covers'],
   ['Please check the attached tuition invoice and complete', 'Please check the attached Certificate of Admission and tuition invoice, and complete'],
   ['현재 신청 여부가 본인의 희망과 다르거나 변경을 원하면, 신청 마감일까지 국제교류팀으로 알려 주세요.\n기숙사 배정은 신청 인원에 따라 달라질 수 있습니다.', '신청 마감일 이후에는 기숙사 배정이 어렵습니다. 반드시 신청 마감일({신청마감})까지 메일을 회신해 주세요.'],
   ['If your current status is not what you want, or if you wish to change it, please contact the International Affairs Team by the application deadline.\nRoom assignment may vary depending on the number of applicants.', 'Dormitory placement is difficult after the application deadline. Please be sure to reply to this email by the deadline ({신청마감}).']
@@ -359,6 +366,7 @@ async function openMailModal(kind) {
       ${depts.map(d => field(`${esc(d.name)} Zoom 주소`, `<input class="ml-zd" data-dept="${d.id}" placeholder="(기본 주소 사용)" value="${esc((sv.zoomByDept || {})[d.id] || '')}" oninput="mailPreview()">`)).join('')}</div></div>` : ''}
     ${K.extras ? `<div class="sec"><h3>안내 항목 <span class="muted small">모든 받는 사람에게 같은 내용으로 들어갑니다</span></h3><div class="grid2">
       ${K.extras.map(([k, l, ph]) => field(`${l} <code>{${k}}</code>`, `<input class="ml-ex" data-k="${k}" placeholder="${esc(ph)}" value="${esc((sv.extra || {})[k] || '')}" oninput="mailPreview()">`, { full: 1 })).join('')}</div></div>` : ''}
+    ${K.fees ? feeSection(list) : ''}
     ${K.attach ? `<div class="sec"><h3>첨부 파일 <span class="muted small">지원자별로 자동 생성되며, 보낼 때마다 문서 발급 기록이 남습니다 (테스트 발송은 ‘견본’ 번호)</span></h3>
       ${K.attach.map((x, i) => `<label style="display:flex;gap:8px;align-items:center;font-weight:600;margin:4px 0"><input class="ml-att" data-i="${i}" type="checkbox" checked style="width:auto"> ${esc(x.label)} PDF</label>`).join('')}</div>` : ''}
     <div class="sec"><h3>안내문 <span class="muted small"><a href="#" onclick="mailResetTpl();return false">기본 안내문으로 되돌리기</a></span></h3>
@@ -387,7 +395,9 @@ function mailForm() {
   const zoomByDept = {}, extra = {};
   $$('.ml-zd').forEach(i => { if (i.value.trim()) zoomByDept[i.dataset.dept] = i.value.trim(); });
   $$('.ml-ex').forEach(i => { extra[i.dataset.k] = i.value.trim(); });
-  return { subject: $('#ml-subj').value.trim(), body: $('#ml-body').value, zoom: $('#ml-zoom') ? $('#ml-zoom').value.trim() : '', zoomByDept, extra };
+  const byId = {};
+  if (MAIL_KINDS[mailKind].fees) mailTargets().forEach(a => { byId[a.id] = feeVars(a); });
+  return { subject: $('#ml-subj').value.trim(), body: $('#ml-body').value, zoom: $('#ml-zoom') ? $('#ml-zoom').value.trim() : '', zoomByDept, extra, byId };
 }
 
 /* ---------- 미리보기 (서버와 같은 규칙) ---------- */
@@ -418,7 +428,7 @@ function mailVars(a, f) {
   const t = S.term || {}, iv = S.interviews[a.id] || {}, pay = S.payments[a.id], o = orderOf(a), dn = mailDiff(pay);
   const sch = pay ? Number(pay.scholarship_amount || 0) : 0;
   return {
-    ...f.extra,
+    ...f.extra, ...((f.byId || {})[a.id] || {}),
     이름: a.name_ko || '', 영문이름: a.name_en || '', 접수번호: a.receipt_no || '', 학과: deptName(a.department_id), 학기: t.name || '',
     면접일시: mailDtKo(iv.scheduled_at), 면접일시_영문: mailDtEn(iv.scheduled_at),
     면접순서: o != null ? `${o}번` : '추후 안내', 면접순서_영문: o != null ? `No. ${o}` : 'TBA',
@@ -494,10 +504,15 @@ async function mailSend(test) {
   const atts = K.attach ? $$('.ml-att').filter(c => c.checked).map(c => K.attach[Number(c.dataset.i)]) : [];
   const attach = atts.length ? { label: atts.map(x => x.label).join(' + '), can: a => atts.map(x => x.can(a)).find(Boolean) || null } : null;
   if (attach && !test) { const n = ids.filter(id => attach.can(S.apps.find(x => x.id === id))).length; if (n) warns.push(`첨부 문서를 발급할 수 없는 지원자 ${n}명 (이 사람들은 발송되지 않음)`); }
+  if (K.fees) {
+    const n = ids.filter(id => { const x = mailFees[id]; return x && x.dorm.on && !(x.dorm.amt > 0); }).length;
+    if (n) warns.push(`기숙사비를 체크했지만 객실(금액)을 고르지 않은 지원자 ${n}명 (기숙사비가 빠짐)`);
+  }
   if (K.extras) { const empty = K.extras.filter(([k]) => !f.extra[k]).map(([, l]) => l); if (empty.length) warns.push(`비어 있는 안내 항목: ${empty.join(', ')}`); }
   if (!test && !confirm(`[${K.label}] ${ids.length}명에게 메일을 발송합니다.` + (attach ? `\n📎 ${attach.label} PDF 첨부 (발급 기록이 남습니다)` : '') + (nCc ? `\n✉ 추가 이메일(참조)도 함께 받는 지원자 ${nCc}명` : '') + (warns.length ? '\n\n⚠ ' + warns.join('\n⚠ ') : '') + '\n\n계속할까요?')) return;
   mailRemember(mailKind, { subject: f.subject, body: f.body, zoom: f.zoom, zoomByDept: f.zoomByDept, extra: f.extra });
   const req = { kind: mailKind, include_cc: ccOn, subject: f.subject, body: f.body, zoom_default: f.zoom, zoom_by_dept: f.zoomByDept, extra: f.extra };
+  if (K.fees) req.extra_by_id = f.byId;
   const btns = ['#ml-go', '#ml-test'].map(s => $(s)); btns.forEach(b => { b.disabled = true; });
   const res = $('#ml-res');
   try {
@@ -545,4 +560,102 @@ async function mailSend(test) {
     res.innerHTML = `<div class="err-box">${esc(errMsg(e))}</div>`;
     toast(errMsg(e), 'err');
   } finally { btns.forEach(b => { b.disabled = false; }); mailCount(); }
+}
+
+/* ---------- 사람별 납부 비용 (오리엔테이션 안내) ----------
+   등록금 부족분: 고지 금액 − 수납 금액 (자동)
+   외국인등록비: 비자가 없거나(국외 체류) 현재 비자로 유학할 수 없는 사람에게 자동 체크
+   기숙사비: 기숙사 신청자에게 체크, 객실·기간을 고르면 금액이 들어감 (선택은 이 브라우저에 기억) */
+const ARC_FEE_DEFAULT = 35000;
+const DORM_FEES = [
+  { k: '16-2A', ko: '16주 · 2인실 A (개별 욕실)', en: '16 weeks · Double Room A (private bathroom)', amt: 1408000 },
+  { k: '16-2B', ko: '16주 · 2인실 B (공용 욕실)', en: '16 weeks · Double Room B (shared bathroom)', amt: 1200000 },
+  { k: '16-3', ko: '16주 · 3인실 (공용 욕실)', en: '16 weeks · Triple Room (shared bathroom)', amt: 1008000 },
+  { k: '16-4', ko: '16주 · 4인실 (공용 욕실)', en: '16 weeks · Quad Room (shared bathroom)', amt: 800000 },
+  { k: '24-2A', ko: '24주 · 2인실 A (개별 욕실)', en: '24 weeks · Double Room A (private bathroom)', amt: 2006000 },
+  { k: '24-2B', ko: '24주 · 2인실 B (공용 욕실)', en: '24 weeks · Double Room B (shared bathroom)', amt: 1710000 },
+  { k: '24-3', ko: '24주 · 3인실 (공용 욕실)', en: '24 weeks · Triple Room (shared bathroom)', amt: 1436000 },
+  { k: '24-4', ko: '24주 · 4인실 (공용 욕실)', en: '24 weeks · Quad Room (shared bathroom)', amt: 1140000 }
+];
+let mailFees = {};
+const feeKey = () => 'mailFees:' + ((S.term && S.term.id) || '');
+function feeSaved() { try { return JSON.parse(localStorage.getItem(feeKey()) || 'null') || {}; } catch (e) { return {}; } }
+function feeSave() {
+  const o = { arc: feeArcAmt(), dorm: {} };
+  Object.entries(mailFees).forEach(([id, x]) => { if (x.dorm.opt) o.dorm[id] = x.dorm.opt; });
+  try { localStorage.setItem(feeKey(), JSON.stringify(o)); } catch (e) { /* 무시 */ }
+}
+function feeArcAmt() { const el = $('#fe-arc'); const n = el ? Number(String(el.value).replace(/[^\d]/g, '')) : NaN; return Number.isFinite(n) && n > 0 ? n : (feeSaved().arc || ARC_FEE_DEFAULT); }
+// 유학 가능한 체류자격: D-2(유학), D-4(일반연수), F-2·F-4·F-5·F-6
+const studyVisa = v => /(^|[^A-Z])D-?\s*[24](?![0-9])/i.test(v) || /(^|[^A-Z])F-?\s*[2456](?![0-9])/i.test(v);
+function feeArcWhy(a) {
+  const v = String(a.visa_type || '').trim();
+  if (!v || /국외|해외|없음|none|abroad/i.test(v)) return { on: true, why: '국외 체류(비자 없음)' };
+  if (studyVisa(v)) return { on: false, why: `유학 가능 비자 ${v}` };
+  return { on: true, why: `현재 비자 ${v} — 유학 불가` };
+}
+function feeShort(a) {
+  const p = S.payments[a.id];
+  if (!p || p.paid_amount == null || p.payable_amount == null) return { amt: 0, why: p ? '수납 기록 없음' : '고지 금액 없음' };
+  const d = Number(p.payable_amount) - Number(p.paid_amount);
+  return d > 0 ? { amt: d, why: `고지 ${won(p.payable_amount)} · 수납 ${won(p.paid_amount)}` } : { amt: 0, why: d < 0 ? '초과 송금' : '완납' };
+}
+function feeInit(list) {
+  const sv = feeSaved(); mailFees = {};
+  list.forEach(a => {
+    const sh = feeShort(a), arc = feeArcWhy(a), opt = (sv.dorm || {})[a.id] || '', d = DORM_FEES.find(x => x.k === opt);
+    mailFees[a.id] = { sh: { on: sh.amt > 0, amt: sh.amt, why: sh.why }, arc: { on: arc.on, why: arc.why },
+      dorm: { on: !!a.dorm_application, opt: d ? opt : '', amt: d ? d.amt : 0 } };
+  });
+}
+function feeTotal(x) { return (x.sh.on ? x.sh.amt : 0) + (x.arc.on ? feeArcAmt() : 0) + (x.dorm.on ? x.dorm.amt : 0); }
+function feeSection(list) {
+  feeInit(list);
+  const arcAmt = feeSaved().arc || ARC_FEE_DEFAULT;
+  const rows = list.map(a => {
+    const x = mailFees[a.id];
+    const ck = (f, on) => `<input type="checkbox" class="fe-ck" data-id="${a.id}" data-f="${f}" ${on ? 'checked' : ''} onchange="feeRead()" style="width:auto">`;
+    return `<tr><td class="nw">${esc(a.receipt_no)}</td><td>${esc(a.name_ko)}<div class="muted small">${esc(a.name_en)}</div></td>
+      <td class="nw">${ck('sh', x.sh.on)} <input class="fe-sh" data-id="${a.id}" type="number" min="0" step="1000" value="${x.sh.amt || ''}" placeholder="0" oninput="feeRead()" style="width:110px;padding:5px 7px;font-size:12px">
+        <div class="muted small">${esc(x.sh.why)}</div></td>
+      <td class="nw">${ck('arc', x.arc.on)} <span class="fe-arc-amt">${won(arcAmt)}</span><div class="muted small">${esc(x.arc.why)}</div></td>
+      <td class="nw">${ck('dorm', x.dorm.on)} <select class="fe-dorm" data-id="${a.id}" onchange="feeRead()" style="width:auto;padding:5px 7px;font-size:12px">
+          <option value="">객실·기간 선택</option>${DORM_FEES.map(d => `<option value="${d.k}" ${d.k === x.dorm.opt ? 'selected' : ''}>${esc(d.ko)} — ${won(d.amt)}</option>`).join('')}</select>
+        <div class="muted small">${a.dorm_application ? '기숙사 신청' : '기숙사 미신청'}</div></td>
+      <td class="nw" style="font-weight:700" id="fe-tot-${a.id}">${won(feeTotal(x))}</td></tr>`;
+  }).join('');
+  return `<div class="sec"><h3>납부 비용 (사람별) <span class="muted small">체크한 항목만 본문의 <code>{납부비용}</code> 자리에 들어가고, 하나도 없으면 그 부분이 빠집니다</span></h3>
+    <div class="muted small" style="margin-bottom:6px">등록금 부족분은 수납 금액으로 자동 계산 · 외국인등록비는 비자가 없거나(국외 체류) 현재 비자로 유학할 수 없는 사람에게 자동 체크 · 기숙사비는 기숙사 신청자에게 체크되며 객실·기간을 고르면 금액이 들어갑니다 (고른 객실은 이 브라우저에 기억)</div>
+    <div class="grid2">${field('외국인등록비 (1인)', `<input id="fe-arc" type="number" min="0" step="1000" value="${arcAmt}" oninput="feeRead()">`)}</div>
+    ${list.length ? `<div class="tbl-wrap" style="max-height:300px;overflow:auto"><table class="tbl" style="min-width:900px"><thead><tr><th>접수번호</th><th>성명</th><th>등록금 부족분</th><th>외국인등록비</th><th>기숙사비</th><th>합계</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}</div>`;
+}
+function feeRead() {
+  const arc = feeArcAmt();
+  $$('.fe-arc-amt').forEach(e => { e.textContent = won(arc); });
+  Object.entries(mailFees).forEach(([id, x]) => {
+    const q = (c, f) => $(`.${c}[data-id="${id}"]${f ? `[data-f="${f}"]` : ''}`);
+    const c1 = q('fe-ck', 'sh'), c2 = q('fe-ck', 'arc'), c3 = q('fe-ck', 'dorm'), amt = q('fe-sh'), sel = q('fe-dorm');
+    if (!c1) return;
+    x.sh.on = c1.checked; x.sh.amt = Math.max(0, Number(amt.value) || 0);
+    x.arc.on = c2.checked;
+    const d = DORM_FEES.find(o => o.k === sel.value);
+    if (d && d.k !== x.dorm.opt) c3.checked = true; // 객실을 고르면 자동 체크
+    x.dorm.opt = d ? d.k : ''; x.dorm.amt = d ? d.amt : 0; x.dorm.on = c3.checked;
+    const t = $(`#fe-tot-${id}`); if (t) t.textContent = won(feeTotal(x));
+  });
+  feeSave(); mailPreview();
+}
+function feeVars(a) {
+  const x = mailFees[a.id];
+  if (!x) return { 납부비용: '', 납부비용_영문: '' };
+  const it = [];
+  if (x.sh.on && x.sh.amt > 0) it.push(['등록금 부족분', 'Tuition shortfall', x.sh.amt]);
+  if (x.arc.on) it.push(['외국인등록비', 'Alien registration fee', feeArcAmt()]);
+  if (x.dorm.on && x.dorm.amt > 0) { const d = DORM_FEES.find(o => o.k === x.dorm.opt); it.push([`기숙사비 (${d.ko})`, `Dormitory fee (${d.en})`, x.dorm.amt]); }
+  if (!it.length) return { 납부비용: '', 납부비용_영문: '' };
+  const sum = it.reduce((n, i) => n + i[2], 0);
+  return {
+    납부비용: ['[납부하실 비용]', ...it.map(i => `- ${i[0]}: ${mailWonKo(i[2])}`), `▶ 합계: ${mailWonKo(sum)}`].join('\n'),
+    납부비용_영문: ['[Fees to Pay]', ...it.map(i => `- ${i[1]}: ${mailWonEn(i[2])}`), `▶ Total: ${mailWonEn(sum)}`].join('\n')
+  };
 }

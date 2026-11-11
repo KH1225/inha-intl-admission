@@ -255,6 +255,14 @@ Deno.serve(async (req) => {
   for (const [k, v] of Object.entries(body.zoom_by_dept ?? {})) if (okUrl(v)) zoomByDept[String(k)] = v as string;
   const extra: Record<string, string> = {};
   for (const [k, v] of Object.entries(body.extra ?? {})) extra[String(k).slice(0, 30)] = String(v ?? "").slice(0, 1000);
+  // 사람별 추가 항목: { [지원자ID]: { 납부비용: "...", … } }
+  const extraById: Record<string, Record<string, string>> = {};
+  for (const [id, m] of Object.entries(body.extra_by_id ?? {})) {
+    if (!m || typeof m !== "object") continue;
+    const o: Record<string, string> = {};
+    for (const [k, v] of Object.entries(m as Record<string, unknown>).slice(0, 10)) o[String(k).slice(0, 30)] = String(v ?? "").slice(0, 2000);
+    extraById[String(id)] = o;
+  }
   const testTo = body.test === true ? (user.email ?? "") : "";
   const includeCc = body.include_cc === true && !testTo;
   // 첨부: { [지원자ID]: [{ filename, base64 }, …] } — PDF만, 1개당 5MB 이하, 지원자당 4개까지
@@ -298,7 +306,7 @@ Deno.serve(async (req) => {
     const cc = includeCc ? String(a.cc_emails ?? "").split(/[\s,;]+/).filter((e) => emailRe.test(e) && e !== to).slice(0, 3) : [];
     const t = terms?.find((x) => x.id === a.term_id) ?? {};
     const vars = buildVars(a, t, depts?.find((d) => d.id === a.department_id)?.name_ko ?? "", by(ivs, a.id), pay,
-      zoomByDept[String(a.department_id)] || zoomDefault, extra);
+      zoomByDept[String(a.department_id)] || zoomDefault, { ...extra, ...(extraById[String(a.id)] ?? {}) });
     const subject = (testTo ? "[테스트] " : "") + fill(subjectTpl, vars);
     const text = fill(bodyTpl, vars);
     try {
