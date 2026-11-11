@@ -43,8 +43,11 @@ function renderEval() {
     : t === '학과장'
       ? '소속 학과 지원자만 표시됩니다. 제출하면 수정할 수 없으니 확인 후 제출하세요.'
       : (can.admin() ? '면접 순서를 지정하고 평가 진행 상황을 확인할 수 있습니다. (평가 입력은 원장·학과장만 가능)' : '평가 진행 상황을 조회합니다.');
+  const unsigned = t ? unsignedEvals(t) : [];
   $('#main').innerHTML = `
   <div class="notice">${esc(intro)}</div>
+  ${unsigned.length ? `<div class="warn" style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">제출했지만 서명이 없는 평가가 <b>${unsigned.length}건</b> 있습니다. 서명해야 인쇄한 면접평가표에 서명이 나옵니다.
+    <button class="btn pri sm" onclick="openSignPad(null)">한 번에 서명하기</button></div>` : ''}
   <div class="filters" style="margin:10px 0">
     ${depts.length ? `<select onchange="S.evalFilter.dept=this.value;renderEval()"><option value="">전체 학과</option>${depts.map(d => `<option value="${d.id}" ${String(S.evalFilter.dept) === String(d.id) ? 'selected' : ''}>${esc(d.name_ko)}</option>`).join('')}</select>` : ''}
     ${t ? `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${S.evalFilter.pending ? 'checked' : ''} onchange="S.evalFilter.pending=this.checked;renderEval()"> 미제출만 보기</label>` : ''}
@@ -145,20 +148,39 @@ async function saveEval(id, submit, signature) {
 /* ---------- 학과장 서명 ---------- */
 const SIGN_KEY = () => 'lastSign:' + (S.user ? S.user.id : '');
 function lastSign() { try { return localStorage.getItem(SIGN_KEY()) || ''; } catch (e) { return ''; } }
+/* 이미 제출했지만 서명이 없는 내 평가 (서명 기능 이전에 제출한 것) */
+function unsignedEvals(t) {
+  const ids = new Set(S.apps.map(a => a.id));
+  return Object.values(S.evals).filter(e => e.evaluator_type === t && e.submitted && !e.signature && ids.has(e.applicant_id));
+}
 function openSignPad(id) {
-  const a = S.apps.find(x => x.id === id), d = draftOf(id);
-  const res = d.result || autoResult(d);
   const prev = lastSign();
   const t = myEvalType(), who = t === '원장' ? '국제교류원장' : '학과장';
-  const bd = openModal(`${mHead(`평가 제출 · ${who} 서명`, `${esc(a.name_ko)} · ${esc(a.receipt_no)}`)}
+  let head, info, warn, okLabel;
+  if (id) {
+    const a = S.apps.find(x => x.id === id), d = draftOf(id);
+    const res = d.result || autoResult(d);
+    head = mHead(`평가 제출 · ${who} 서명`, `${esc(a.name_ko)} · ${esc(a.receipt_no)}`);
+    info = `<div class="kv" style="margin-bottom:10px">${EV_ITEMS.map((nm, i) => `<div><span>${esc(nm)}</span><b>${esc(d['item' + (i + 1)])} ${esc(EV_GRADES[d['item' + (i + 1)]] || '')}</b></div>`).join('')}<div><span>판정</span><b>${esc(res)}</b></div></div>`;
+    warn = t === '원장' ? '제출 후에도 면접심사 단계에서는 수정할 수 있으며, 다시 제출할 때 새로 서명합니다.' : '제출 후에는 수정할 수 없습니다.';
+    okLabel = '서명하고 제출';
+  } else {
+    const list = unsignedEvals(t);
+    head = mHead(`${who} 서명 · 제출한 평가 ${list.length}건`, '이미 제출한 평가에 서명만 추가합니다 (평가 내용은 바뀌지 않습니다)');
+    info = `<div class="kv" style="margin-bottom:10px">${list.map(e => { const a = S.apps.find(x => x.id === e.applicant_id) || {};
+      return `<div><span>${esc(a.receipt_no || '')} · ${esc(deptName(a.department_id))}</span><b>${esc(a.name_ko || '')} — ${esc(e.result || '')}</b></div>`; }).join('')}</div>`;
+    warn = '서명 한 번으로 위 평가 모두에 같은 서명이 들어갑니다.';
+    okLabel = `${list.length}건에 서명`;
+  }
+  const bd = openModal(`${head}
    <div class="m-body">
-    <div class="kv" style="margin-bottom:10px">${EV_ITEMS.map((nm, i) => `<div><span>${esc(nm)}</span><b>${esc(d['item' + (i + 1)])} ${esc(EV_GRADES[d['item' + (i + 1)]] || '')}</b></div>`).join('')}<div><span>판정</span><b>${esc(res)}</b></div></div>
-    <div class="warn">아래 칸에 마우스나 손가락으로 서명하세요. ${t === '원장' ? '제출 후에도 면접심사 단계에서는 수정할 수 있으며, 다시 제출할 때 새로 서명합니다.' : '제출 후에는 수정할 수 없습니다.'}</div>
+    ${info}
+    <div class="warn">아래 칸에 마우스나 손가락으로 서명하세요. ${warn}</div>
     <div class="sign-wrap"><canvas id="sign-pad"></canvas><div class="sign-hint" id="sign-hint">여기에 서명</div></div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="clearSignPad()">지우기</button>
      ${prev ? `<button class="btn sm" onclick="useLastSign()">지난번 서명 사용</button>` : ''}</div></div>
    <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button>
-    <button class="btn pri" id="sign-ok" onclick="submitSigned('${id}')">서명하고 제출</button></div>`, { sticky: true });
+    <button class="btn pri" id="sign-ok" onclick="submitSigned(${id ? `'${id}'` : 'null'})">${okLabel}</button></div>`, { sticky: true });
   initSignPad($('#sign-pad', bd));
 }
 function initSignPad(cv) {
@@ -203,12 +225,25 @@ function signDataUrl(cv) {
   out.getContext('2d').drawImage(cv, x0, y0, sw, sh, 0, 0, out.width, out.height);
   return out.toDataURL('image/png');
 }
+async function signSubmitted(url) {
+  const t = myEvalType(), list = unsignedEvals(t);
+  let n = 0;
+  for (const e of list) {
+    const { data, error } = await sb.from('interview_evaluations').update({ signature: url })
+      .eq('applicant_id', e.applicant_id).eq('evaluator_type', t).select().single();
+    if (error) { toast((/signature/.test(errMsg(error)) ? '서명 저장 칸이 DB에 아직 없습니다. 관리자에게 SQL 적용을 요청하세요.' : errMsg(error)) + (n ? ` (${n}건은 서명됨)` : ''), 'err'); if (n) renderEval(); return false; }
+    S.evals[e.applicant_id + '|' + t] = data; n++;
+  }
+  toast(`${n}건에 서명했습니다.`);
+  renderEval();
+  return true;
+}
 async function submitSigned(id) {
   const cv = $('#sign-pad');
   const url = cv && cv._signed ? signDataUrl(cv) : '';
   if (!url) { toast('서명을 해야 제출할 수 있습니다.', 'err'); return; }
   const btn = $('#sign-ok'); btn.disabled = true;
-  const ok = await saveEval(id, true, url);
+  const ok = id ? await saveEval(id, true, url) : await signSubmitted(url);
   if (!ok) { btn.disabled = false; return; }
   try { localStorage.setItem(SIGN_KEY(), url); } catch (e) { /* 무시 */ }
   closeModal(cv.closest('.backdrop'));
