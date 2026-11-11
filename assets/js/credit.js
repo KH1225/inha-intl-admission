@@ -76,7 +76,7 @@ function renderCredit() {
       : '학과장의 학점인정 심의 결과를 조회합니다.';
   $('#main').innerHTML = `
   <div class="notice">${esc(intro)} <span class="muted">· 인정 한도: 2학년 편입 최대 36학점(교양 6학점), 3학년 편입 최대 72학점(교양 9학점)</span></div>
-  ${S.creditReady ? '' : '<div class="warn" style="margin-top:10px">학점인정심사 저장 공간이 DB에 아직 없습니다. 총괄관리자가 sql/2026-11-11_학점인정심사.sql 을 실행해야 저장할 수 있습니다.</div>'}
+  ${S.creditReady ? '' : '<div class="warn" style="margin-top:10px">학점 인정 심사 저장 공간이 DB에 아직 없습니다. 총괄관리자가 sql/2026-11-11_학점인정심사.sql 을 실행해야 저장할 수 있습니다.</div>'}
   <div class="filters" style="margin:10px 0">
     ${depts.length ? `<select onchange="S.creditDept=this.value;renderCredit()"><option value="">전체 학과</option>${depts.map(d => `<option value="${d.id}" ${String(S.creditDept) === String(d.id) ? 'selected' : ''}>${esc(d.nm)}</option>`).join('')}</select>` : ''}
     <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${S.creditPending ? 'checked' : ''} onchange="S.creditPending=this.checked;renderCredit()"> 미제출만 보기</label>

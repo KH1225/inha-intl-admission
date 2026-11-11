@@ -383,7 +383,7 @@ function renderShell() {
   <div class="toolbar">${toolbarHtml()}</div>
   <nav class="tabs"><button class="${S.tab === 'dash' ? 'on' : ''}" onclick="switchTab('dash')">지원 현황</button>
     <button class="${S.tab === 'eval' ? 'on' : ''}" onclick="switchTab('eval')">면접 평가</button>
-    ${typeof canSeeCredit === 'function' && canSeeCredit() ? `<button class="${S.tab === 'credit' ? 'on' : ''}" onclick="switchTab('credit')">학점인정심사</button>` : ''}</nav>
+    ${typeof canSeeCredit === 'function' && canSeeCredit() ? `<button class="${S.tab === 'credit' ? 'on' : ''}" onclick="switchTab('credit')">학점 인정 심사</button>` : ''}</nav>
   <main id="main"></main>`;
   renderMain();
 }
