@@ -6,8 +6,8 @@
 
 const MAIL_FN = 'send-interview-mail';
 const MAIL_CHUNK = 20;
-const MAIL_CONTACT_KO = '문의: 인하공업전문대학 국제교류팀 (본관 412호)';
-const MAIL_CONTACT_EN = 'Contact: International Affairs Team, Inha Technical College (Main Building Room 412)';
+const MAIL_CONTACT_KO = '문의: 인하공업전문대학 국제교류팀 (oia@inhatc.ac.kr / +82-328702086)';
+const MAIL_CONTACT_EN = 'Contact: International Affairs Team, Inha Technical College (oia@inhatc.ac.kr / +82-328702086)';
 const MAIL_SEP = '\n\n----------------------------------------\n\n';
 
 const MAIL_KINDS = {
@@ -31,7 +31,7 @@ const MAIL_KINDS = {
 
 [유의사항]
 - 면접 시작 10분 전까지 Zoom에 접속하여 대기해 주세요.
-- Zoom 표시 이름은 "접수번호_영문이름"으로 설정해 주세요.
+- Zoom 표시 이름은 영문이름("{영문이름}")으로 설정해 주세요.
 - 본인 확인을 위해 여권을 준비해 주세요.
 - 카메라와 마이크를 켠 상태로 참여해야 합니다.
 
@@ -48,7 +48,7 @@ Congratulations on passing the document screening. Your online interview (Zoom) 
 
 [Notes]
 - Please join the Zoom meeting at least 10 minutes before your interview.
-- Set your Zoom display name to "ApplicationNo_EnglishName".
+- Set your Zoom display name to your English name ("{영문이름}").
 - Please have your passport ready for identity verification.
 - Your camera and microphone must be turned on.
 
