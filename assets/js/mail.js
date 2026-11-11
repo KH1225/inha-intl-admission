@@ -125,8 +125,9 @@ ${MAIL_CONTACT_EN}`
     desc: '납부일이 입력된 지원자에게 등록금 입금이 확인되었음을 안내합니다.',
     targets: () => S.apps.filter(a => S.payments[a.id] && S.payments[a.id].paid_at),
     attach: { type: '등록금납부확인서', label: '등록금 수납(납부)확인서', file: 'Tuition_Payment_Certificate', can: a => (a.status === '등록완료' ? null : '등록완료 처리 후 발급할 수 있습니다') },
-    info: a => { const p = S.payments[a.id] || {}; return `${won(p.paid_amount)} · ${esc(p.paid_at || '')}`; },
-    vars: ['이름', '영문이름', '접수번호', '학과', '학기', '납입금액', '납입금액_영문', '납부일', '납부일_영문', '입학일', '입학일_영문'],
+    info: a => { const p = S.payments[a.id] || {}, d = p.paid_amount != null && p.payable_amount != null ? Number(p.paid_amount) - Number(p.payable_amount) : 0;
+      return `${won(p.paid_amount)} · ${esc(p.paid_at || '')}${d > 0 ? ` <span style="color:var(--pri2)">초과 ${won(d)}</span>` : d < 0 ? ` <span style="color:var(--bad)">부족 ${won(-d)}</span>` : ''}`; },
+    vars: ['이름', '영문이름', '접수번호', '학과', '학기', '납입금액', '납입금액_영문', '납부일', '납부일_영문', '입학일', '입학일_영문', '차액안내', '차액안내_영문'],
     subject: '[인하공업전문대학] 등록금 입금 확인 / Tuition Payment Confirmation - {영문이름}',
     body: `{이름}({영문이름}) 님, 안녕하세요.
 인하공업전문대학 국제교류팀입니다.
@@ -137,6 +138,8 @@ ${MAIL_CONTACT_EN}`
 ■ 입금액: {납입금액}
 ■ 입금 확인일: {납부일}
 ■ 입학일: {입학일}
+
+{차액안내}
 
 등록금 수납(납부)확인서를 첨부하오니 확인해 주세요.
 오리엔테이션 등 입학 관련 안내는 추후 별도로 보내드리겠습니다.
@@ -151,6 +154,8 @@ We have confirmed your tuition payment as follows.
 ■ Amount Received: {납입금액_영문}
 ■ Date Confirmed: {납부일_영문}
 ■ Entrance Date: {입학일_영문}
+
+{차액안내_영문}
 
 Please find the attached Certificate of Tuition Payment.
 We will send you further information, including the orientation schedule, separately.
@@ -289,8 +294,15 @@ function mailDEn(ymd) {
 }
 const mailWonKo = n => (n == null || n === '' ? '-' : `${Number(n).toLocaleString('ko-KR')}원`);
 const mailWonEn = n => (n == null || n === '' ? '-' : `KRW ${Number(n).toLocaleString('en-US')}`);
+function mailDiff(pay) {
+  if (!pay || pay.paid_amount == null || pay.payable_amount == null) return { ko: '', en: '' };
+  const d = Number(pay.paid_amount) - Number(pay.payable_amount);
+  if (d > 0) return { ko: `초과송금액 (${mailWonKo(d)})은 입학 후에 환불해 드립니다.`, en: `The overpaid amount (${mailWonEn(d)}) will be refunded after admission.` };
+  if (d < 0) return { ko: `부족송금액 (${mailWonKo(-d)})은 입학 전 오리엔테이션 당일에 현금 납부해 주셔야 합니다.`, en: `The shortfall (${mailWonEn(-d)}) must be paid in cash on the day of the orientation before admission.` };
+  return { ko: '', en: '' };
+}
 function mailVars(a, f) {
-  const t = S.term || {}, iv = S.interviews[a.id] || {}, pay = S.payments[a.id], o = orderOf(a);
+  const t = S.term || {}, iv = S.interviews[a.id] || {}, pay = S.payments[a.id], o = orderOf(a), dn = mailDiff(pay);
   const sch = pay ? Number(pay.scholarship_amount || 0) : 0;
   return {
     ...f.extra,
@@ -307,10 +319,11 @@ function mailVars(a, f) {
     은행명: t.bank_name || '', 예금주: t.account_holder || '', 계좌번호: t.account_no || '', SWIFT: t.swift_code || '', 은행주소: t.bank_address || '',
     납입금액: mailWonKo(pay && pay.paid_amount), 납입금액_영문: mailWonEn(pay && pay.paid_amount),
     납부일: mailDKo(pay && pay.paid_at), 납부일_영문: mailDEn(pay && pay.paid_at),
-    입학일: mailDKo(t.entry_date), 입학일_영문: mailDEn(t.entry_date)
+    입학일: mailDKo(t.entry_date), 입학일_영문: mailDEn(t.entry_date),
+    차액안내: dn.ko, 차액안내_영문: dn.en
   };
 }
-const mailFill = (tpl, v) => tpl.replace(/\{([^{}]+)\}/g, (m, k) => (k in v ? v[k] : m));
+const mailFill = (tpl, v) => tpl.replace(/\{([^{}]+)\}/g, (m, k) => (k in v ? v[k] : m)).replace(/\n{3,}/g, '\n\n');
 function mailPreview() {
   const box = $('#ml-pv'); if (!box) return;
   const ids = mailChecked(), a = S.apps.find(x => x.id === ids[0]) || mailTargets()[0];

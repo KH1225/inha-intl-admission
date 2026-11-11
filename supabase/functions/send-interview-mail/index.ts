@@ -62,8 +62,17 @@ function dEn(ymd: string | null) {
 const wonKo = (n: unknown) => (n == null || n === "" ? "-" : `${Number(n).toLocaleString("ko-KR")}원`);
 const wonEn = (n: unknown) => (n == null || n === "" ? "-" : `KRW ${Number(n).toLocaleString("en-US")}`);
 
+/* 입금액 - 납부할 금액 차액 안내 (차액이 없으면 빈 문자열) */
+function diffNotice(pay: Row | undefined) {
+  if (!pay || pay.paid_amount == null || pay.payable_amount == null) return { ko: "", en: "" };
+  const d = Number(pay.paid_amount) - Number(pay.payable_amount);
+  if (d > 0) return { ko: `초과송금액 (${wonKo(d)})은 입학 후에 환불해 드립니다.`, en: `The overpaid amount (${wonEn(d)}) will be refunded after admission.` };
+  if (d < 0) return { ko: `부족송금액 (${wonKo(-d)})은 입학 전 오리엔테이션 당일에 현금 납부해 주셔야 합니다.`, en: `The shortfall (${wonEn(-d)}) must be paid in cash on the day of the orientation before admission.` };
+  return { ko: "", en: "" };
+}
 function buildVars(a: Row, t: Row, deptName: string, iv: Row | undefined, pay: Row | undefined, zoom: string, extra: Record<string, string>) {
   const sch = pay ? Number(pay.scholarship_amount || 0) : 0;
+  const dn = diffNotice(pay);
   return {
     ...extra,
     이름: a.name_ko ?? "", 영문이름: a.name_en ?? "", 접수번호: a.receipt_no ?? "", 학과: deptName, 학기: t.name ?? "",
@@ -80,12 +89,14 @@ function buildVars(a: Row, t: Row, deptName: string, iv: Row | undefined, pay: R
     납입금액: wonKo(pay?.paid_amount), 납입금액_영문: wonEn(pay?.paid_amount),
     납부일: dKo(pay?.paid_at ?? null), 납부일_영문: dEn(pay?.paid_at ?? null),
     입학일: dKo(t.entry_date ?? null), 입학일_영문: dEn(t.entry_date ?? null),
+    차액안내: dn.ko, 차액안내_영문: dn.en,
   } as Record<string, string>;
 }
 
 const escHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const linkify = (h: string) => h.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>');
-const fill = (tpl: string, v: Record<string, string>) => tpl.replace(/\{([^{}]+)\}/g, (m, k) => (k in v ? v[k] : m));
+// 값이 빈 항목만 있던 줄이 남기는 빈 줄은 하나로 줄입니다
+const fill = (tpl: string, v: Record<string, string>) => tpl.replace(/\{([^{}]+)\}/g, (m, k) => (k in v ? v[k] : m)).replace(/\n{3,}/g, "\n\n");
 const okUrl = (u: unknown) => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) && u.length < 500;
 
 type Att = { filename: string; base64: string };
