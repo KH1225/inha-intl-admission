@@ -260,27 +260,69 @@ async function cancelSubmit(id, t) {
 }
 
 /* ---------- 면접 순서 · 일정 (총괄관리자) ---------- */
+let orderDept = '';
 function openOrderModal() {
   const list = S.apps.filter(a => S.interviews[a.id]).sort((x, y) => {
+    const dx = deptName(x.department_id), dy = deptName(y.department_id);
+    if (dx !== dy) return dx.localeCompare(dy, 'ko');
     const ox = orderOf(x), oy = orderOf(y);
-    if (ox != null && oy != null) return ox - oy;
+    if (ox != null && oy != null && ox !== oy) return ox - oy;
     if ((ox == null) !== (oy == null)) return ox == null ? 1 : -1;
     return String(x.receipt_no).localeCompare(String(y.receipt_no));
   });
-  openModal(`${mHead('면접 순서 · 일정 지정', `면접심사 단계의 지원자 ${list.length}명`)}
+  const depts = [...new Set(list.map(a => a.department_id))].map(id => ({ id: String(id), name: deptName(id), n: list.filter(a => a.department_id === id).length }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  if (orderDept && !depts.some(d => d.id === orderDept)) orderDept = '';
+  if (!orderDept && depts.length === 1) orderDept = depts[0].id;
+  openModal(`${mHead('면접 순서 · 일정 지정', `면접심사 단계의 지원자 ${list.length}명 · 학과별로 순서와 일시를 정합니다`)}
    <div class="m-body">
-    ${list.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn sm" onclick="autoOrderFill()">접수번호 순으로 1번부터 채우기</button>
-      <button class="btn sm" onclick="$$('.ord-in').forEach(i=>i.value='')">순서 모두 비우기</button>
-      <span class="muted small">같은 번호가 있어도 저장됩니다. 비워 두면 “미지정”입니다.</span></div>
-    <div class="tbl-wrap" style="max-height:60vh;overflow:auto"><table class="tbl" style="min-width:600px"><thead><tr><th>순서</th><th>지원자</th><th>학과</th><th>면접 일시</th></tr></thead><tbody>
-    ${list.map(a => { const iv = S.interviews[a.id]; return `<tr data-id="${a.id}"><td><input class="ord-in" type="number" min="1" style="width:70px" value="${esc(iv.order_no == null ? '' : iv.order_no)}"></td>
-      <td>${esc(a.name_ko)} <span class="muted small">${esc(a.receipt_no)}</span></td><td>${esc(deptName(a.department_id))}</td>
+    ${list.length ? `<div class="ord-bar">
+      <label class="fld" style="min-width:220px"><span>학과 선택</span><select id="ord-dept" onchange="orderDept=this.value;orderFilter()">
+        <option value="">전체 학과 (${list.length}명)</option>${depts.map(d => `<option value="${d.id}" ${orderDept === d.id ? 'selected' : ''}>${esc(d.name)} (${d.n}명)</option>`).join('')}</select></label>
+      <div class="ord-tools">
+       <button class="btn sm" onclick="autoOrderFill()">접수번호 순으로 1번부터 채우기</button>
+       <button class="btn sm" onclick="orderRows().forEach(tr=>{$('.ord-in',tr).value=''})">순서 비우기</button>
+       <span class="muted small" id="ord-hint"></span></div>
+      <div class="ord-time" id="ord-time">
+       <label class="fld"><span>첫 면접 시작</span><input id="ord-start" type="datetime-local" max="9999-12-31T23:59"></label>
+       <label class="fld"><span>간격(분)</span><input id="ord-gap" type="number" min="1" value="10" style="width:80px"></label>
+       <button class="btn sm blue" onclick="autoTimeFill()">순서대로 시간 채우기</button></div></div>
+    <div class="tbl-wrap" style="max-height:55vh;overflow:auto"><table class="tbl" style="min-width:600px"><thead><tr><th>순서</th><th>지원자</th><th class="ord-dcol">학과</th><th>면접 일시</th></tr></thead><tbody>
+    ${list.map(a => { const iv = S.interviews[a.id]; return `<tr data-id="${a.id}" data-dept="${a.department_id}" data-rno="${esc(a.receipt_no)}"><td><input class="ord-in" type="number" min="1" style="width:70px" value="${esc(iv.order_no == null ? '' : iv.order_no)}"></td>
+      <td>${esc(a.name_ko)} <span class="muted small">${esc(a.receipt_no)}</span></td><td class="ord-dcol">${esc(deptName(a.department_id))}</td>
       <td><input class="dt-in" type="datetime-local" max="9999-12-31T23:59" value="${esc(toLocalInput(iv.scheduled_at))}"></td></tr>`; }).join('')}</tbody></table></div>`
     : '<div class="muted">면접심사 단계의 지원자가 없습니다. 먼저 지원자의 상태를 “면접심사”로 변경하세요.</div>'}</div>
-   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button>${list.length ? '<button class="btn pri" onclick="saveOrder()">저장</button>' : ''}</div>`, { wide: true, sticky: true });
+   <div class="m-foot"><span class="muted small" style="margin-right:auto">다른 학과에서 고친 내용도 함께 저장됩니다.</span><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button>${list.length ? '<button class="btn pri" onclick="saveOrder()">저장</button>' : ''}</div>`, { wide: true, sticky: true });
+  if (list.length) orderFilter();
 }
-function autoOrderFill() { $$('.ord-in').forEach((el, i) => { el.value = i + 1; }); }
+/* 지금 보이는(선택한 학과) 줄 */
+function orderRows() { return $$('tr[data-id]').filter(tr => !orderDept || tr.dataset.dept === orderDept); }
+function orderFilter() {
+  $$('tr[data-id]').forEach(tr => { tr.style.display = !orderDept || tr.dataset.dept === orderDept ? '' : 'none'; });
+  $$('.ord-dcol').forEach(el => { el.style.display = orderDept ? 'none' : ''; });
+  $('#ord-time').classList.toggle('hide', !orderDept);
+  $('#ord-hint').textContent = orderDept ? '이 학과 지원자만 바뀝니다. 같은 번호가 있어도 저장되며, 비워 두면 “미지정”입니다.'
+    : '전체 학과에서는 학과마다 1번부터 따로 매깁니다. 시간 채우기는 학과를 고르면 나타납니다.';
+}
+function autoOrderFill() {
+  const groups = {};
+  orderRows().forEach(tr => { (groups[tr.dataset.dept] = groups[tr.dataset.dept] || []).push(tr); });
+  Object.values(groups).forEach(g => g.sort((a, b) => a.dataset.rno.localeCompare(b.dataset.rno)).forEach((tr, i) => { $('.ord-in', tr).value = i + 1; }));
+}
+function autoTimeFill() {
+  const start = $('#ord-start').value, gap = Number($('#ord-gap').value);
+  if (!start) { toast('첫 면접 시작 일시를 입력하세요.', 'err'); return; }
+  if (!(gap > 0)) { toast('간격(분)을 입력하세요.', 'err'); return; }
+  const rows = orderRows().slice().sort((a, b) => {
+    const oa = $('.ord-in', a).value, ob = $('.ord-in', b).value;
+    if (oa !== '' && ob !== '' && Number(oa) !== Number(ob)) return Number(oa) - Number(ob);
+    if ((oa === '') !== (ob === '')) return oa === '' ? 1 : -1;
+    return a.dataset.rno.localeCompare(b.dataset.rno);
+  });
+  const t0 = new Date(start).getTime();
+  rows.forEach((tr, i) => { $('.dt-in', tr).value = toLocalInput(new Date(t0 + i * gap * 60000).toISOString()); });
+  toast(`${rows.length}명의 면접 시간을 ${gap}분 간격으로 채웠습니다. “저장”을 눌러야 반영됩니다.`);
+}
 async function saveOrder() {
   const rows = $$('tr[data-id]');
   setBusy(true);

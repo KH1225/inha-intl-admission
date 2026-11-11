@@ -301,3 +301,8 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 #ml-body{font-family:inherit;line-height:1.6}
 .mail-tabs{padding:0 18px;overflow-x:auto;flex-wrap:nowrap}
 .modal.mail{max-width:1180px}
+
+/* 면접 순서 · 일정 지정 */
+.ord-bar{display:grid;gap:10px}
+.ord-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ord-time{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--soft)}
