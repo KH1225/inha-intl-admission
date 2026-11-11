@@ -279,7 +279,7 @@ function exportCsv() {
   const list = filteredApps();
   const head = ['접수번호', '한글성명', '영문성명', '성별', '생년월일', '국적', '입학구분', '지원학과', '전형', '지원경로', 'TOPIK', '심사상태', '장학금', '장학금액', '지원일자'];
   const cell = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) || /^[=+\-@]/.test(s) ? '"' + s.replace(/"/g, '""').replace(/^([=+\-@])/, "'$1") + '"' : s; };
-  const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), a.route, a.topik_level, a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
+  const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), routeLabel(a), a.topik_level, a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
   const csv = '﻿' + [head].concat(rows).map(r => r.map(cell).join(',')).join('\r\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const l = document.createElement('a'); l.href = url; l.download = `지원자목록_${S.term.name}_${todayYMD()}.csv`; l.click();

@@ -89,7 +89,7 @@ function buildImportPreview(rows) {
       route = ROUTE_PARTNER;
       const m = routeRaw.match(/\((.+)\)/);
       const ps = m ? S.partners.find(x => x.name.replace(/\s/g, '').toLowerCase() === m[1].replace(/\s/g, '').toLowerCase()) : null;
-      if (ps) partnerId = ps.id; else errs.push(m ? `협약학교 불일치(${m[1].trim()})` : '협약학교 추천: 괄호 안에 학교명 필요');
+      if (ps) partnerId = ps.id; else errs.push(m ? `협약학교 불일치(${m[1].trim()})` : '협약학교: 괄호 안에 학교명 필요');
     } else if (/유학원/.test(routeRaw)) {
       route = '유학원';
       const m = routeRaw.match(/\((.+)\)/);

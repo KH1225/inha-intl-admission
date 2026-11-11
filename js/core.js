@@ -138,13 +138,14 @@ const qualName = code => (S.qualMap[code] ? S.qualMap[code].name_ko : '-');
 /* 편입학 모집 학과 (학과명 기준) */
 const TRANSFER_DEPTS = ['항공운항과', '항공경영학과'];
 const isTransferDept = d => !!d && TRANSFER_DEPTS.includes(String(d.name_ko || '').replace(/\s/g, ''));
-const ROUTE_PARTNER = '협약학교 추천';
+const ROUTE_PARTNER = '협약학교 추천'; // DB에 저장되는 값 (바꾸지 말 것)
+const ROUTE_PARTNER_LABEL = '협약학교'; // 화면 표시 이름
 const ROUTE_ALUMNI = '우리대학 졸업';
 const ROUTES = ['개별지원', '유학원', ROUTE_PARTNER, ROUTE_ALUMNI];
-/* 지원경로 표시: 개별지원 / 유학원(이름) / 협약학교 추천(학교명) */
+/* 지원경로 표시: 개별지원 / 유학원(이름) / 협약학교(학교명) / 우리대학 졸업 */
 function routeLabel(a) {
   if (a.route === '유학원') return `유학원${a.agency_id && S.agencyMap[a.agency_id] ? ` (${S.agencyMap[a.agency_id].name})` : ''}`;
-  if (a.route === ROUTE_PARTNER) return `${ROUTE_PARTNER}${a.partner_school_id && S.partnerMap[a.partner_school_id] ? ` (${S.partnerMap[a.partner_school_id].name})` : ''}`;
+  if (a.route === ROUTE_PARTNER) return `${ROUTE_PARTNER_LABEL}${a.partner_school_id && S.partnerMap[a.partner_school_id] ? ` (${S.partnerMap[a.partner_school_id].name})` : ''}`;
   return a.route || '개별지원';
 }
 const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,passport_last4,passport_expiry,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
