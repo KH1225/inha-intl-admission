@@ -249,7 +249,7 @@ function renderLogin(msg) {
   $('#app').innerHTML = `<div class="login-wrap"><form class="login" onsubmit="doLogin(event);return false">
     <img src="${esc(C.LOGO)}" class="login-logo" alt="" onerror="this.style.display='none'">
     <h1>${esc(C.SCHOOL_KO)}</h1><p>외국인 특별전형 현황판</p>
-    <label>이메일<input id="lg-email" type="email" autocomplete="username" required></label>
+    <label>직번 또는 이메일<input id="lg-email" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
     <label>비밀번호<input id="lg-pw" type="password" autocomplete="current-password" required></label>
     <div class="err" id="lg-err">${esc(msg || '')}</div>
     <button class="btn pri block" id="lg-btn" type="submit">로그인</button>
@@ -259,11 +259,17 @@ function renderLogin(msg) {
 async function doLogin(e) {
   e.preventDefault();
   const btn = $('#lg-btn'); btn.disabled = true;
-  const { data, error } = await sb.auth.signInWithPassword({ email: $('#lg-email').value.trim(), password: $('#lg-pw').value });
-  if (error) {
-    $('#lg-err').textContent = /Invalid login/i.test(error.message) ? '이메일 또는 비밀번호가 올바르지 않습니다.' : error.message;
-    btn.disabled = false; return;
+  const fail = m => { $('#lg-err').textContent = m; btn.disabled = false; };
+  let id = $('#lg-email').value.trim();
+  // '@'가 없으면 직번으로 보고, 등록된 로그인 이메일을 찾아 로그인합니다
+  if (!id.includes('@')) {
+    const r = await sb.rpc('login_email', { p_emp_no: id });
+    if (r.error) return fail(/login_email|function/i.test(r.error.message) ? '직번 로그인이 아직 설정되지 않았습니다. 이메일로 로그인하세요.' : r.error.message);
+    if (!r.data) return fail('직번(이메일) 또는 비밀번호가 올바르지 않습니다.');
+    id = r.data;
   }
+  const { data, error } = await sb.auth.signInWithPassword({ email: id, password: $('#lg-pw').value });
+  if (error) return fail(/Invalid login/i.test(error.message) ? '직번(이메일) 또는 비밀번호가 올바르지 않습니다.' : error.message);
   S.user = data.user;
   try { await afterLogin(); } catch (err) { renderFatal(err); }
 }
