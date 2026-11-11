@@ -7,10 +7,13 @@ window.CONFIG = {
   SCHOOL_EN: 'Inha Technical College',
   PRESIDENT_KO: '인하공업전문대학총장',
   PRESIDENT_EN: 'President of Inha Technical College',
+  OIA_KO: '인하공업전문대학 국제교류원장',      // 등록금고지서·등록금납부확인서 발급자
+  OIA_EN: 'Director of the Office of International Affairs, Inha Technical College',
 
   LOGO: 'assets/logo.png',      // 학교 로고 파일 (assets 폴더에 넣어 주세요)
   SEAL_BUCKET: 'seal',          // 직인은 Supabase Storage의 비공개 저장소 seal 에 seal.png 로 올립니다
-  SEAL_FILE: 'seal.png',
+  SEAL_FILE: 'seal.png',          // 총장 직인 (합격통지서)
+  SEAL_OIA_FILE: 'seal_oia.png',  // 국제교류원장 직인 (등록금고지서·등록금납부확인서) — 같은 seal 저장소에 올립니다
 
   IDLE_MINUTES: 30,             // 아무 조작이 없으면 자동 로그아웃
 

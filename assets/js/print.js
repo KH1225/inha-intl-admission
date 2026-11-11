@@ -21,9 +21,13 @@ function printHtml(html) {
     window.print();
   }, 150));
 }
-async function sealUrl() {
+/* 문서별 발급자: 합격통지서는 총장, 등록금고지서·등록금납부확인서는 국제교류원장 */
+const docIssuer = type => (type === '합격통지서'
+  ? { ko: C.PRESIDENT_KO, en: C.PRESIDENT_EN, seal: C.SEAL_FILE }
+  : { ko: C.OIA_KO || '인하공업전문대학 국제교류원장', en: C.OIA_EN || 'Director of the Office of International Affairs, Inha Technical College', seal: C.SEAL_OIA_FILE || 'seal_oia.png' });
+async function sealUrl(file = C.SEAL_FILE) {
   try {
-    const { data, error } = await sb.storage.from(C.SEAL_BUCKET).createSignedUrl(C.SEAL_FILE, 300);
+    const { data, error } = await sb.storage.from(C.SEAL_BUCKET).createSignedUrl(file, 300);
     return error ? null : data.signedUrl;
   } catch (e) { return null; }
 }
@@ -49,7 +53,9 @@ async function printDoc(id, type) {
   const { data: issued, error } = await sb.rpc('issue_document', { p_applicant: id, p_type: type });
   if (error) { setBusy(false); toast(errMsg(error), 'err'); return; }
   const iss = Array.isArray(issued) ? issued[0] : issued;
-  const seal = await sealUrl();
+  const issuer = docIssuer(type);
+  const seal = await sealUrl(issuer.seal);
+  if (!seal) toast(`직인 파일(${issuer.seal})을 찾을 수 없어 직인 없이 인쇄합니다. Supabase Storage의 ${C.SEAL_BUCKET} 저장소에 올려 주세요.`, 'err');
   const hasLogo = await logoOk();
   if (!hasLogo) toast('학교 로고 파일(assets/logo.png)을 찾을 수 없어 로고 없이 인쇄합니다. GitHub의 assets 폴더에 logo.png를 올려 주세요.', 'err');
   setBusy(false);
@@ -57,7 +63,7 @@ async function printDoc(id, type) {
   const t = S.term, d = S.deptMap[a.department_id] || {}, q = S.qualMap[a.qualification_code] || {};
   const docNo = iss.doc_no + (iss.reissue_no ? `-R${iss.reissue_no}` : '');
   const issueDate = (iss.issued_at || '').slice(0, 10) || todayYMD();
-  const common = { a, t, d, q, docNo, issueDate, seal, hasLogo, pay: S.payments[id] };
+  const common = { a, t, d, q, docNo, issueDate, seal, hasLogo, pay: S.payments[id], issuer };
   let html = '';
   if (type === '합격통지서') html = docNotice(common);
   else if (type === '등록금고지서') html = docBill(common);
@@ -89,8 +95,9 @@ async function toDataUrl(url) {
 let pdfAssets = null;
 async function pdfAssetsOnce() {
   if (!pdfAssets) {
-    const [logo, seal] = await Promise.all([toDataUrl(C.LOGO), sealUrl().then(u => (u ? toDataUrl(u) : null))]);
-    pdfAssets = { logo, seal };
+    const toSeal = f => sealUrl(f).then(u => (u ? toDataUrl(u) : null));
+    const [logo, seal, sealOia] = await Promise.all([toDataUrl(C.LOGO), toSeal(C.SEAL_FILE), toSeal(docIssuer('등록금고지서').seal)]);
+    pdfAssets = { logo, seal, sealOia };
     setTimeout(() => { pdfAssets = null; }, 10 * 60 * 1000);
   }
   return pdfAssets;
@@ -107,7 +114,8 @@ async function docPdfBase64(id, type, sample) {
     issueDate = (iss.issued_at || '').slice(0, 10) || todayYMD();
   }
   const as = await pdfAssetsOnce();
-  const c = { a, t: S.term, d: S.deptMap[a.department_id] || {}, q: S.qualMap[a.qualification_code] || {}, docNo, issueDate, seal: as.seal, hasLogo: !!as.logo, pay: S.payments[id] };
+  const issuer = docIssuer(type);
+  const c = { a, t: S.term, d: S.deptMap[a.department_id] || {}, q: S.qualMap[a.qualification_code] || {}, docNo, issueDate, seal: type === '합격통지서' ? as.seal : as.sealOia, hasLogo: !!as.logo, pay: S.payments[id], issuer };
   let html = type === '등록금고지서' ? docBill(c) : type === '등록금납부확인서' ? docReceipt(c) : docNotice(c);
   if (as.logo) html = html.split(`src="${esc(C.LOGO)}"`).join(`src="${as.logo}"`);
   const host = document.createElement('div');
@@ -134,7 +142,7 @@ function docFrame(c, titleKo, titleEn, inner, opts = {}) {
    ${inner}
    <div class="doc-spacer"></div>
    <div class="doc-date"><div class="ko">${krDate(c.issueDate)}</div><div class="en">${enDate(c.issueDate)}</div></div>
-   <div class="doc-pres"><div class="ko">${esc(C.PRESIDENT_KO)}</div><div class="en">${esc(C.PRESIDENT_EN)}</div>
+   <div class="doc-pres ${c.issuer && c.issuer.seal !== C.SEAL_FILE ? 'oia' : ''}"><div class="ko">${esc((c.issuer || {}).ko || C.PRESIDENT_KO)}</div><div class="en">${esc((c.issuer || {}).en || C.PRESIDENT_EN)}</div>
     ${c.seal ? `<img class="doc-seal" src="${esc(c.seal)}" alt="">` : ''}</div>
 </div></div>`;
 }

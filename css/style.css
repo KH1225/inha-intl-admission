@@ -325,3 +325,7 @@ tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .nat-line{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px;font-size:11.5px;color:var(--mute)}
 .nat-line i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
 .dash-dept{width:auto;max-width:170px;padding:4px 8px;font-size:12px;font-weight:600}
+
+/* 국제교류원장 명의: 이름이 길어 글자 크기·직인 위치 조정 */
+.doc-pres.oia .ko{font-size:16pt}
+.doc-pres.oia .doc-seal{right:calc(50% - 53mm);top:-10mm}
