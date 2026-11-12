@@ -151,7 +151,7 @@ function routeLabel(a) {
 }
 const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,passport_last4,passport_expiry,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
 
-const OPT_COLS = ['domestic_hs', 'cc_emails', 'dorm_room'];
+const OPT_COLS = ['domestic_hs', 'cc_emails', 'dorm_room', 'prev_university'];
 /* 쉼표·공백·세미콜론으로 구분된 이메일 목록 */
 const splitEmails = s => String(s || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
 const emailValid = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);

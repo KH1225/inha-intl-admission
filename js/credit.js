@@ -12,7 +12,7 @@ const crOf = id => (S.credit || {})[id] || null;
 const crCourses = id => (S.creditCourses || {})[id] || [];
 /* 전적교: 직접 입력한 값이 없으면 지원자의 협약학교 이름 */
 const crPartner = a => (a && a.partner_school_id && S.partnerMap && S.partnerMap[a.partner_school_id] ? S.partnerMap[a.partner_school_id].name : '');
-const crSchool = a => ((crOf(a.id) || {}).prev_school || crPartner(a));
+const crSchool = a => ((crOf(a.id) || {}).prev_school || crPartner(a) || a.prev_university || '');
 const crEditable = id => { const r = crOf(id); return (S.role === 'dept' && !(r && r.submitted)) || can.edit(); };
 const semKo = t => (t && t.semester === '후기' ? '2학기' : '1학기');
 const crTermTitle = () => `${esc(S.term.year)}학년도 ${semKo(S.term)}`;

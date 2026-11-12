@@ -1,6 +1,6 @@
 'use strict';
 /* ===== 엑셀 일괄 등록 ===== */
-const IMPORT_HEADERS = ['접수번호(자동부여)', '한글성명*', '영문성명*', '성별(남/여)*', '생년월일(YYYY-MM-DD)*', '국적*', '입학구분(신입학/편입학)*', '지원학과(28개과)*', '지원경로', '전형유형', '어학능력(TOPIK)', '여권번호*', '외국인등록번호', '비자종류', '이메일*', '연락처', '출신고교', 'GPA(내신)', '심사진행상태', '장학금구분', '해외송금입금액', '비고메모'];
+const IMPORT_HEADERS = ['접수번호(자동부여)', '한글성명*', '영문성명*', '성별(남/여)*', '생년월일(YYYY-MM-DD)*', '국적*', '입학구분(신입학/편입학)*', '지원학과(28개과)*', '지원경로', '전형유형', '어학능력(TOPIK)', '여권번호*', '외국인등록번호', '비자종류', '이메일*', '연락처', '출신고교', '출신대학', 'GPA(내신)', '심사진행상태', '장학금구분', '해외송금입금액', '비고메모'];
 const normH = s => String(s == null ? '' : s).replace(/\(.*?\)/g, '').replace(/[*\s]/g, '');
 let importRows = [];
 
@@ -114,6 +114,7 @@ function buildImportPreview(rows) {
       route, agency_id, ...(partnerId ? { partner_school_id: partnerId } : {}), qualification_code: qual || null, topik_level: topik, passport_no: passport,
       alien_reg_no: cellStr(get(r, '외국인등록번호')) || null, visa_type: cellStr(get(r, '비자종류')) || null,
       email: email || null, phone: cellStr(get(r, '연락처')) || null, high_school: cellStr(get(r, '출신고교')) || null, gpa,
+      ...(S.hasCol && S.hasCol.prev_university && cellStr(get(r, '출신대학')) ? { prev_university: cellStr(get(r, '출신대학')) } : {}),
       memo: cellStr(get(r, '비고메모')) || null, term_id: S.term.id
     };
     const rn = cellStr(get(r, '접수번호'));

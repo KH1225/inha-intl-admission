@@ -24,7 +24,7 @@ function openDetail(id, focus) {
     ${kv('한글 성명', a.name_ko)}${kv('영문 성명', a.name_en)}${kv('성별', a.gender)}${kv('생년월일', a.birth_date)}${kv('국적', a.nationality)}
     ${kv('입학구분', a.admission_kind + (a.transfer_year ? ` (${a.transfer_year}학년 편입)` : ''))}${kv('지원학과', d.name_ko)}${kv('전형', qualName(a.qualification_code))}
     ${full ? kv('지원경로', routeLabel(a)) : ''}
-    ${kv('어학능력', a.topik_level ? `TOPIK ${a.topik_level}급` : '')}${kv('출신 고교', (a.high_school || '') + (a.domestic_hs ? ' (국내 고교)' : ''))}${kv('GPA(내신)', a.gpa)}
+    ${kv('어학능력', a.topik_level ? `TOPIK ${a.topik_level}급` : '')}${kv('출신 고교', (a.high_school || '') + (a.domestic_hs ? ' (국내 고교)' : ''))}${a.prev_university ? kv('출신 대학', a.prev_university) : ''}${kv('GPA(내신)', a.gpa)}
     ${full ? kv('여권번호', a.passport_last4 ? '****' + a.passport_last4 : '') + kv('여권 만료일', a.passport_expiry) + kv('비자', a.visa_type) + kv('이메일', a.email) + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' + (dormRoom(a.dorm_room) ? ` — ${dormRoom(a.dorm_room).ko}` : '') : '미신청') : ''}
     ${kv('지원일자', fmtDate(a.created_at))}</div></div></div>
     ${full && can.edit() ? `<div style="margin-top:10px"><button class="btn sm" onclick="showSecrets('${id}')">여권번호·외국인등록번호 원문 보기</button>
@@ -271,6 +271,7 @@ function openApplicantForm(id) {
     ${field('연락처', `<input id="af-phone" value="${v('phone')}">`)}
     ${S.hasCol && S.hasCol.cc_emails ? field('추가 이메일 (보호자·유학원 등, 쉼표로 구분 · 최대 3개)', `<input id="af-cc_emails" value="${v('cc_emails')}" placeholder="예: parent@example.com, agency@example.com">`, { full: 1 }) : ''}
     ${field('출신 고교', `<input id="af-high_school" value="${v('high_school')}">`)}
+    ${S.hasCol && S.hasCol.prev_university ? field('출신 대학 (대학 진학 이력이 있는 경우)', `<input id="af-prev_university" value="${v('prev_university')}" placeholder="예: Japan College of Foreign Languages (Airline Industry)">`) : ''}
     ${S.noDomHs ? '' : `<label class="fld"><span>국내 고교 출신 (신입학)</span><label style="display:flex;gap:6px;align-items:center;font-weight:500"><input id="af-domestic_hs" type="checkbox" style="width:auto" ${a.domestic_hs ? 'checked' : ''}> 한국 고등학교 졸업(예정) — 외국학교 학력조회 동의서 면제</label></label>`}
     ${field('GPA (내신)', `<input id="af-gpa" type="number" step="0.01" min="0" value="${v('gpa')}">`)}
     <label class="fld"><span>기숙사</span><label style="display:flex;gap:6px;align-items:center;font-weight:500"><input id="af-dorm" type="checkbox" style="width:auto" ${a.dorm_application ? 'checked' : ''} onchange="if(!this.checked&&$('#af-dorm_room'))$('#af-dorm_room').value=''"> 기숙사 신청</label></label>
@@ -299,6 +300,7 @@ async function saveApplicant(id) {
     if (cc.length > 3) errs.push('추가 이메일은 3개까지 넣을 수 있습니다.');
     p.cc_emails = cc.join(', ') || null;
   }
+  if ($('#af-prev_university')) p.prev_university = $('#af-prev_university').value.trim() || null;
   if ($('#af-dorm_room')) p.dorm_room = p.dorm_application ? ($('#af-dorm_room').value || null) : null;
   if (!S.noDomHs && $('#af-domestic_hs')) p.domestic_hs = kind === '신입학' && $('#af-domestic_hs').checked;
   if (!p.name_ko) errs.push('한글 성명을 입력하세요.');
