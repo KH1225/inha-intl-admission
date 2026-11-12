@@ -656,7 +656,7 @@ function feeVars(a) {
   if (!it.length) return { 납부비용: '', 납부비용_영문: '' };
   const sum = it.reduce((n, i) => n + i[2], 0);
   return {
-    납부비용: ['[납부하실 비용]', ...it.map(i => `- ${i[0]}: ${mailWonKo(i[2])}`), `▶ 합계: ${mailWonKo(sum)}`].join('\n'),
-    납부비용_영문: ['[Fees to Pay]', ...it.map(i => `- ${i[1]}: ${mailWonEn(i[2])}`), `▶ Total: ${mailWonEn(sum)}`].join('\n')
+    납부비용: ['[오리엔테이션 당일 납부 비용 — 현금 납부]', '아래 금액은 오리엔테이션 당일 현장에서 현금으로 납부해 주셔야 합니다. (카드·계좌이체 불가)', ...it.map(i => `- ${i[0]}: ${mailWonKo(i[2])}`), `▶ 합계: ${mailWonKo(sum)} (현금)`].join('\n'),
+    납부비용_영문: ['[Fees to Pay on Orientation Day — Cash Only]', 'Please pay the amount below in cash on the orientation day. (Card payments and bank transfers are not accepted.)', ...it.map(i => `- ${i[1]}: ${mailWonEn(i[2])}`), `▶ Total: ${mailWonEn(sum)} (in cash)`].join('\n')
   };
 }
