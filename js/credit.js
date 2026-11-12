@@ -87,18 +87,25 @@ function renderCredit() {
   ${list.length ? `<div class="ev-list">${list.map(crCardHtml).join('')}</div>`
     : '<div class="center-msg"><div><h2>심의할 편입학 지원자가 없습니다</h2><p>입학구분이 “편입학”인 지원자가 여기에 표시됩니다.</p></div></div>'}`;
 }
+// 구분 버튼: 누르면 선택(색), 다시 누르면 해제
+function crCat(b, x) {
+  const td = b.closest('td'), h = $('.cr-cat', td), v = h.value === x ? '' : x;
+  h.value = v;
+  $$('.cr-seg button', td).forEach(e => { e.className = e.textContent === v ? 'on ' + (v === '전공' ? 'maj' : 'gen') : ''; });
+  crTotals(b);
+}
 // 학과장: 구분·인정 여부만 체크 (교과목명·학점은 국제교류팀이 입력)
 const crLock = () => S.role === 'dept';
 function crRowHtml(c, ed, i) {
   const lk = crLock();
   const v = k => esc(c[k] == null ? '' : c[k]);
-  if (!ed) return `<tr><td class="c">${i + 1}</td><td>${v('course_name')}</td><td class="c">${v('credits')}</td><td class="c">${v('category') || '-'}</td><td class="c">${c.recognized ? '<b style="color:var(--pri2)">인정</b>' : ''}</td></tr>`;
+  if (!ed) return `<tr><td class="c">${i + 1}</td><td>${v('course_name')}</td><td class="c">${v('credits')}</td><td class="c">${c.category ? `<span class="cr-tag ${c.category === '전공' ? 'maj' : 'gen'}">${v('category')}</span>` : '-'}</td><td class="c">${c.recognized ? '<b style="color:var(--pri2)">인정</b>' : ''}</td></tr>`;
   return `<tr class="cr-row"><td class="c">${i + 1}</td>
     <td>${lk ? `<input class="cr-nm" value="${v('course_name')}" readonly tabindex="-1" style="border-color:transparent;background:transparent;padding-left:0">`
       : `<input class="cr-nm" value="${v('course_name')}" placeholder="예: Introduction to Aviation(항공학개론)">`}</td>
     <td>${lk ? `<input class="cr-cr" type="number" value="${v('credits')}" readonly tabindex="-1" style="width:64px;border-color:transparent;background:transparent;text-align:center">`
       : `<input class="cr-cr" type="number" min="0" step="0.5" value="${v('credits')}" oninput="crTotals(this)" style="width:64px">`}</td>
-    <td><select class="cr-cat" onchange="crTotals(this)"><option value="">-</option>${CR_CATS.map(x => `<option ${c.category === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
+    <td><input type="hidden" class="cr-cat" value="${esc(c.category || '')}"><div class="cr-seg">${CR_CATS.map(x => `<button type="button" class="${c.category === x ? 'on ' + (x === '전공' ? 'maj' : 'gen') : ''}" onclick="crCat(this,'${x}')">${x}</button>`).join('')}</div></td>
     <td class="c cr-okc"><input class="cr-ok" type="checkbox" ${c.recognized ? 'checked' : ''} onchange="crTotals(this)" title="인정"></td>
     <td>${lk ? '' : `<button class="btn sm" title="줄 삭제" onclick="const t=this.closest('table');this.closest('tr').remove();crTotals(t)">✕</button>`}</td></tr>`;
 }
@@ -119,7 +126,7 @@ function crCardHtml(a) {
     ${field('전적교 학과명', ed ? `<input class="cr-pm" value="${esc(r.prev_major || '')}" placeholder="예: Airline Industry (Cabin Attendant)" ${S.crHasMajor ? '' : 'disabled title="sql/2026-11-12_전적교_학과명.sql 실행 후 입력할 수 있습니다"'}>` : `<div>${esc(r.prev_major || '') || '-'}</div>`)}
     ${field('전적교 학년', ed ? `<select class="cr-py"><option value="">-</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(r.prev_year) === n ? 'selected' : ''}>${n}학년</option>`).join('')}</select>` : `<div>${r.prev_year ? esc(r.prev_year) + '학년' : '-'}</div>`)}
    </div>
-   <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:760px;width:100%"><colgroup><col style="width:44px"><col><col style="width:84px"><col style="width:84px"><col style="width:76px">${ed ? '<col style="width:48px">' : ''}</colgroup><thead><tr><th>NO</th><th>교과목명</th><th>학점</th><th>구분</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
+   <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:760px;width:100%"><colgroup><col style="width:44px"><col><col style="width:84px"><col style="width:122px"><col style="width:76px">${ed ? '<col style="width:48px">' : ''}</colgroup><thead><tr><th>NO</th><th>교과목명</th><th>학점</th><th>구분</th><th>인정 여부</th>${ed ? '<th></th>' : ''}</tr></thead>
     <tbody>${rows.map((c, i) => crRowHtml(c, ed, i)).join('') || (ed && !crLock() ? '' : `<tr><td colspan="${ed ? 6 : 5}" class="muted c">${crLock() ? '국제교류팀이 아직 성적증명서 과목을 입력하지 않았습니다' : '입력된 과목이 없습니다'}</td></tr>`)}</tbody></table></div>
    ${ed && crLock() ? '<div class="muted small" style="margin-top:6px">교과목명과 학점은 국제교류팀이 성적증명서대로 입력합니다. 과목마다 <b>구분</b>(전공/교양)과 <b>인정 여부</b>를 체크하고 저장해 주세요.</div>' : ''}
    ${ed && !crLock() ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn sm" onclick="crAddRow('${a.id}')">＋ 과목 추가</button>
