@@ -150,6 +150,11 @@ async function appFilePages(id, onPage) {
   const f = afOf(id);
   const { data: blob, error } = await sb.storage.from(AF_BUCKET).download(f.path);
   if (error) throw new Error(errMsg(error));
+  return pdfBlobPages(blob, onPage);
+}
+/* PDF 파일(blob)의 각 쪽을 그림으로 — 입학지원서·성적증명서 인쇄에 함께 씀 */
+async function pdfBlobPages(blob, onPage) {
+  await loadPdfJs();
   const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), isEvalSupported: false }).promise;
   const out = [];
   for (let i = 1; i <= pdf.numPages; i++) {

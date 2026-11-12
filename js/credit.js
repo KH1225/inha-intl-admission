@@ -83,6 +83,7 @@ function renderCredit() {
     <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${S.creditPending ? 'checked' : ''} onchange="S.creditPending=this.checked;renderCredit()"> 미제출만 보기</label>
     <span class="muted small">편입학 ${all.length}명 · 제출 ${done}명</span>
     <span class="sp"></span>
+    ${typeof printTranscripts === 'function' && S.trReady ? '<button class="btn" onclick="printTranscripts()">성적증명서 일괄 인쇄</button>' : ''}
     <button class="btn" onclick="openCreditPrint()">학점인정 서류 인쇄</button></div>
   ${list.length ? `<div class="ev-list">${list.map(crCardHtml).join('')}</div>`
     : '<div class="center-msg"><div><h2>심의할 편입학 지원자가 없습니다</h2><p>입학구분이 “편입학”인 지원자가 여기에 표시됩니다.</p></div></div>'}`;

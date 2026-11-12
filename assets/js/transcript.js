@@ -94,3 +94,45 @@ async function deleteTranscript(id, i) {
   toast('삭제했습니다.');
   refreshTranscriptSec(id);
 }
+
+/* ---------- 일괄 인쇄: 지금 화면(학과 필터)의 편입생 성적증명서를 학생 순서대로 ---------- */
+async function trFilePages(f, onPage) {
+  const { data: blob, error } = await sb.storage.from('applications').download(f.path);
+  if (error || !blob) throw new Error(errMsg(error) || '파일을 받을 수 없습니다');
+  if ((f.mime || '').startsWith('image/') || /\.(jpe?g|png)$/i.test(f.path)) {
+    // 사진: 너무 크면 줄여서(긴 변 2000px) 인쇄
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('사진을 열 수 없습니다')); i.src = url; });
+      const k = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement('canvas'); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+      const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      if (onPage) onPage(1, 1);
+      return [{ src: cv.toDataURL('image/jpeg', 0.88), land: cv.width > cv.height }];
+    } finally { URL.revokeObjectURL(url); }
+  }
+  return pdfBlobPages(blob, onPage);
+}
+async function printTranscripts() {
+  const list = creditTargets().filter(a => trOf(a.id).length);
+  const missing = creditTargets().filter(a => !trOf(a.id).length);
+  if (!list.length) { toast('올려 둔 성적증명서가 없습니다.', 'err'); return; }
+  if (missing.length && !confirm(`성적증명서가 없는 학생 ${missing.length}명은 빠집니다: ${missing.map(a => a.name_ko).join(', ')}\n나머지 ${list.length}명을 인쇄할까요?`)) return;
+  openModal(`${mHead('성적증명서 일괄 인쇄', `${list.length}명`)}<div class="m-body"><div id="trp-prog" class="notice">준비 중…</div></div>`, { sticky: true });
+  let html = '', k = 0, fails = [];
+  for (const a of list) {
+    k++;
+    const files = trOf(a.id), pages = [];
+    for (let j = 0; j < files.length; j++) {
+      try {
+        pages.push(...await trFilePages(files[j], (i, n) => { const el = $('#trp-prog'); if (el) el.textContent = `성적증명서 준비 중… ${k}/${list.length}명 (${a.name_ko} 파일 ${j + 1}/${files.length} · ${i}/${n}쪽)`; }));
+      } catch (e) { fails.push(`${a.name_ko} – ${files[j].file_name}: ${e.message || e}`); }
+    }
+    html += pages.map((p, i) => `<div class="doc sheet af-page">
+      <div class="af-head"><b>성적증명서</b><span>${esc(a.receipt_no)} · ${esc(a.name_ko)} ${esc(a.name_en || '')} · ${esc(deptName(a.department_id))}</span><span>${i + 1} / ${pages.length}</span></div>
+      <div class="af-img"><img src="${p.src}" alt=""></div></div>`).join('');
+  }
+  closeModal();
+  if (fails.length) toast(`열지 못한 파일 ${fails.length}개: ${fails.join(' / ')}`, 'err');
+  if (html) printHtml(html);
+}
