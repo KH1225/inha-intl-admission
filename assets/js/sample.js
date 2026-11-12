@@ -63,6 +63,7 @@ async function deleteSamples() {
     const photos = list.map(a => a.photo_path).filter(Boolean);
     if (photos.length) await sb.storage.from('photos').remove(photos);
     const pdfs = list.map(a => (S.appFiles || {})[a.id]).filter(Boolean).map(f => f.path);
+    list.forEach(a => ((S.transcripts || {})[a.id] || []).forEach(f => pdfs.push(f.path)));
     if (pdfs.length) await sb.storage.from('applications').remove(pdfs);
   } catch (e) { /* 무시 */ }
   const { data, error } = await sb.rpc('delete_sample_applicants');

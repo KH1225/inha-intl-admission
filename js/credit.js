@@ -120,6 +120,7 @@ function crCardHtml(a) {
      <div class="muted small">${esc(deptName(a.department_id))} · 편입학${a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''} · ${esc(a.nationality || '')}</div>
      ${typeof appFileBtn === 'function' && typeof afOf === 'function' && afOf(a.id) ? `<div style="margin-top:6px">${appFileBtn(a.id, 'btn sm blue')}</div>` : ''}</div>
     <div class="cr-sum"><div><span>전공 인정</span><b class="cr-maj">${crNum(s.maj, s.rMaj)}</b></div><div><span>교양 인정</span><b class="cr-gen">${crNum(s.gen, s.rGen)}</b></div><div><span>총계</span><b class="cr-tot">${crNum(s.total, s.rTotal)}</b></div></div></div>
+   ${typeof trSecHtml === 'function' ? trSecHtml(a) : ''}
    <div class="notice small cr-warn ${warn ? '' : 'hide'}" style="margin-top:8px">ℹ <span>${esc(warn)}</span></div>
    <div class="grid3" style="margin-top:10px">
     ${field(`전적교 대학명${crPartner(a) ? ' <span class="muted small">(협약학교)</span>' : ''}`, ed ? `<input class="cr-ps" value="${esc(crSchool(a))}" placeholder="예: Kyrgyz-Korean College">` : `<div>${esc(crSchool(a)) || '-'}</div>`)}
