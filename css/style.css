@@ -104,6 +104,7 @@ table.tbl{border-collapse:collapse;width:100%;min-width:1050px;background:var(--
 .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:5px;border:1px solid var(--line);background:var(--soft)}
 .badge.ag{color:#047857;border-color:#9fe0c3;background:#ecfdf5}
 .badge.kind{color:#1d4ed8;border-color:#b6c9f6;background:#eff4ff}
+.badge.kind.tr{color:#b45309;border-color:#f5c98a;background:#fff4e5}
 .dots{display:flex;gap:3px;margin-bottom:2px}
 .dots i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
 .dots i.no{background:var(--line)}
