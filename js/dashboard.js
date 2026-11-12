@@ -145,6 +145,7 @@ function filtersHtml() {
     <select onchange="setFilter('qual',this.value)"><option value="">전형구분</option>${S.quals.map(q => opt(q.code, q.name_ko, f.qual)).join('')}</select>
     <select onchange="setFilter('nat',this.value)"><option value="">국적</option>${nats.map(n => opt(n, n, f.nat)).join('')}</select>
     <select onchange="setFilter('dept',this.value)"><option value="">지원학과 (전체 전공)</option>${deptIds.map(id => opt(id, deptName(id), f.dept)).join('')}</select>
+    ${typeof canSeeAppFile === 'function' && canSeeAppFile() && S.appFilesReady ? `<select onchange="setFilter('af',this.value)"><option value="">입학지원서</option><option value="y" ${f.af === 'y' ? 'selected' : ''}>업로드됨</option><option value="n" ${f.af === 'n' ? 'selected' : ''}>업로드 안 됨</option></select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('schol',this.value)"><option value="">장학금</option><option value="__none__" ${f.schol === '__none__' ? 'selected' : ''}>장학금 없음</option>${schols.map(s => opt(s, s, f.schol)).join('')}</select>` : ''}
    </div>`;
 }
@@ -179,6 +180,11 @@ function sortVal(a, k) {
   }
 }
 function sortBy(k) { if (S.f.sortKey === k) S.f.sortDir *= -1; else { S.f.sortKey = k; S.f.sortDir = 1; } renderTable(); }
+// 서류 구비 칸 아래: 입학지원서 PDF 업로드 여부
+function afTag(a) {
+  if (typeof afOf !== 'function' || !S.appFilesReady) return '';
+  return afOf(a.id) ? `<div class="aftag ok" title="입학지원서 PDF 업로드됨" onclick="event.stopPropagation();viewAppFile('${a.id}')">📄 지원서 있음</div>` : '<div class="aftag no">지원서 없음</div>';
+}
 function filteredApps() {
   const f = S.f, q = f.q.trim().toLowerCase();
   const list = S.apps.filter(a => {
@@ -188,6 +194,7 @@ function filteredApps() {
     if (f.qual && a.qualification_code !== f.qual) return false;
     if (f.nat && a.nationality !== f.nat) return false;
     if (f.dept && String(a.department_id) !== String(f.dept)) return false;
+    if (f.af && typeof afOf === 'function') { if ((f.af === 'y') !== !!afOf(a.id)) return false; }
     if (f.schol) { if (f.schol === '__none__') { if (a.scholarship_type) return false; } else if (a.scholarship_type !== f.schol) return false; }
     if (q) {
       const hit = (a.name_ko || '').toLowerCase().includes(q) || (a.name_en || '').toLowerCase().includes(q) ||
@@ -236,7 +243,7 @@ function rowHtml(a) {
       ${d.program_type ? `<div class="muted small">${esc(d.program_type === '전공심화' ? '전공심화과정' : d.program_type)}</div>` : ''}</td>
     <td><span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span></td>
     <td style="white-space:nowrap">${a.topik_level ? `<b>TOPIK ${a.topik_level}급</b>` : '<span class="muted">-</span>'}</td>
-    ${can.broad() ? `<td>${dp.need ? `<div class="dots">${dots}</div><div class="dc ${dp.got >= dp.need ? 'ok' : 'no'}">${dp.got}/${dp.need} 구비${dp.got >= dp.need ? '' : ' 미비'}</div>` : '<span class="muted">-</span>'}</td>` : ''}
+    ${can.broad() ? `<td>${dp.need ? `<div class="dots">${dots}</div><div class="dc ${dp.got >= dp.need ? 'ok' : 'no'}">${dp.got}/${dp.need} 구비${dp.got >= dp.need ? '' : ' 미비'}</div>` : '<span class="muted">-</span>'}${afTag(a)}</td>` : ''}
     <td>${statusCell(a)}</td>
     <td class="muted small" style="white-space:nowrap">${fmtDate(a.created_at)}</td>
     <td><div class="acts">
