@@ -85,6 +85,8 @@ function buildImportPreview(rows) {
     let route = '개별지원', agency_id = null, agencyNew = null, partnerId = null;
     if (/우리대학|본교/.test(routeRaw)) {
       route = ROUTE_ALUMNI;
+    } else if (/국내/.test(routeRaw)) {
+      route = ROUTE_DOMHS;
     } else if (/협약/.test(routeRaw)) {
       route = ROUTE_PARTNER;
       const m = routeRaw.match(/\((.+)\)/);

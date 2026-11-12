@@ -219,7 +219,7 @@ function statusCell(a) {
 }
 function rowHtml(a) {
   const full = hasFull(a);
-  const ag = a.route === '유학원' || a.route === ROUTE_PARTNER || a.route === ROUTE_ALUMNI ? `<span class="badge ag">${esc(routeLabel(a).replace(' (', '('))}</span>` : (full ? `<span class="badge ag">개별지원</span>` : '');
+  const ag = a.route === '유학원' || a.route === ROUTE_PARTNER || a.route === ROUTE_ALUMNI || a.route === ROUTE_DOMHS ? `<span class="badge ag">${esc(routeLabel(a).replace(' (', '('))}</span>` : (full ? `<span class="badge ag">개별지원</span>` : '');
   const d = S.deptMap[a.department_id] || {};
   const dp = docProgress(a);
   const dots = Array.from({ length: dp.need }, (_, i) => `<i class="${i < dp.got ? '' : 'no'}"></i>`).join('');

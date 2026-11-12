@@ -59,7 +59,7 @@ function errMsg(e) {
   if (/row-level security|permission denied/i.test(m)) return '이 작업을 할 권한이 없습니다.';
   // 새 기능용 DB 설정(SQL)을 아직 실행하지 않았을 때
   const sqlHint = [
-    [/applicants_route_check|enum .*route/i, '지원경로', '2026-11-11_지원경로_추가.sql'],
+    [/applicants_route_check|enum .*route/i, '지원경로', '2026-11-12_지원경로_국내고교졸업.sql'],
     [/applicants_status_check|enum .*status/i, '접수취소 상태', '2026-11-10_접수취소_상태추가.sql'],
     [/document_types_admission_kind/i, '전공심화 서류 구분', '2026-11-11_전공심화_제출서류.sql']
   ].find(([re]) => re.test(m));
@@ -141,7 +141,8 @@ const isTransferDept = d => !!d && TRANSFER_DEPTS.includes(String(d.name_ko || '
 const ROUTE_PARTNER = '협약학교 추천'; // DB에 저장되는 값 (바꾸지 말 것)
 const ROUTE_PARTNER_LABEL = '협약학교'; // 화면 표시 이름
 const ROUTE_ALUMNI = '우리대학 졸업';
-const ROUTES = ['개별지원', '유학원', ROUTE_PARTNER, ROUTE_ALUMNI];
+const ROUTE_DOMHS = '국내 고교 졸업';
+const ROUTES = ['개별지원', '유학원', ROUTE_PARTNER, ROUTE_ALUMNI, ROUTE_DOMHS];
 /* 지원경로 표시: 개별지원 / 유학원(이름) / 협약학교(학교명) / 우리대학 졸업 */
 function routeLabel(a) {
   if (a.route === '유학원') return `유학원${a.agency_id && S.agencyMap[a.agency_id] ? ` (${S.agencyMap[a.agency_id].name})` : ''}`;
