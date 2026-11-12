@@ -54,7 +54,7 @@ h1,h2,h3{margin:0}
 .tabs{display:flex;gap:4px;padding:0 24px;background:var(--card);border-bottom:1px solid var(--line)}
 .tabs button{border:0;background:none;padding:12px 16px;font-weight:700;color:var(--mute);border-bottom:3px solid transparent}
 .tabs button.on{color:var(--pri2);border-color:var(--pri2)}
-main{padding:20px 24px 60px;max-width:1500px;margin:0 auto}
+main{padding:20px 24px 60px;max-width:1800px;margin:0 auto}
 
 /* cards */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:16px}
@@ -116,6 +116,17 @@ table.tbl{border-collapse:collapse;width:100%;min-width:1050px;background:var(--
 .s-pass{background:#dcfce7;color:#047857}.s-fail{background:#fee2e2;color:#b91c1c}.s-reg{background:#cffafe;color:#0e7490}.s-cancel{background:#e5e7eb;color:#4b5563}
 tr.cancelled td{opacity:.55}tr.cancelled td:last-child{opacity:1}
 .acts{display:flex;gap:5px;justify-content:flex-end}
+/* 지원자 목록: 한 화면에 다 보이도록 촘촘하게 */
+table.tbl.list{min-width:1000px}
+.tbl.list th,.tbl.list td{padding-left:7px;padding-right:7px}
+.tbl.list th:first-child,.tbl.list td:first-child{padding-left:12px}
+.tbl.list th:last-child,.tbl.list td:last-child{padding-right:12px}
+.tbl.list .who-cell{gap:7px}
+.tbl.list .av{width:28px;height:28px;font-size:12px}
+.tbl.list .acts{gap:3px}
+.tbl.list .dc{white-space:nowrap}
+.tbl.list .acts .btn{padding:5px 8px}
+.tbl.list select.st{padding-left:8px;padding-right:22px}
 .more{text-align:center;padding:12px}
 
 /* modal */

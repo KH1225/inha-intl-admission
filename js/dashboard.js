@@ -47,7 +47,7 @@ function renderDash() {
       ${filtersHtml()}
       <div class="notice">[${esc(ROLE_LABEL[S.role])}${S.role === 'dept' ? ' · ' + esc(scopeLabel()) : ' (전체 학과)'}] 권한으로 로그인되었습니다. ${roleNotice()}</div>
       <div class="list-head"><div id="resultCount" class="muted"></div><div style="display:flex;gap:8px;flex-wrap:wrap">${listButtons()}</div></div>
-      <div class="tbl-wrap"><table class="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+      <div class="tbl-wrap"><table class="tbl list"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
       <div class="more" id="more"></div>
     </section>`;
   renderTable();
@@ -238,7 +238,7 @@ function rowHtml(a) {
     <td style="white-space:nowrap">${a.topik_level ? `<b>TOPIK ${a.topik_level}급</b>` : '<span class="muted">-</span>'}</td>
     ${can.broad() ? `<td>${dp.need ? `<div class="dots">${dots}</div><div class="dc ${dp.got >= dp.need ? 'ok' : 'no'}">${dp.got}/${dp.need} 구비${dp.got >= dp.need ? '' : ' 미비'}</div>` : '<span class="muted">-</span>'}</td>` : ''}
     <td>${statusCell(a)}</td>
-    <td class="muted" style="white-space:nowrap">${fmtDate(a.created_at)}</td>
+    <td class="muted small" style="white-space:nowrap">${fmtDate(a.created_at)}</td>
     <td><div class="acts">
       ${can.broad() ? `<button class="btn sm" onclick="openDetail('${a.id}','docs')">서류</button>` : ''}
       ${can.edit() ? `<button class="btn sm" onclick="openPrintMenu('${a.id}')">인쇄</button>` : ''}
