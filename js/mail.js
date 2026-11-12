@@ -577,13 +577,13 @@ function feeSave() {
   try { localStorage.setItem(feeKey(), JSON.stringify(o)); } catch (e) { /* 무시 */ }
 }
 function feeArcAmt() { const el = $('#fe-arc'); const n = el ? Number(String(el.value).replace(/[^\d]/g, '')) : NaN; return Number.isFinite(n) && n > 0 ? n : (feeSaved().arc || ARC_FEE_DEFAULT); }
-// 유학 가능한 체류자격: D-2(유학), D-4(일반연수), F-2·F-4·F-5·F-6
-const studyVisa = v => /(^|[^A-Z])D-?\s*[24](?![0-9])/i.test(v) || /(^|[^A-Z])F-?\s*[2456](?![0-9])/i.test(v);
+// 외국인등록비가 필요 없는 체류자격: D-2(유학), F-2·F-4·F-5·F-6 — D-4(어학연수)는 D-2로 바꿔야 하므로 등록비 필요
+const studyVisa = v => /(^|[^A-Z])D-?\s*2(?![0-9])/i.test(v) || /(^|[^A-Z])F-?\s*[2456](?![0-9])/i.test(v);
 function feeArcWhy(a) {
   const v = String(a.visa_type || '').trim();
   if (!v || /국외|해외|없음|none|abroad/i.test(v)) return { on: true, why: '국외 체류(비자 없음)' };
   if (studyVisa(v)) return { on: false, why: `유학 가능 비자 ${v}` };
-  return { on: true, why: `현재 비자 ${v} — 유학 불가` };
+  return { on: true, why: /(^|[^A-Z])D-?\s*4/i.test(v) ? `현재 비자 ${v} — D-2 변경 필요` : `현재 비자 ${v} — 유학 불가` };
 }
 function feeShort(a) {
   const p = S.payments[a.id];
@@ -625,7 +625,7 @@ function feeSection(list) {
       <td class="nw" style="font-weight:700" id="fe-tot-${a.id}">${won(feeTotal(x))}</td></tr>`;
   }).join('');
   return `<div class="sec"><h3>납부 비용 (사람별) <span class="muted small">체크한 항목만 본문의 <code>{납부비용}</code> 자리에 들어가고, 하나도 없으면 그 부분이 빠집니다</span></h3>
-    <div class="muted small" style="margin-bottom:6px">등록금 부족분은 수납 금액으로 자동 계산 · 외국인등록비는 비자가 없거나(국외 체류) 현재 비자로 유학할 수 없는 사람에게 자동 체크 · 기숙사비는 지원자 정보의 기숙사 기간·객실 유형으로 자동으로 들어갑니다${feeDb() ? ' (여기서 고르면 지원자 정보에도 저장)' : ' (DB에 객실 칸이 없어 고른 객실은 이 브라우저에만 기억 — sql/2026-11-11_기숙사_객실유형.sql 실행 필요)'}</div>
+    <div class="muted small" style="margin-bottom:6px">등록금 부족분은 수납 금액으로 자동 계산 · 외국인등록비는 비자가 없거나(국외 체류) D-2·F 비자가 아닌 사람(D-4 포함)에게 자동 체크 · 기숙사비는 지원자 정보의 기숙사 기간·객실 유형으로 자동으로 들어갑니다${feeDb() ? ' (여기서 고르면 지원자 정보에도 저장)' : ' (DB에 객실 칸이 없어 고른 객실은 이 브라우저에만 기억 — sql/2026-11-11_기숙사_객실유형.sql 실행 필요)'}</div>
     <div class="grid2">${field('외국인등록비 (1인)', `<input id="fe-arc" type="number" min="0" step="1000" value="${arcAmt}" oninput="feeRead()">`)}</div>
     ${list.length ? `<div class="tbl-wrap" style="max-height:300px;overflow:auto"><table class="tbl" style="min-width:900px"><thead><tr><th>접수번호</th><th>성명</th><th>등록금 부족분</th><th>외국인등록비</th><th>기숙사비</th><th>합계</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}</div>`;
 }
