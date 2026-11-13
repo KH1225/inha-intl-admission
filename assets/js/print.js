@@ -10,9 +10,21 @@ const NATION_EN = { 우즈베키스탄: 'Uzbekistan', 일본: 'Japan', 베트남
 function logoOk() {
   return new Promise(res => { const im = new Image(); im.onload = () => res(true); im.onerror = () => res(false); im.src = C.LOGO + '?v=' + Date.now(); });
 }
+/* .fit1 칸: 줄바꿈 없이 한 줄로, 넘치면 글자를 줄여 칸에 맞춤 (최소 5pt) */
+function fitOneLine(root) {
+  const els = $$('.fit1', root); if (!els.length) return;
+  const pa = root, shown = pa.style.display; pa.style.display = 'block';
+  els.forEach(el => {
+    el.style.whiteSpace = 'nowrap';
+    let pt = parseFloat(getComputedStyle(el).fontSize) * 0.75;
+    while (el.scrollWidth > el.clientWidth + 1 && pt > 5) { pt -= 0.3; el.style.fontSize = pt.toFixed(1) + 'pt'; }
+  });
+  pa.style.display = shown;
+}
 function printHtml(html) {
   const pa = $('#printArea');
   pa.innerHTML = html;
+  fitOneLine(pa);
   const imgs = $$('img', pa);
   const wait = Promise.all(imgs.map(im => (im.complete ? Promise.resolve() : new Promise(r => { im.onload = im.onerror = r; }))));
   wait.then(() => setTimeout(() => {

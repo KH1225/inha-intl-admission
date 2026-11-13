@@ -427,6 +427,7 @@ table.tbl.list{min-width:1000px}
 /* 검토 의견서: 내용이 길면 다음 장으로 이어짐 (표 머리글 반복, 줄·서명란은 쪼개지 않음) */
 .doc.cr-flow{height:auto;overflow:visible;padding:2mm 13mm 0;page:crflow}
 .cr-flow .cr-t thead{display:table-header-group}
+.cr-fix{table-layout:fixed}.cr-fix th{white-space:nowrap}.cr-fix td.fit1{white-space:nowrap;overflow:hidden}.cr-fix td.en{word-break:break-word}
 .cr-flow .cr-t tr,.cr-flow .cr-h,.cr-flow .cr-endblk{break-inside:avoid;page-break-inside:avoid}
 .cr-flow .cr-h{break-after:avoid;page-break-after:avoid}
 .cr-sig{display:flex;justify-content:center;align-items:flex-end;gap:3mm;font-size:10.5pt}

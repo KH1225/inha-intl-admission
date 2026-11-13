@@ -363,10 +363,12 @@ function crOpinionHtml(d, apps, comment) {
   return `<div class="doc sheet cr-doc cr-flow">
    <div class="cr-term">${crTermTitle()}</div><h2 class="cr-title">편입학 성적인정 검토 의견서</h2>
    <h4 class="cr-h">1. 학적사항</h4>
-   <table class="cr-t"><thead><tr><th colspan="4">전 적 교</th><th colspan="3">본 대 학</th></tr>
-    <tr><th>대학명</th><th>학년</th><th>성명</th><th>영문명</th><th>지원학과</th><th>학년</th><th>성명</th></tr></thead>
-    <tbody>${apps.map(a => { const r = crOf(a.id) || {}; return `<tr><td>${esc(crSchool(a))}</td><td>${r.prev_year ? esc(r.prev_year) : ''}</td><td>${esc(a.name_ko)}</td><td class="en">${esc(a.name_en || '')}</td>
-      <td>${esc(deptName(a.department_id))}</td><td>${a.transfer_year ? esc(a.transfer_year) : ''}</td><td>${esc(a.name_ko)}</td></tr>`; }).join('')}</tbody></table>
+   <table class="cr-t cr-fix"><colgroup><col><col style="width:10mm"><col style="width:15mm"><col style="width:30mm"><col style="width:26mm"><col style="width:10mm"><col style="width:15mm"></colgroup>
+    <thead><tr><th colspan="4">전 적 교</th><th colspan="3">본 대 학</th></tr>
+    <tr><th>대학명 · 학과명</th><th>학년</th><th>성명</th><th>영문명</th><th>지원학과</th><th>학년</th><th>성명</th></tr></thead>
+    <tbody>${apps.map(a => { const r = crOf(a.id) || {}; const sch = [crSchool(a), r.prev_major].filter(Boolean).join(' · ');
+      return `<tr><td class="l fit1">${esc(sch)}</td><td>${r.prev_year ? esc(r.prev_year) : ''}</td><td>${esc(a.name_ko)}</td><td class="en">${esc(a.name_en || '')}</td>
+      <td class="fit1">${esc(deptName(a.department_id))}</td><td>${a.transfer_year ? esc(a.transfer_year) : ''}</td><td>${esc(a.name_ko)}</td></tr>`; }).join('')}</tbody></table>
    <h4 class="cr-h">2. 성적사항</h4>
    <table class="cr-t"><thead><tr><th colspan="5">전적교 이수(취득)성적 현황</th><th colspan="5">본대학 성적인정(학점) 현황</th></tr>
     <tr><th>구분</th><th>교과목명</th><th>성적</th><th>학점</th><th>비고</th><th>구분</th><th>교과목명</th><th>성적</th><th>학점</th><th>비고</th></tr></thead>
