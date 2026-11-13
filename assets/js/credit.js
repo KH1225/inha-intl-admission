@@ -360,7 +360,7 @@ function runCreditPrint() {
 function crOpinionHtml(d, apps, comment) {
   const sub = apps.map(a => crOf(a.id)).filter(r => r && r.submitted);
   const last = sub.sort((x, y) => String(y.submitted_at).localeCompare(String(x.submitted_at)))[0] || {};
-  return `<div class="doc sheet cr-doc">
+  return `<div class="doc sheet cr-doc cr-flow">
    <div class="cr-term">${crTermTitle()}</div><h2 class="cr-title">편입학 성적인정 검토 의견서</h2>
    <h4 class="cr-h">1. 학적사항</h4>
    <table class="cr-t"><thead><tr><th colspan="4">전 적 교</th><th colspan="3">본 대 학</th></tr>
@@ -373,8 +373,8 @@ function crOpinionHtml(d, apps, comment) {
     <tbody><tr><td></td><td>붙임참조</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
    <h4 class="cr-h">3. 검토의견</h4>
    <div class="cr-cm">${esc(comment || '')}</div>
-   <div class="cr-date">${crDots(last.review_date || (last.submitted_at || '').slice(0, 10))}</div>
-   <div class="cr-sig"><span>${esc(deptName(d))} 학과장</span><span class="nm">${esc(last.reviewer_name || '')}</span><span class="ln">${crSignImg(last, '13mm')}</span><span>(인)</span></div></div>`;
+   <div class="cr-endblk"><div class="cr-date">${crDots(last.review_date || (last.submitted_at || '').slice(0, 10))}</div>
+   <div class="cr-sig"><span>${esc(deptName(d))} 학과장</span><span class="nm">${esc(last.reviewer_name || '')}</span><span class="ln">${crSignImg(last, '13mm')}</span><span>(인)</span></div></div></div>`;
 }
 /* 「편입학 지원자 학점인정 심의」 사정표 (학생별, 과목이 많으면 여러 쪽) */
 function crReviewHtml(a) {
