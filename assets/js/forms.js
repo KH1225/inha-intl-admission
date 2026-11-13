@@ -31,11 +31,12 @@ function openDetail(id, focus) {
       <span class="secret" id="secrets"></span><div class="muted small">※ 원문을 볼 때마다 열람 기록이 남습니다. 20초 뒤 자동으로 가려집니다.</div></div>` : ''}
     ${full && a.memo ? `<div style="margin-top:10px"><span class="muted small">비고</span><div>${esc(a.memo)}</div></div>` : ''}</div>`;
 
-  const docs = full ? `<div class="sec" id="sec-docs"><h3>제출서류 체크리스트 <span class="muted small">${esc(docKindOf(a) === '전공심화' ? '전공심화과정' : a.admission_kind)} · ${a.qualification_code ? esc(qualLabel(a.qualification_code)) : '전형유형 미선택'} · 필수 서류 ${docProgress(a).got}/${docProgress(a).need} 구비</span></h3>
+  const docs = full ? `<div class="sec" id="sec-docs"><h3>제출서류 체크리스트 <span class="muted small">${esc(docKindOf(a) === '전공심화' ? '전공심화과정' : a.admission_kind)} · ${a.qualification_code ? esc(qualLabel(a.qualification_code)) : '전형유형 미선택'} · 필수 서류 ${docProgress(a).got}/${docProgress(a).need} 구비</span>
+      ${can.edit() && docTypes.length ? `<span id="doc-acts"><button class="btn sm" onclick="docEditStart()">정보 수정</button></span>` : ''}</h3>
     ${a.qualification_code ? '' : '<div class="warn" style="margin-bottom:8px">전형유형(순수외국인 / 전교육과정 해외이수)을 선택해야 필수 서류가 정해집니다. “정보 수정”에서 선택하세요.</div>'}
     ${docTypes.length ? `<div class="doclist">${docTypes.map(t => {
       const r = S.docs[id] && S.docs[id][t.code];
-      return `<label><input type="checkbox" ${r && r.received ? 'checked' : ''} ${can.edit() ? '' : 'disabled'} onchange="toggleDoc('${id}','${t.code}',this.checked)"><span>${esc(t.name_ko)} ${docExempt(t, a) ? `<span class="op">면제 (${esc(docExempt(t, a))})</span>` : docRequired(t, a) ? '<span class="rq">필수</span>' : '<span class="op">선택</span>'}</span></label>`;
+      return `<label><input type="checkbox" class="doc-ck" data-code="${t.code}" data-was="${r && r.received ? 1 : 0}" ${r && r.received ? 'checked' : ''} disabled onchange="docEditMark()"><span>${esc(t.name_ko)} ${docExempt(t, a) ? `<span class="op">면제 (${esc(docExempt(t, a))})</span>` : docRequired(t, a) ? '<span class="rq">필수</span>' : '<span class="op">선택</span>'}</span></label>`;
     }).join('')}</div>` : '<div class="muted">등록된 서류 항목이 없습니다.</div>'}</div>` : '';
 
   const interview = `<div class="sec"><h3>면접</h3><div class="kv">
@@ -63,6 +64,7 @@ function openDetail(id, focus) {
       ${can.admin() && a.status === '접수취소' ? `<button class="btn" onclick="restoreApplication('${id}')">취소 철회</button>` : ''}
       ${can.admin() ? `<button class="btn bad" onclick="deleteApplicant('${id}')">삭제</button>` : ''}
       <button class="btn pri" onclick="closeModal(this.closest('.backdrop'))">닫기</button></div>`, { wide: true });
+  bd.dataset.appId = id;
   if (focus === 'docs') { const el = $('#sec-docs', bd); if (el) setTimeout(() => el.scrollIntoView({ block: 'center' }), 50); }
   if (full && can.broad()) loadHistory(id);
 }
@@ -87,13 +89,41 @@ async function showSecrets(id) {
   el.textContent = ` 여권번호: ${r && r.o_passport_no ? r.o_passport_no : '-'}   외국인등록번호: ${r && r.o_alien_reg_no ? r.o_alien_reg_no : '-'}`;
   setTimeout(() => { const e2 = $('#secrets'); if (e2) e2.textContent = ''; }, 20000);
 }
-async function toggleDoc(id, code, checked) {
+/* 서류 체크: '정보 수정'을 눌러야 체크할 수 있고, '저장'을 눌러야 반영 */
+function docEditStart() {
+  $$('#sec-docs .doc-ck').forEach(c => { c.disabled = false; });
+  $('#sec-docs').classList.add('editing');
+  $('#doc-acts').innerHTML = `<span class="muted small" id="doc-chg"></span> <button class="btn sm" onclick="docEditCancel()">취소</button> <button class="btn sm pri" onclick="docEditSave()">저장</button>`;
+}
+function docEditMark() {
+  const n = $$('#sec-docs .doc-ck').filter(c => (c.checked ? 1 : 0) !== Number(c.dataset.was)).length;
+  const el = $('#doc-chg'); if (el) el.textContent = n ? `변경 ${n}건` : '';
+}
+function docEditCancel() {
+  $$('#sec-docs .doc-ck').forEach(c => { c.checked = c.dataset.was === '1'; c.disabled = true; });
+  $('#sec-docs').classList.remove('editing');
+  $('#doc-acts').innerHTML = `<button class="btn sm" onclick="docEditStart()">정보 수정</button>`;
+}
+async function docEditSave() {
+  const sec = $('#sec-docs'), id = sec.closest('.backdrop').dataset.appId;
+  const ch = $$('.doc-ck', sec).filter(c => (c.checked ? 1 : 0) !== Number(c.dataset.was));
+  if (!ch.length) { docEditCancel(); return; }
+  setBusy(true);
+  let ok = 0;
+  for (const c of ch) if (await toggleDoc(id, c.dataset.code, c.checked, true)) ok++;
+  setBusy(false);
+  toast(ok === ch.length ? `서류 체크 ${ok}건을 저장했습니다.` : `${ok}/${ch.length}건만 저장했습니다.`, ok === ch.length ? 'ok' : 'err');
+  renderTable();
+  closeModal(sec.closest('.backdrop')); openDetail(id, 'docs');
+}
+async function toggleDoc(id, code, checked, quiet) {
   const row = { received: checked, received_at: checked ? todayYMD() : null };
   let { data, error } = await sb.from('applicant_documents').update(row).eq('applicant_id', id).eq('doc_code', code).select();
   if (!error && (!data || !data.length)) ({ error } = await sb.from('applicant_documents').insert({ applicant_id: id, doc_code: code, ...row }));
-  if (error) { toast(errMsg(error), 'err'); return; }
+  if (error) { toast(errMsg(error), 'err'); return false; }
   (S.docs[id] = S.docs[id] || {})[code] = { applicant_id: id, doc_code: code, ...row };
-  renderTable();
+  if (!quiet) renderTable();
+  return true;
 }
 async function savePayment(id) {
   const amt = $('#pay-amt').value, at = $('#pay-at').value;
