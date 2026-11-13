@@ -31,12 +31,12 @@ function openDetail(id, focus) {
       <span class="secret" id="secrets"></span><div class="muted small">※ 원문을 볼 때마다 열람 기록이 남습니다. 20초 뒤 자동으로 가려집니다.</div></div>` : ''}
     ${full && a.memo ? `<div style="margin-top:10px"><span class="muted small">비고</span><div>${esc(a.memo)}</div></div>` : ''}</div>`;
 
-  const docs = full ? `<div class="sec" id="sec-docs"><h3>제출서류 체크리스트 <span class="muted small">${esc(docKindOf(a) === '전공심화' ? '전공심화과정' : a.admission_kind)} · ${a.qualification_code ? esc(qualLabel(a.qualification_code)) : '전형유형 미선택'} · 필수 서류 ${docProgress(a).got}/${docProgress(a).need} 구비</span>
-      ${can.edit() && docTypes.length ? `<span id="doc-acts"><button class="btn sm" onclick="docEditStart()">정보 수정</button></span>` : ''}</h3>
+  const docs = full ? `<div class="sec" id="sec-docs"><h3>제출서류 체크리스트 <span class="muted small">${esc(docKindOf(a) === '전공심화' ? '전공심화과정' : a.admission_kind)} · ${a.qualification_code ? esc(qualLabel(a.qualification_code)) : '전형유형 미선택'} · 필수 서류 ${docProgress(a).got}/${docProgress(a).need} 구비</span></h3>
     ${a.qualification_code ? '' : '<div class="warn" style="margin-bottom:8px">전형유형(순수외국인 / 전교육과정 해외이수)을 선택해야 필수 서류가 정해집니다. “정보 수정”에서 선택하세요.</div>'}
+    ${can.edit() && docTypes.length ? '<div class="muted small" style="margin-bottom:6px">체크하려면 아래 ‘정보 수정’을 누르세요.</div>' : ''}
     ${docTypes.length ? `<div class="doclist">${docTypes.map(t => {
       const r = S.docs[id] && S.docs[id][t.code];
-      return `<label><input type="checkbox" class="doc-ck" data-code="${t.code}" data-was="${r && r.received ? 1 : 0}" ${r && r.received ? 'checked' : ''} disabled onchange="docEditMark()"><span>${esc(t.name_ko)} ${docExempt(t, a) ? `<span class="op">면제 (${esc(docExempt(t, a))})</span>` : docRequired(t, a) ? '<span class="rq">필수</span>' : '<span class="op">선택</span>'}</span></label>`;
+      return `<label><input type="checkbox" ${r && r.received ? 'checked' : ''} disabled><span>${esc(t.name_ko)} ${docExempt(t, a) ? `<span class="op">면제 (${esc(docExempt(t, a))})</span>` : docRequired(t, a) ? '<span class="rq">필수</span>' : '<span class="op">선택</span>'}</span></label>`;
     }).join('')}</div>` : '<div class="muted">등록된 서류 항목이 없습니다.</div>'}</div>` : '';
 
   const interview = `<div class="sec"><h3>면접</h3><div class="kv">
@@ -58,13 +58,12 @@ function openDetail(id, focus) {
 
   const bd = openModal(`${mHead(`${esc(a.name_ko)} <span class="rno">${esc(a.receipt_no)}</span> <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span>`, esc(a.name_en))}
     <div class="m-body">${basic}${docs}${appFileSecHtml(a)}${interview}${schol}${payment}${history}</div>
-    <div class="m-foot">${can.edit() ? `<button class="btn" onclick="closeModal(this.closest('.backdrop'));openApplicantForm('${id}')">정보 수정</button>
+    <div class="m-foot">${can.edit() ? `<button class="btn" onclick="closeModal(this.closest('.backdrop'));openApplicantForm('${id}','${focus === 'docs' ? 'docs' : ''}')">정보 수정</button>
       <button class="btn" onclick="closeModal(this.closest('.backdrop'));openPrintMenu('${id}')">문서 인쇄</button>` : ''}
       ${can.edit() && !['등록완료', '접수취소'].includes(a.status) ? `<button class="btn bad" onclick="cancelApplication('${id}')">접수 취소</button>` : ''}
       ${can.admin() && a.status === '접수취소' ? `<button class="btn" onclick="restoreApplication('${id}')">취소 철회</button>` : ''}
       ${can.admin() ? `<button class="btn bad" onclick="deleteApplicant('${id}')">삭제</button>` : ''}
       <button class="btn pri" onclick="closeModal(this.closest('.backdrop'))">닫기</button></div>`, { wide: true });
-  bd.dataset.appId = id;
   if (focus === 'docs') { const el = $('#sec-docs', bd); if (el) setTimeout(() => el.scrollIntoView({ block: 'center' }), 50); }
   if (full && can.broad()) loadHistory(id);
 }
@@ -88,33 +87,6 @@ async function showSecrets(id) {
   const r = Array.isArray(data) ? data[0] : data;
   el.textContent = ` 여권번호: ${r && r.o_passport_no ? r.o_passport_no : '-'}   외국인등록번호: ${r && r.o_alien_reg_no ? r.o_alien_reg_no : '-'}`;
   setTimeout(() => { const e2 = $('#secrets'); if (e2) e2.textContent = ''; }, 20000);
-}
-/* 서류 체크: '정보 수정'을 눌러야 체크할 수 있고, '저장'을 눌러야 반영 */
-function docEditStart() {
-  $$('#sec-docs .doc-ck').forEach(c => { c.disabled = false; });
-  $('#sec-docs').classList.add('editing');
-  $('#doc-acts').innerHTML = `<span class="muted small" id="doc-chg"></span> <button class="btn sm" onclick="docEditCancel()">취소</button> <button class="btn sm pri" onclick="docEditSave()">저장</button>`;
-}
-function docEditMark() {
-  const n = $$('#sec-docs .doc-ck').filter(c => (c.checked ? 1 : 0) !== Number(c.dataset.was)).length;
-  const el = $('#doc-chg'); if (el) el.textContent = n ? `변경 ${n}건` : '';
-}
-function docEditCancel() {
-  $$('#sec-docs .doc-ck').forEach(c => { c.checked = c.dataset.was === '1'; c.disabled = true; });
-  $('#sec-docs').classList.remove('editing');
-  $('#doc-acts').innerHTML = `<button class="btn sm" onclick="docEditStart()">정보 수정</button>`;
-}
-async function docEditSave() {
-  const sec = $('#sec-docs'), id = sec.closest('.backdrop').dataset.appId;
-  const ch = $$('.doc-ck', sec).filter(c => (c.checked ? 1 : 0) !== Number(c.dataset.was));
-  if (!ch.length) { docEditCancel(); return; }
-  setBusy(true);
-  let ok = 0;
-  for (const c of ch) if (await toggleDoc(id, c.dataset.code, c.checked, true)) ok++;
-  setBusy(false);
-  toast(ok === ch.length ? `서류 체크 ${ok}건을 저장했습니다.` : `${ok}/${ch.length}건만 저장했습니다.`, ok === ch.length ? 'ok' : 'err');
-  renderTable();
-  closeModal(sec.closest('.backdrop')); openDetail(id, 'docs');
 }
 async function toggleDoc(id, code, checked, quiet) {
   const row = { received: checked, received_at: checked ? todayYMD() : null };
@@ -260,7 +232,17 @@ function afRefreshDepts() {
   if (cur && !el.querySelector(`option[value="${cur}"]`)) { el.value = ''; toast(`편입학은 ${TRANSFER_DEPTS.join(', ')}만 지원할 수 있어 지원학과 선택을 비웠습니다.`); }
   $('#af-tr-note').classList.toggle('hide', kind !== '편입학');
 }
-function openApplicantForm(id) {
+/* 정보 수정 화면의 제출서류 체크 (저장을 눌러야 반영) */
+function afDocsHtml(a) {
+  if (!a || !a.id || !hasFull(a)) return '';
+  const types = S.docTypes.filter(t => docVisible(t, a));
+  if (!types.length) return '';
+  return `<div class="sec" id="af-docs" style="margin-top:14px"><h3>제출서류 체크리스트 <span class="muted small">체크 후 아래 ‘저장’을 눌러야 반영됩니다</span></h3>
+    <div class="doclist">${types.map(t => { const r = S.docs[a.id] && S.docs[a.id][t.code], on = !!(r && r.received);
+      return `<label><input type="checkbox" class="af-doc" data-code="${t.code}" data-was="${on ? 1 : 0}" ${on ? 'checked' : ''}><span>${esc(t.name_ko)} ${docExempt(t, a) ? `<span class="op">면제 (${esc(docExempt(t, a))})</span>` : docRequired(t, a) ? '<span class="rq">필수</span>' : '<span class="op">선택</span>'}</span></label>`; }).join('')}</div>
+    <div class="muted small" style="margin-top:6px">입학구분·전형유형을 바꾸면 필요한 서류가 달라질 수 있으니, 저장 후 다시 확인하세요.</div></div>`;
+}
+function openApplicantForm(id, focus) {
   pendingPhoto = null;
   const edit = !!id;
   const a = edit ? S.apps.find(x => x.id === id) : { admission_kind: '신입학', route: '개별지원', gender: '' };
@@ -307,9 +289,10 @@ function openApplicantForm(id) {
     <label class="fld"><span>기숙사</span><label style="display:flex;gap:6px;align-items:center;font-weight:500"><input id="af-dorm" type="checkbox" style="width:auto" ${a.dorm_application ? 'checked' : ''} onchange="if(!this.checked&&$('#af-dorm_room'))$('#af-dorm_room').value=''"> 기숙사 신청</label></label>
     ${S.hasCol && S.hasCol.dorm_room ? field('기숙사 기간 · 객실 유형', `<select id="af-dorm_room" onchange="if(this.value)$('#af-dorm').checked=true"><option value="">미정</option>${DORM_FEES.map(x => `<option value="${x.k}" ${a.dorm_room === x.k ? 'selected' : ''}>${esc(x.ko)} — ${won(x.amt)}</option>`).join('')}</select>`) : ''}
     ${field('비고 메모', `<textarea id="af-memo" rows="2">${v('memo')}</textarea>`, { full: 1 })}
-   </div></div></div>
+   </div></div>${edit ? afDocsHtml(a) : ''}</div>
   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" id="af-save" onclick="saveApplicant('${id || ''}')">저장</button></div>`;
-  openModal(html, { wide: true, sticky: true });
+  const bd = openModal(html, { wide: true, sticky: true });
+  if (focus === 'docs') { const el = $('#af-docs', bd); if (el) setTimeout(() => el.scrollIntoView({ block: 'center' }), 50); }
 }
 async function saveApplicant(id) {
   const g = k => { const el = $('#af-' + k); return el ? el.value.trim() : ''; };
@@ -358,6 +341,9 @@ async function saveApplicant(id) {
   if (id) ({ error } = await sb.from('applicants').update(p).eq('id', id));
   else { p.term_id = S.term.id; if (g('receipt_no')) p.receipt_no = g('receipt_no'); const r = await sb.from('applicants').insert(p).select('id').single(); error = r.error; if (r.data) savedId = r.data.id; }
   if (error) { btn.disabled = false; box.textContent = errMsg(error); box.classList.remove('hide'); return; }
+  // 제출서류 체크 변경분 저장
+  let docErr = 0;
+  for (const c of $$('.af-doc').filter(c => (c.checked ? 1 : 0) !== Number(c.dataset.was))) if (!(await toggleDoc(savedId, c.dataset.code, c.checked, true))) docErr++;
   try {
     if (pendingPhoto) await savePhoto(savedId, pendingPhoto);
     else if ($('#af-photo-del') && $('#af-photo-del').checked) await removePhoto(savedId);
@@ -365,6 +351,7 @@ async function saveApplicant(id) {
   await syncScholarships();
   btn.disabled = false; pendingPhoto = null;
   if (photoErr) toast('정보는 저장했지만 사진 저장에 실패했습니다: ' + photoErr, 'err');
+  else if (docErr) toast(`정보는 저장했지만 서류 체크 ${docErr}건 저장에 실패했습니다.`, 'err');
   else toast(id ? '수정했습니다.' : '지원자를 등록했습니다.');
   closeModal();
   await reloadAndRender();
