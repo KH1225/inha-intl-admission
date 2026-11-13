@@ -83,6 +83,7 @@ function renderCredit() {
     <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${S.creditPending ? 'checked' : ''} onchange="S.creditPending=this.checked;renderCredit()"> 미제출만 보기</label>
     <span class="muted small">편입학 ${all.length}명 · 제출 ${done}명</span>
     <span class="sp"></span>
+    ${crLock() ? '<button class="btn pri" onclick="crBulkSign()">✍ 학과장 서명 · 일괄 제출</button>' : ''}
     ${typeof printTranscripts === 'function' && S.trReady ? '<button class="btn" onclick="printTranscripts()">성적증명서 일괄 인쇄</button>' : ''}
     <button class="btn" onclick="openCreditPrint()">학점인정 서류 인쇄</button></div>
   ${list.length ? `<div class="ev-list">${list.map(crCardHtml).join('')}</div>`
@@ -262,6 +263,51 @@ async function crSubmitSigned(id) {
   try { localStorage.setItem(SIGN_KEY(), url); } catch (e) { /* 무시 */ }
   closeModal(cv.closest('.backdrop'));
   toast('학점인정 심의를 제출했습니다.');
+  renderCredit();
+}
+/* 학과장: 서명 한 번으로 화면의 미제출 학생을 모두 제출 → 의견서·사정표 등 모든 출력물에 같은 서명 */
+function crBulkCheck(a) {
+  const card = $(`#cr-${a.id}`); if (!card) return '화면에 없음';
+  const { review, courses } = crRead(a.id);
+  if (!review.prev_school) return '전적교 대학명 없음';
+  if (!courses.length) return '과목 없음 (국제교류팀 입력 전)';
+  if (courses.some(c => c.credits == null)) return '학점 빈 과목 있음';
+  return '';
+}
+function crBulkSign() {
+  const list = creditTargets().filter(a => !(crOf(a.id) || {}).submitted);
+  const ready = list.filter(a => !crBulkCheck(a)), skip = list.filter(a => crBulkCheck(a));
+  const done = creditTargets().filter(a => (crOf(a.id) || {}).submitted);
+  if (!ready.length) { toast(list.length ? `제출할 수 있는 학생이 없습니다. (${skip.map(a => `${a.name_ko}: ${crBulkCheck(a)}`).join(', ')})` : '제출할 학생이 없습니다. 모두 제출했습니다.', 'err'); return; }
+  const prev = lastSign();
+  const bd = openModal(`${mHead('학과장 서명 · 일괄 제출', `서명 한 번으로 ${ready.length}명을 제출하고, 의견서·사정표 출력물에 모두 같은 서명이 들어갑니다`)}
+   <div class="m-body">
+    <div class="kv" style="margin-bottom:10px">${ready.map(a => { const { courses } = crRead(a.id), s = crSums(courses, a);
+      return `<div><span>${esc(a.receipt_no)} · ${esc(a.name_ko)}</span><b>전공 ${s.maj} · 교양 ${s.gen} · 총 ${s.total}학점</b></div>`; }).join('')}</div>
+    ${skip.length ? `<div class="notice small">제외 ${skip.length}명: ${skip.map(a => `${esc(a.name_ko)}(${esc(crBulkCheck(a))})`).join(', ')}</div>` : ''}
+    ${done.length ? `<div class="muted small" style="margin-bottom:6px">이미 제출한 ${done.length}명은 그때 한 서명이 그대로 쓰입니다.</div>` : ''}
+    <div class="warn">아래 칸에 서명하세요. 화면에서 체크한 구분·인정 여부가 그대로 저장되며, 제출 후에는 수정할 수 없습니다.</div>
+    <div class="sign-wrap"><canvas id="sign-pad"></canvas><div class="sign-hint" id="sign-hint">여기에 서명</div></div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="clearSignPad()">지우기</button>${prev ? '<button class="btn sm" onclick="useLastSign()">지난번 서명 사용</button>' : ''}</div></div>
+   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" id="cr-bulk-ok" onclick="crBulkSubmit()">서명하고 ${ready.length}명 제출</button></div>`, { sticky: true, wide: true });
+  initSignPad($('#sign-pad', bd));
+}
+async function crBulkSubmit() {
+  const cv = $('#sign-pad'), url = cv && cv._signed ? signDataUrl(cv) : '';
+  if (!url) { toast('서명을 해야 제출할 수 있습니다.', 'err'); return; }
+  const btn = $('#cr-bulk-ok'); btn.disabled = true;
+  const ready = creditTargets().filter(a => !(crOf(a.id) || {}).submitted && !crBulkCheck(a));
+  const now = new Date().toISOString(), who = (S.profile && S.profile.display_name) || null;
+  let n = 0;
+  for (const a of ready) {
+    btn.textContent = `제출 중… ${n}/${ready.length}`;
+    const card = $(`#cr-${a.id}`), cm = $('.cr-cm', card);
+    if (cm && !cm.value.trim()) { const { review, courses } = crRead(a.id); cm.value = crAutoComment(review.prev_school, crSums(courses, a)); }
+    if (await crPersist(a.id, { submitted: true, submitted_at: now, review_date: todayYMD(), signature: url, reviewer_name: who })) n++;
+  }
+  try { localStorage.setItem(SIGN_KEY(), url); } catch (e) { /* 무시 */ }
+  closeModal(cv.closest('.backdrop'));
+  toast(n === ready.length ? `${n}명을 서명·제출했습니다. 이제 ‘학점인정 서류 인쇄’로 출력하세요.` : `${n}/${ready.length}명 제출 (나머지는 실패)`, n === ready.length ? 'ok' : 'err');
   renderCredit();
 }
 async function crUnsubmit(id) {
