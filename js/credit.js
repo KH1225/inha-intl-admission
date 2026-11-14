@@ -257,7 +257,6 @@ async function crSubmitSigned(id) {
   $('#cr-sign-ok').disabled = true;
   const ok = await crPersist(id, { submitted: true, submitted_at: new Date().toISOString(), review_date: todayYMD(), signature: url, reviewer_name: (S.profile && S.profile.display_name) || null });
   if (!ok) { $('#cr-sign-ok').disabled = false; return; }
-  try { localStorage.setItem(SIGN_KEY(), url); } catch (e) { /* 무시 */ }
   closeModal(cv.closest('.backdrop'));
   toast('학점인정 심의를 제출했습니다.');
   renderCredit();
@@ -302,7 +301,6 @@ async function crBulkSubmit() {
     if (cm && !cm.value.trim()) { const { review, courses } = crRead(a.id); cm.value = crAutoComment(review.prev_school, crSums(courses, a)); }
     if (await crPersist(a.id, { submitted: true, submitted_at: now, review_date: todayYMD(), signature: url, reviewer_name: who })) n++;
   }
-  try { localStorage.setItem(SIGN_KEY(), url); } catch (e) { /* 무시 */ }
   closeModal(cv.closest('.backdrop'));
   toast(n === ready.length ? `${n}명을 서명·제출했습니다. 이제 ‘학점인정 서류 인쇄’로 출력하세요.` : `${n}/${ready.length}명 제출 (나머지는 실패)`, n === ready.length ? 'ok' : 'err');
   renderCredit();

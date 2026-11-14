@@ -148,8 +148,13 @@ async function saveEval(id, submit, signature) {
 }
 
 /* ---------- 학과장 서명 ---------- */
-const SIGN_KEY = () => 'lastSign:' + (S.user ? S.user.id : '');
-function lastSign() { try { return localStorage.getItem(SIGN_KEY()) || ''; } catch (e) { return ''; } }
+/* 서명 기억 기능은 사용하지 않습니다 (공용 PC에서 다른 사람이 서명을 재사용할 수 없도록 매번 직접 서명).
+   예전에 브라우저에 기억해 둔 서명은 지웁니다. */
+function lastSign() { return ''; }
+function clearSavedSigns() {
+  try { Object.keys(localStorage).filter(k => k.startsWith('lastSign:')).forEach(k => localStorage.removeItem(k)); } catch (e) { /* 무시 */ }
+}
+clearSavedSigns();
 /* 이미 제출했지만 서명이 없는 내 평가 (서명 기능 이전에 제출한 것) */
 function unsignedEvals(t) {
   const ids = new Set(S.apps.map(a => a.id));
@@ -247,7 +252,6 @@ async function submitSigned(id) {
   const btn = $('#sign-ok'); btn.disabled = true;
   const ok = id ? await saveEval(id, true, url) : await signSubmitted(url);
   if (!ok) { btn.disabled = false; return; }
-  try { localStorage.setItem(SIGN_KEY(), url); } catch (e) { /* 무시 */ }
   closeModal(cv.closest('.backdrop'));
 }
 const signImg = (e, h) => (e && e.signature && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(e.signature) ? `<img src="${e.signature}" alt="서명" style="height:${h};vertical-align:middle">` : '');
