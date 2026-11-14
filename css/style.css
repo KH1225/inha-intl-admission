@@ -437,8 +437,5 @@ table.tbl.list{min-width:1000px}
 .cr-tbl input.cr-ok{display:block;margin:0 auto;width:22px;height:22px;padding:0;cursor:pointer;accent-color:#2563eb}
 .cr-tbl th:nth-child(5){text-align:center}
 
-/* 학점 인정 심사: 성적증명서 파일 */
-.tr-sec{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px;background:var(--soft)}
-.tr-file{display:inline-flex;gap:4px;align-items:center}
-.aftag{margin-top:3px;font-size:11.5px;font-weight:700;white-space:nowrap}.aftag.ok{color:#0f766e;cursor:pointer}.aftag.ok:hover{text-decoration:underline}.aftag.no{color:#9aa3b2}
+
 .pmark{position:absolute;left:0;right:0;bottom:3mm;text-align:center;font-size:7pt;color:#888;letter-spacing:.2px}

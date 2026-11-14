@@ -57,7 +57,7 @@ function openDetail(id, focus) {
   const history = full && can.broad() ? `<div class="sec"><h3>이력</h3><div id="hist" class="muted small">불러오는 중…</div></div>` : '';
 
   const bd = openModal(`${mHead(`${esc(a.name_ko)} <span class="rno">${esc(a.receipt_no)}</span> <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span>`, esc(a.name_en))}
-    <div class="m-body">${basic}${docs}${appFileSecHtml(a)}${interview}${schol}${payment}${history}</div>
+    <div class="m-body">${basic}${docs}${interview}${schol}${payment}${history}</div>
     <div class="m-foot">${can.edit() ? `<button class="btn" onclick="closeModal(this.closest('.backdrop'));openApplicantForm('${id}','${focus === 'docs' ? 'docs' : ''}')">정보 수정</button>
       <button class="btn" onclick="closeModal(this.closest('.backdrop'));openPrintMenu('${id}')">문서 인쇄</button>` : ''}
       ${can.edit() && !['등록완료', '접수취소'].includes(a.status) ? `<button class="btn bad" onclick="cancelApplication('${id}')">접수 취소</button>` : ''}

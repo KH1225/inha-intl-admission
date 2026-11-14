@@ -1,6 +1,6 @@
 'use strict';
 /* ===== 개인정보 보호 =====
-   - logAccess: 입학지원서·성적증명서 열람, 엑셀 내려받기, 인쇄를 access_log 에 기록 (실패해도 작업은 계속)
+   - logAccess: 엑셀 내려받기, 인쇄를 access_log 에 기록 (실패해도 작업은 계속)
    - 열람 기록 화면 (총괄관리자): 원문 보기 기록(pii_access_log) + access_log
    - 보유기간 경과 자료 파기 (총괄관리자): 학기 단위, 파기 대장
    - 출력물 표시: 내부용 인쇄물·엑셀에 "개인정보 포함 · 외부 반출 금지 · 출력자 · 일시" */
@@ -72,7 +72,7 @@ const PURGE_YEARS_DEFAULT = 10;
 async function openPurge() {
   const bd = openModal(`${mHead('보유기간 경과 개인정보 파기', '입학 지원자 개인정보 수집·이용 동의서의 보유기간(10년)이 지난 학기 자료를 지웁니다')}
    <div class="m-body">
-    <div class="notice small">파기하면 그 학기 지원자의 정보·사진·입학지원서·성적증명서·서류 체크·면접 평가·납부·문서 발급·메일 기록이 <b>모두 영구 삭제</b>되고 되돌릴 수 없습니다.
+    <div class="notice small">파기하면 그 학기 지원자의 정보·사진·서류 체크·면접 평가·납부·문서 발급·메일 기록이 <b>모두 영구 삭제</b>되고 되돌릴 수 없습니다.
       열람 기록과 파기 대장은 남습니다. 보유기간은 학년도 기준으로 계산합니다 (예: 2027학년도 자료, 10년 → 2037년부터 파기 가능).</div>
     <div class="grid2" style="margin:10px 0">${field('보유기간 (년)', `<input id="pg-years" type="number" min="1" max="30" value="${PURGE_YEARS_DEFAULT}" oninput="renderPurge()">`)}</div>
     <div id="pg-out" class="muted">불러오는 중…</div>
@@ -102,19 +102,12 @@ async function runPurge(termId, label, n) {
   if (typed.trim() !== `${label} 파기`) { toast('입력한 문구가 달라 취소했습니다.', 'err'); return; }
   setBusy(true);
   try {
-    // 1) 저장소 파일 먼저 (사진, 입학지원서·성적증명서 폴더)
+    // 1) 저장소 파일 먼저 (사진)
     const f = await sb.rpc('purge_term_files', { p_term: termId });
     if (f.error) throw f.error;
     const rows = f.data || [];
     const photos = rows.map(r => r.photo_path).filter(Boolean);
     for (const part of chunk(photos, 100)) await sb.storage.from('photos').remove(part);
-    for (const r of rows) {
-      try {
-        const ls = await sb.storage.from('applications').list(String(r.applicant_id), { limit: 100 });
-        const paths = (ls.data || []).map(o => `${r.applicant_id}/${o.name}`);
-        if (paths.length) await sb.storage.from('applications').remove(paths);
-      } catch (e) { /* 파일이 없으면 넘어감 */ }
-    }
     // 2) DB 자료 + 파기 대장
     const { data, error } = await sb.rpc('purge_term', { p_term: termId, p_keep_years: years });
     if (error) throw error;

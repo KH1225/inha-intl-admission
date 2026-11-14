@@ -84,7 +84,6 @@ function renderCredit() {
     <span class="muted small">편입학 ${all.length}명 · 제출 ${done}명</span>
     <span class="sp"></span>
     ${crLock() ? '<button class="btn pri" onclick="crBulkSign()">✍ 학과장 서명 · 일괄 제출</button>' : ''}
-    ${typeof printTranscripts === 'function' && S.trReady ? '<button class="btn" onclick="printTranscripts()">성적증명서 일괄 인쇄</button>' : ''}
     <button class="btn" onclick="openCreditPrint()">학점인정 서류 인쇄</button></div>
   ${list.length ? `<div class="ev-list">${list.map(crCardHtml).join('')}</div>`
     : '<div class="center-msg"><div><h2>심의할 편입학 지원자가 없습니다</h2><p>입학구분이 “편입학”인 지원자가 여기에 표시됩니다.</p></div></div>'}`;
@@ -119,10 +118,8 @@ function crCardHtml(a) {
    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
     <div style="flex:1;min-width:240px"><h3>${esc(a.name_ko)} <span class="muted small">${esc(a.name_en || '')} · ${esc(a.receipt_no)}</span>
       ${sub ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${sub && r.signature ? ` <span class="sign-mini">${crSignImg(r, '24px')}</span>` : ''}</h3>
-     <div class="muted small">${esc(deptName(a.department_id))} · 편입학${a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''} · ${esc(a.nationality || '')}</div>
-     ${typeof appFileBtn === 'function' && typeof afOf === 'function' && afOf(a.id) ? `<div style="margin-top:6px">${appFileBtn(a.id, 'btn sm blue')}</div>` : ''}</div>
+     <div class="muted small">${esc(deptName(a.department_id))} · 편입학${a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''} · ${esc(a.nationality || '')}</div></div>
     <div class="cr-sum"><div><span>전공 인정</span><b class="cr-maj">${crNum(s.maj, s.rMaj)}</b></div><div><span>교양 인정</span><b class="cr-gen">${crNum(s.gen, s.rGen)}</b></div><div><span>총계</span><b class="cr-tot">${crNum(s.total, s.rTotal)}</b></div></div></div>
-   ${typeof trSecHtml === 'function' ? trSecHtml(a) : ''}
    <div class="notice small cr-warn ${warn ? '' : 'hide'}" style="margin-top:8px">ℹ <span>${esc(warn)}</span></div>
    <div class="grid3" style="margin-top:10px">
     ${field(`전적교 대학명${crPartner(a) ? ' <span class="muted small">(협약학교)</span>' : ''}`, ed ? `<input class="cr-ps" value="${esc(crSchool(a))}" placeholder="예: Kyrgyz-Korean College">` : `<div>${esc(crSchool(a)) || '-'}</div>`)}

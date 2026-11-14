@@ -23,7 +23,7 @@ function openSampleModal() {
       현황판 통계에서는 빠지고, 안내 메일은 <b>${esc(SAMPLE_EMAIL)}</b>로 갑니다. 테스트가 끝나면 아래 ‘샘플 모두 삭제’로 기록까지 깨끗이 지우세요.</div>
     <div class="sec"><h3>현재 샘플 ${list.length}명</h3>
      ${list.length ? `<ul style="margin:0;padding-left:18px">${list.map(a => `<li>${esc(a.receipt_no)} · ${esc(a.name_ko)} · ${esc(a.admission_kind)} · ${esc(deptName(a.department_id))} · <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></li>`).join('')}</ul>` : '<div class="muted">없습니다.</div>'}</div>
-    <div class="muted small">삭제되는 것: 샘플 지원자 정보, 사진, 입학지원서 PDF, 서류 체크, 면접 순서·평가·서명, 납부 정보, 문서 발급 이력, 상태 변경 이력, 메일 발송 기록</div></div>
+    <div class="muted small">삭제되는 것: 샘플 지원자 정보, 사진, 서류 체크, 면접 순서·평가·서명, 납부 정보, 문서 발급 이력, 상태 변경 이력, 메일 발송 기록</div></div>
    <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">닫기</button>
     ${list.length ? '<button class="btn bad" onclick="deleteSamples()">샘플 모두 삭제</button>' : ''}
     <button class="btn pri" onclick="createSamples()" ${list.length >= 2 ? 'disabled title="이미 샘플이 있습니다"' : ''}>샘플 2명 만들기</button></div>`, { sticky: true });
@@ -58,13 +58,10 @@ async function deleteSamples() {
   if (!list.length) return;
   if (!confirm(`샘플 지원자 ${list.length}명과 그 모든 기록을 삭제합니다. (실제 지원자는 지워지지 않습니다)\n계속할까요?`)) return;
   setBusy(true);
-  // 저장소 파일(사진·입학지원서 PDF) 먼저 정리 — 실패해도 계속
+  // 저장소 파일(사진) 먼저 정리 — 실패해도 계속
   try {
     const photos = list.map(a => a.photo_path).filter(Boolean);
     if (photos.length) await sb.storage.from('photos').remove(photos);
-    const pdfs = list.map(a => (S.appFiles || {})[a.id]).filter(Boolean).map(f => f.path);
-    list.forEach(a => ((S.transcripts || {})[a.id] || []).forEach(f => pdfs.push(f.path)));
-    if (pdfs.length) await sb.storage.from('applications').remove(pdfs);
   } catch (e) { /* 무시 */ }
   const { data, error } = await sb.rpc('delete_sample_applicants');
   setBusy(false);
