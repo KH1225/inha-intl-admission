@@ -12,6 +12,31 @@
 -- 전부 한 번에 처리되며 중간에 오류가 나면 모두 취소됩니다. 여러 번 실행해도 안전합니다.
 -- ※ 삭제한 번호는 되살릴 수 없습니다.
 
+-- 0) 지원자 자동 처리 함수(trg_applicants_before)에서 여권번호·외국인등록번호 부분만 뺍니다.
+--    접수번호 자동 부여와 수정 시각 기록은 그대로 유지합니다.
+CREATE OR REPLACE FUNCTION public.trg_applicants_before()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+declare
+  seq integer;
+  yr integer;
+begin
+  if tg_op = 'INSERT' then
+    if new.receipt_no is null then
+      select year into yr from public.terms where id = new.term_id;
+      insert into public.counters (scope, last_seq) values ('receipt:' || yr, 1)
+        on conflict (scope) do update set last_seq = counters.last_seq + 1
+        returning last_seq into seq;
+      new.receipt_no := 'ITC-' || yr || '-' || lpad(seq::text, 3, '0');
+    end if;
+  end if;
+  new.updated_at := now();
+  return new;
+end $function$;
+
 do $$
 declare
   v_cols     text[];
