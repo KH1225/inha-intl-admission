@@ -1,6 +1,6 @@
 'use strict';
 /* ===== 엑셀 일괄 등록 ===== */
-const IMPORT_HEADERS = ['접수번호(자동부여)', '한글성명*', '영문성명*', '성별(남/여)*', '생년월일(YYYY-MM-DD)*', '국적*', '입학구분(신입학/편입학)*', '지원학과(28개과)*', '지원경로', '전형유형', '어학능력(TOPIK)', '여권번호*', '외국인등록번호', '비자종류', '이메일*', '연락처', '출신고교', '출신대학', 'GPA(내신)', '심사진행상태', '장학금구분', '해외송금입금액', '비고메모'];
+const IMPORT_HEADERS = ['접수번호(자동부여)', '한글성명*', '영문성명*', '성별(남/여)*', '생년월일(YYYY-MM-DD)*', '국적*', '입학구분(신입학/편입학)*', '지원학과(28개과)*', '지원경로', '전형유형', '어학능력(TOPIK)', '비자종류', '이메일*', '연락처', '출신고교', '출신대학', 'GPA(내신)', '심사진행상태', '장학금구분', '해외송금입금액', '비고메모'];
 const normH = s => String(s == null ? '' : s).replace(/\(.*?\)/g, '').replace(/[*\s]/g, '');
 let importRows = [];
 
@@ -72,15 +72,18 @@ function buildImportPreview(rows) {
     const kind = kindRaw.startsWith('편') ? '편입학' : '신입학';
     const dname = cellStr(get(r, '지원학과')).replace(/\s/g, '');
     const dept = deptByName[dname];
-    const passport = cellStr(get(r, '여권번호')).replace(/\s/g, '').toUpperCase();
     if (!name_ko) errs.push('한글성명 없음'); if (!name_en) errs.push('영문성명 없음');
     if (!['남', '여'].includes(gender)) errs.push('성별은 남/여');
     if (!birth || birth === 'INVALID') errs.push('생년월일 형식 오류');
     if (!nat) errs.push('국적 없음');
     if (!dept) errs.push(`학과명 불일치(${dname || '비어 있음'})`);
     else if (/편입/.test(String(kind)) && !isTransferDept(dept)) errs.push(`편입학 불가 학과(${dept.name_ko}) — ${TRANSFER_DEPTS.join(', ')}만 가능`);
-    if (!passport) errs.push('여권번호 없음');
-    else { if (seen.has(passport)) errs.push('파일 안에서 여권번호 중복'); seen.add(passport); }
+    if (name_en && birth && birth !== 'INVALID') {
+      const key = name_en + '|' + birth;
+      if (seen.has(key)) errs.push('파일 안에서 같은 지원자(영문성명·생년월일) 중복');
+      else if (S.apps.some(a => (a.name_en || '').toUpperCase() === name_en && a.birth_date === birth)) errs.push('이번 학기에 같은 지원자(영문성명·생년월일)가 이미 있음');
+      seen.add(key);
+    }
     const routeRaw = cellStr(get(r, '지원경로'));
     let route = '개별지원', agency_id = null, agencyNew = null, partnerId = null;
     if (/우리대학|본교/.test(routeRaw)) {
@@ -111,8 +114,8 @@ function buildImportPreview(rows) {
     const gpa = gpaRaw !== '' && !isNaN(Number(gpaRaw)) ? Number(gpaRaw) : null;
     const rec = {
       name_ko, name_en, gender, birth_date: birth, nationality: nat, admission_kind: kind, department_id: dept ? dept.id : null,
-      route, agency_id, ...(partnerId ? { partner_school_id: partnerId } : {}), qualification_code: qual || null, topik_level: topik, passport_no: passport,
-      alien_reg_no: cellStr(get(r, '외국인등록번호')) || null, visa_type: cellStr(get(r, '비자종류')) || null,
+      route, agency_id, ...(partnerId ? { partner_school_id: partnerId } : {}), qualification_code: qual || null, topik_level: topik,
+      visa_type: cellStr(get(r, '비자종류')) || null,
       email: email || null, phone: cellStr(get(r, '연락처')) || null, high_school: cellStr(get(r, '출신고교')) || null, gpa,
       ...(S.hasCol && S.hasCol.prev_university && cellStr(get(r, '출신대학')) ? { prev_university: cellStr(get(r, '출신대학')) } : {}),
       memo: cellStr(get(r, '비고메모')) || null, term_id: S.term.id

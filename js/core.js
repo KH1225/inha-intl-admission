@@ -52,7 +52,6 @@ function todayYMD() { const d = new Date(); return `${d.getFullYear()}-${p2(d.ge
 function errMsg(e) {
   const m = (e && (e.message || e.details || e.error_description)) || String(e);
   if (/duplicate key|23505/.test(m)) {
-    if (/passport/.test(m)) return '같은 학기에 같은 여권번호의 지원자가 이미 있습니다.';
     if (/receipt_no/.test(m)) return '접수번호가 중복됩니다.';
     return '이미 같은 값이 등록되어 있습니다.';
   }
@@ -149,7 +148,7 @@ function routeLabel(a) {
   if (a.route === ROUTE_PARTNER) return `${ROUTE_PARTNER_LABEL}${a.partner_school_id && S.partnerMap[a.partner_school_id] ? ` (${S.partnerMap[a.partner_school_id].name})` : ''}`;
   return a.route || '개별지원';
 }
-const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,passport_last4,passport_expiry,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
+const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
 
 const OPT_COLS = ['domestic_hs', 'cc_emails', 'dorm_room', 'prev_university'];
 /* 쉼표·공백·세미콜론으로 구분된 이메일 목록 */

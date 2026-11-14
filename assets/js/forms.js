@@ -25,10 +25,8 @@ function openDetail(id, focus) {
     ${kv('입학구분', a.admission_kind + (a.transfer_year ? ` (${a.transfer_year}학년 편입)` : ''))}${kv('지원학과', d.name_ko)}${kv('전형', qualName(a.qualification_code))}
     ${full ? kv('지원경로', routeLabel(a)) : ''}
     ${kv('어학능력', a.topik_level ? `TOPIK ${a.topik_level}급` : '')}${kv('출신 고교', (a.high_school || '') + (a.domestic_hs ? ' (국내 고교)' : ''))}${a.prev_university ? kv('출신 대학', a.prev_university) : ''}${kv('GPA(내신)', a.gpa)}
-    ${full ? kv('여권번호', a.passport_last4 ? '****' + a.passport_last4 : '') + kv('여권 만료일', a.passport_expiry) + kv('비자', a.visa_type) + kv('이메일', a.email) + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' + (dormRoom(a.dorm_room) ? ` — ${dormRoom(a.dorm_room).ko}` : '') : '미신청') : ''}
+    ${full ? kv('비자', a.visa_type) + kv('이메일', a.email) + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' + (dormRoom(a.dorm_room) ? ` — ${dormRoom(a.dorm_room).ko}` : '') : '미신청') : ''}
     ${kv('지원일자', fmtDate(a.created_at))}</div></div></div>
-    ${full && can.edit() ? `<div style="margin-top:10px"><button class="btn sm" onclick="showSecrets('${id}')">여권번호·외국인등록번호 원문 보기</button>
-      <span class="secret" id="secrets"></span><div class="muted small">※ 원문을 볼 때마다 열람 기록이 남습니다. 20초 뒤 자동으로 가려집니다.</div></div>` : ''}
     ${full && a.memo ? `<div style="margin-top:10px"><span class="muted small">비고</span><div>${esc(a.memo)}</div></div>` : ''}</div>`;
 
   const docs = full ? `<div class="sec" id="sec-docs"><h3>제출서류 체크리스트 <span class="muted small">${esc(docKindOf(a) === '전공심화' ? '전공심화과정' : a.admission_kind)} · ${a.qualification_code ? esc(qualLabel(a.qualification_code)) : '전형유형 미선택'} · 필수 서류 ${docProgress(a).got}/${docProgress(a).need} 구비</span></h3>
@@ -79,14 +77,6 @@ async function loadHistory(id) {
     const is = (i.data || []).map(r => `<li>${fmtDateTime(r.issued_at)} · ${esc(r.doc_type)} <b>${esc(r.doc_no)}</b>${r.reissue_no ? ` (재발급 ${r.reissue_no}차)` : ''}</li>`).join('');
     el.innerHTML = `<div class="grid2"><div><b>상태 변경 이력</b><ul>${hs || '<li>없음</li>'}</ul></div><div><b>문서 발급 이력</b><ul>${is || '<li>없음</li>'}</ul></div></div>`;
   } catch (e) { el.textContent = errMsg(e); }
-}
-async function showSecrets(id) {
-  const el = $('#secrets');
-  const { data, error } = await sb.rpc('get_applicant_secrets', { p_id: id });
-  if (error) { toast(errMsg(error), 'err'); return; }
-  const r = Array.isArray(data) ? data[0] : data;
-  el.textContent = ` 여권번호: ${r && r.o_passport_no ? r.o_passport_no : '-'}   외국인등록번호: ${r && r.o_alien_reg_no ? r.o_alien_reg_no : '-'}`;
-  setTimeout(() => { const e2 = $('#secrets'); if (e2) e2.textContent = ''; }, 20000);
 }
 async function toggleDoc(id, code, checked, quiet) {
   const row = { received: checked, received_at: checked ? todayYMD() : null };
@@ -274,11 +264,8 @@ function openApplicantForm(id, focus) {
     ${field('어학능력 (TOPIK)', `<select id="af-topik_level"><option value="">없음</option>${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${sel('topik_level', n)}>${n}급</option>`).join('')}</select>`)}
     ${field(`<span id="af-ps-lbl">${a.route === ROUTE_PARTNER ? '협약학교 *' : '협약학교 (협약 장학금 대상)'}</span>`, `<select id="af-partner_school_id"><option value="">해당 없음</option>${S.partners.filter(p => p.active || p.id === a.partner_school_id).map(p => `<option value="${p.id}" ${sel('partner_school_id', p.id)}>${esc(p.name)}</option>`).join('')}</select>`)}
    </div></div>
-   <div class="sec"><h3>신원 · 연락처 <span class="muted small">민감정보 · 저장 시 암호화됩니다</span></h3><div class="grid2">
-    ${field(edit ? '여권번호 (바꿀 때만 입력)' : '여권번호', `<input id="af-passport_no" autocomplete="off" placeholder="${edit && a.passport_last4 ? '현재: ****' + esc(a.passport_last4) : ''}">`, { req: !edit })}
-    ${field('여권 만료일', `<input id="af-passport_expiry" type="date" min="1900-01-01" max="9999-12-31" value="${v('passport_expiry')}">`)}
+   <div class="sec"><h3>비자 · 연락처</h3><div class="grid2">
     ${field('비자 종류', `<input id="af-visa_type" value="${v('visa_type')}" placeholder="예: D-4, H-1 · 등록완료">`)}
-    ${field(edit ? '외국인등록번호 (바꿀 때만 입력)' : '외국인등록번호', `<input id="af-alien_reg_no" autocomplete="off">`)}
     ${field('이메일', `<input id="af-email" type="email" value="${v('email')}">`)}
     ${field('연락처', `<input id="af-phone" value="${v('phone')}">`)}
     ${S.hasCol && S.hasCol.cc_emails ? field('추가 이메일 (보호자·유학원 등, 쉼표로 구분 · 최대 3개)', `<input id="af-cc_emails" value="${v('cc_emails')}" placeholder="예: parent@example.com, agency@example.com">`, { full: 1 }) : ''}
@@ -304,7 +291,7 @@ async function saveApplicant(id) {
     department_id: Number(g('department_id')) || null, qualification_code: g('qualification_code') || null,
     route, agency_id: route === '유학원' ? (Number(g('agency_id')) || null) : null,
     topik_level: g('topik_level') ? Number(g('topik_level')) : null, partner_school_id: Number(g('partner_school_id')) || null,
-    passport_expiry: g('passport_expiry') || null, visa_type: g('visa_type') || null, email: g('email') || null, phone: g('phone') || null,
+    visa_type: g('visa_type') || null, email: g('email') || null, phone: g('phone') || null,
     high_school: g('high_school') || null, gpa: g('gpa') !== '' ? Number(g('gpa')) : null, dorm_application: $('#af-dorm').checked, memo: g('memo') || null
   };
   if ($('#af-cc_emails')) {
@@ -322,7 +309,6 @@ async function saveApplicant(id) {
   const ymdOk = v => /^(19|20)\d{2}-\d{2}-\d{2}$/.test(v);
   if (!p.birth_date) errs.push('생년월일을 입력하세요.');
   else if (!ymdOk(p.birth_date) || p.birth_date > todayYMD()) errs.push('생년월일을 확인하세요. (연도 4자리, 예: 2004-01-05)');
-  if (p.passport_expiry && !ymdOk(p.passport_expiry)) errs.push('여권 만료일을 확인하세요. (연도 4자리)');
   if (!p.nationality) errs.push('국적을 입력하세요.');
   if (!p.department_id) errs.push('지원학과를 선택하세요.');
   if (kind === '편입학' && !p.transfer_year) errs.push('편입 학년을 선택하세요.');
@@ -330,12 +316,9 @@ async function saveApplicant(id) {
   if (route === '유학원' && !p.agency_id) errs.push('유학원을 선택하세요.');
   if (route === ROUTE_PARTNER && !p.partner_school_id) errs.push('협약학교를 선택하세요.');
   if (p.email && !/^\S+@\S+\.\S+$/.test(p.email)) errs.push('이메일 형식을 확인하세요.');
-  if (!id && !g('passport_no')) errs.push('여권번호를 입력하세요.');
   const box = $('#af-err');
   if (errs.length) { box.textContent = errs.join('\n'); box.classList.remove('hide'); box.scrollIntoView({ block: 'center' }); return; }
   box.classList.add('hide');
-  if (g('passport_no')) p.passport_no = g('passport_no');
-  if (g('alien_reg_no')) p.alien_reg_no = g('alien_reg_no');
   const btn = $('#af-save'); btn.disabled = true;
   let error, savedId = id, photoErr = '';
   if (id) ({ error } = await sb.from('applicants').update(p).eq('id', id));

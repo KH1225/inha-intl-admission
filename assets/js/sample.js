@@ -35,10 +35,10 @@ async function createSamples() {
   const rows = [
     { receipt_no: `${SAMPLE_PREFIX}${y}-01`, name_ko: '[샘플] 김 테스트', name_en: 'SAMPLE KIM TEST', gender: '남', birth_date: '2006-03-15', nationality: '우즈베키스탄',
       admission_kind: '신입학', transfer_year: null, department_id: sampleDept(['항공운항과']), qualification_code: 'T1', route: '개별지원',
-      topik_level: 3, passport_no: 'SAMPLE0001', passport_expiry: '2031-12-31', visa_type: 'D-4', high_school: 'Sample High School (Tashkent)', memo: '테스트용 샘플 지원자' },
+      topik_level: 3, visa_type: 'D-4', high_school: 'Sample High School (Tashkent)', memo: '테스트용 샘플 지원자' },
     { receipt_no: `${SAMPLE_PREFIX}${y}-02`, name_ko: '[샘플] 이 테스트', name_en: 'SAMPLE LEE TEST', gender: '여', birth_date: '2004-08-20', nationality: '베트남',
       admission_kind: '편입학', transfer_year: 2, department_id: sampleDept(['항공경영학과', '항공운항과']), qualification_code: 'T2', route: '개별지원',
-      topik_level: 4, passport_no: 'SAMPLE0002', passport_expiry: '2030-06-30', visa_type: 'D-2', high_school: 'Sample High School (Hanoi)', memo: '테스트용 샘플 지원자' }
+      topik_level: 4, visa_type: 'D-2', high_school: 'Sample High School (Hanoi)', memo: '테스트용 샘플 지원자' }
   ].filter(r => !have.has(r.receipt_no))
    .map(r => ({ ...r, term_id: S.term.id, email: SAMPLE_EMAIL, phone: '010-0000-0000', status: '서류심사', dorm_application: false }));
   if (!rows.length) { toast('이미 샘플 2명이 있습니다.'); return; }

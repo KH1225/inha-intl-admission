@@ -136,7 +136,7 @@ function filtersHtml() {
   const nats = Array.from(new Set(S.apps.map(a => a.nationality))).sort();
   const schols = Array.from(new Set(S.apps.map(a => a.scholarship_type).filter(Boolean))).sort();
   const deptIds = Array.from(new Set(S.apps.map(a => a.department_id)));
-  return `<div class="filters"><input class="search" id="q" placeholder="지원자 성명, 영문명, 접수번호${can.broad() ? ', 여권번호' : ''} 검색..." value="${esc(f.q)}" oninput="onSearch(this.value)">
+  return `<div class="filters"><input class="search" id="q" placeholder="지원자 성명, 영문명, 접수번호검색..." value="${esc(f.q)}" oninput="onSearch(this.value)">
     <button class="btn sm" onclick="resetFilters()">필터 초기화</button></div>
    <div class="filters">
     <select onchange="setFilter('status',this.value)"><option value="">상태</option>${STATUSES.map(s => opt(s, s, f.status)).join('')}</select>
@@ -158,13 +158,6 @@ function onSearch(v) {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(async () => {
     S.f.q = v; S.f.page = 1; S.f.passIds = null;
-    const t = v.trim();
-    if (can.broad() && /^[A-Za-z0-9]{6,}$/.test(t) && /\d/.test(t)) {
-      try {
-        const { data } = await sb.rpc('find_by_passport', { p: t });
-        S.f.passIds = new Set((data || []).map(x => (typeof x === 'string' ? x : Object.values(x)[0])));
-      } catch (e) { /* 여권번호 검색 실패는 무시 */ }
-    }
     renderTable();
   }, 250);
 }
@@ -190,7 +183,7 @@ function filteredApps() {
     if (f.schol) { if (f.schol === '__none__') { if (a.scholarship_type) return false; } else if (a.scholarship_type !== f.schol) return false; }
     if (q) {
       const hit = (a.name_ko || '').toLowerCase().includes(q) || (a.name_en || '').toLowerCase().includes(q) ||
-        (a.receipt_no || '').toLowerCase().includes(q) || (a.passport_last4 || '').toLowerCase() === q || (f.passIds && f.passIds.has(a.id));
+        (a.receipt_no || '').toLowerCase().includes(q);
       if (!hit) return false;
     }
     return true;
