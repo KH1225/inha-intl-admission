@@ -136,7 +136,7 @@ function filtersHtml() {
   const nats = Array.from(new Set(S.apps.map(a => a.nationality))).sort();
   const schols = Array.from(new Set(S.apps.map(a => a.scholarship_type).filter(Boolean))).sort();
   const deptIds = Array.from(new Set(S.apps.map(a => a.department_id)));
-  return `<div class="filters"><input class="search" id="q" placeholder="지원자 성명, 영문명, 접수번호검색..." value="${esc(f.q)}" oninput="onSearch(this.value)">
+  return `<div class="filters"><input class="search" id="q" placeholder="지원자 성명, 영문명, 접수번호 검색..." value="${esc(f.q)}" oninput="onSearch(this.value)">
     <button class="btn sm" onclick="resetFilters()">필터 초기화</button></div>
    <div class="filters">
     <select onchange="setFilter('status',this.value)"><option value="">상태</option>${STATUSES.map(s => opt(s, s, f.status)).join('')}</select>
