@@ -40,6 +40,7 @@ function refreshTranscriptSec(id) {
 
 async function viewTranscript(id, i) {
   const f = trOf(id)[i]; if (!f) return;
+  if (typeof logAccess === 'function') logAccess('성적증명서 열람', [id], f.file_name);
   const w = window.open('', '_blank');
   const { data, error } = await sb.storage.from('applications').createSignedUrl(f.path, 600);
   if (error || !data) { if (w) w.close(); toast('성적증명서를 열 수 없습니다: ' + errMsg(error), 'err'); return; }
@@ -134,5 +135,5 @@ async function printTranscripts() {
   }
   closeModal();
   if (fails.length) toast(`열지 못한 파일 ${fails.length}개: ${fails.join(' / ')}`, 'err');
-  if (html) printHtml(html);
+  if (html) { printHtml(html, { mark: true }); if (typeof logAccess === 'function') logAccess('성적증명서 인쇄', list.map(a => a.id)); }
 }

@@ -28,6 +28,7 @@ const fmtSize = b => (b == null ? '' : b > 1048576 ? `${(b / 1048576).toFixed(1)
 /* ---------- 보기 ---------- */
 async function viewAppFile(id) {
   const f = afOf(id); if (!f) return;
+  if (typeof logAccess === 'function') logAccess('입학지원서 열람', [id]);
   const w = window.open('', '_blank'); // 팝업 차단을 피하려고 먼저 창을 엽니다
   const { data, error } = await sb.storage.from(AF_BUCKET).createSignedUrl(f.path, 600);
   if (error || !data) { if (w) w.close(); toast('입학지원서를 열 수 없습니다: ' + errMsg(error), 'err'); return; }

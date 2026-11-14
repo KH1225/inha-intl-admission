@@ -354,7 +354,8 @@ function runCreditPrint() {
     if (rv) g.apps.forEach(a => { html += crReviewHtml(a); });
   });
   closeModal();
-  printHtml(html);
+  printHtml(html, { mark: true });
+  if (typeof logAccess === 'function') logAccess('학점인정 서류 인쇄', creditTargets().map(a => a.id), [op ? '검토의견서' : '', rv ? '사정표' : ''].filter(Boolean).join('·'));
 }
 /* 「편입학 성적인정 검토 의견서」 (학과별) */
 function crOpinionHtml(d, apps, comment) {

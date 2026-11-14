@@ -367,6 +367,7 @@ function toolbarHtml() {
   if (can.admin()) {
     b.push(`<button class="btn" onclick="openNewTerm()">새 학기</button>`);
     b.push(`<button class="btn" onclick="openAccounts()">계정 관리</button>`);
+    if (S.role === 'admin') b.push(`<button class="btn" onclick="openAccessLog()">열람 기록</button><button class="btn" onclick="openPurge()">개인정보 파기</button>`);
   }
   b.push(`<div class="who"><span class="dot"></span>[${esc(ROLE_LABEL[S.role])}] <span class="muted">(${esc(scopeLabel())})</span><button onclick="logout()">로그아웃</button></div>`);
   return b.join('');

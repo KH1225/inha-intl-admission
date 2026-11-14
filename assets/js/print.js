@@ -21,9 +21,11 @@ function fitOneLine(root) {
   });
   pa.style.display = shown;
 }
-function printHtml(html) {
+function printHtml(html, opt) {
   const pa = $('#printArea');
   pa.innerHTML = html;
+  // 내부용 출력물: 쪽마다 '개인정보 포함 · 외부 반출 금지 · 출력자 · 일시'
+  if (opt && opt.mark && typeof privMarkText === 'function') { const m = esc(privMarkText()); $$('.doc', pa).forEach(d => d.insertAdjacentHTML('beforeend', `<div class="pmark">${m}</div>`)); }
   fitOneLine(pa);
   const imgs = $$('img', pa);
   const wait = Promise.all(imgs.map(im => (im.complete ? Promise.resolve() : new Promise(r => { im.onload = im.onerror = r; }))));
@@ -81,6 +83,7 @@ async function printDoc(id, type) {
   else if (type === '등록금고지서') html = docBill(common);
   else html = docReceipt(common);
   printHtml(html);
+  if (typeof logAccess === 'function') logAccess('문서 발급·인쇄', [id], `${type} ${docNo}`);
   toast(`${type}를 발급했습니다. (${docNo})`);
 }
 

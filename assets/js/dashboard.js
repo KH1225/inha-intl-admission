@@ -236,7 +236,6 @@ function rowHtml(a) {
     <td><div class="who-cell">${avatarHtml(a)}<div>
       <div class="nm"><span class="nw">${esc(a.name_ko)}</span> <span class="muted small">${a.gender === '여' ? '여' : '남'}</span>${ag}</div>
       <div class="muted small">${esc(a.name_en)}</div>
-      ${a.visa_type ? `<div class="small" style="color:var(--pri2);font-weight:700">비자: ${esc(a.visa_type)}</div>` : ''}
       ${full && a.dorm_application ? `<div class="small" style="color:#0d9488;font-weight:700">기숙사: ${esc(dormRoom(a.dorm_room) ? dormRoom(a.dorm_room).ko : '신청 (객실 미정)')}</div>` : ''}</div></div></td>
     <td style="white-space:nowrap">${esc(a.nationality)}</td>
     <td><div class="nm nw">${esc(d.name_ko || '-')} <span class="badge kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
@@ -287,7 +286,8 @@ function exportCsv() {
   const head = ['접수번호', '한글성명', '영문성명', '성별', '생년월일', '국적', '입학구분', '지원학과', '전형', '지원경로', 'TOPIK', '심사상태', '장학금', '장학금액', '지원일자'];
   const cell = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) || /^[=+\-@]/.test(s) ? '"' + s.replace(/"/g, '""').replace(/^([=+\-@])/, "'$1") + '"' : s; };
   const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), routeLabel(a), a.topik_level, a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
-  const csv = '﻿' + [head].concat(rows).map(r => r.map(cell).join(',')).join('\r\n');
+  const csv = '﻿' + [[typeof privMarkText === 'function' ? privMarkText() : '개인정보 포함 · 외부 반출 금지'], head].concat(rows).map(r => r.map(cell).join(',')).join('\r\n');
+  if (typeof logAccess === 'function') logAccess('엑셀(CSV) 내려받기', list.map(a => a.id), `${list.length}명`);
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const l = document.createElement('a'); l.href = url; l.download = `지원자목록_${S.term.name}_${todayYMD()}.csv`; l.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);

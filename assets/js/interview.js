@@ -403,9 +403,9 @@ async function runEvalPrint() {
   }
   if (fails.length) toast('일부 입학지원서를 불러오지 못했습니다 — ' + fails.join(' / '), 'err');
   closeModal();
-  if (html) printHtml(html);
+  if (html) { printHtml(html, { mark: true }); if (typeof logAccess === 'function') logAccess(sheet && af ? '면접평가표·입학지원서 인쇄' : sheet ? '면접평가표 인쇄' : '입학지원서 인쇄', (af && !sheet ? targets : list).map(a => a.id)); }
 }
-function printEvalSheet() { const list = evalTargets(); if (!list.length) { toast('인쇄할 지원자가 없습니다.', 'err'); return; } printHtml(evalSheetHtml(list)); }
+function printEvalSheet() { const list = evalTargets(); if (!list.length) { toast('인쇄할 지원자가 없습니다.', 'err'); return; } printHtml(evalSheetHtml(list), { mark: true }); if (typeof logAccess === 'function') logAccess('면접평가표 인쇄', list.map(a => a.id)); }
 function evalSheetHtml(list) {
   const byDept = {};
   list.forEach(a => { (byDept[a.department_id] = byDept[a.department_id] || []).push(a); });
