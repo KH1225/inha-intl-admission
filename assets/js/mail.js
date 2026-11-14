@@ -346,7 +346,7 @@ async function openMailModal(kind) {
     const ok = emailOk(a.email), sent = mailLogs[a.id], on = ok && !sent && (!K.defaultOn || K.defaultOn(a));
     return `<tr><td><input type="checkbox" class="ml-ck" data-id="${a.id}" ${on ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="mailCount()" style="width:auto"></td>
       <td class="nw">${esc(a.receipt_no)}</td><td>${esc(a.name_ko)}<div class="muted small">${esc(a.name_en)}</div></td>
-      <td>${esc(deptName(a.department_id))}</td><td><span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></td>
+      <td>${esc(deptName(a.department_id))}</td><td class="nw"><span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></td>
       <td>${ok ? esc(a.email) : '<span style="color:var(--bad)">이메일 없음</span>'}</td>
       ${hasCc ? `<td><input class="ml-cc" data-id="${a.id}" value="${esc(a.cc_emails || '')}" placeholder="보호자·유학원 이메일" style="min-width:190px;padding:5px 7px;font-size:12px"></td>` : ''}
       <td class="nw small">${K.info(a)}</td>
