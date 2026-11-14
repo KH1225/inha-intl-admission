@@ -274,28 +274,45 @@ function renderLogin(msg) {
   $('#app').innerHTML = `<div class="login-wrap"><form class="login" onsubmit="doLogin(event);return false">
     <img src="${esc(C.LOGO)}" class="login-logo" alt="" onerror="this.style.display='none'">
     <h1>${esc(C.SCHOOL_KO)}</h1><p>외국인 특별전형 현황판</p>
-    <label>직번 또는 이메일<input id="lg-email" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+    <label>직번<input id="lg-emp" type="text" inputmode="text" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
     <label>비밀번호<input id="lg-pw" type="password" autocomplete="current-password" required></label>
     <div class="err" id="lg-err">${esc(msg || '')}</div>
     <button class="btn pri block" id="lg-btn" type="submit">로그인</button>
     <p class="hint">승인된 직원만 접속할 수 있습니다. 계정은 총괄관리자가 등록합니다.</p>
   </form></div>`;
 }
+const LOGIN_FN = 'staff-login';
+const LOGIN_WRONG = '직번 또는 비밀번호가 올바르지 않습니다.';
 async function doLogin(e) {
   e.preventDefault();
   const btn = $('#lg-btn'); btn.disabled = true;
   const fail = m => { $('#lg-err').textContent = m; btn.disabled = false; };
-  let id = $('#lg-email').value.trim();
-  // '@'가 없으면 직번으로 보고, 등록된 로그인 이메일을 찾아 로그인합니다
-  if (!id.includes('@')) {
-    const r = await sb.rpc('login_email', { p_emp_no: id });
-    if (r.error) return fail(/login_email|function/i.test(r.error.message) ? '직번 로그인이 아직 설정되지 않았습니다. 이메일로 로그인하세요.' : r.error.message);
-    if (!r.data) return fail('직번(이메일) 또는 비밀번호가 올바르지 않습니다.');
-    id = r.data;
+  const emp = $('#lg-emp').value.replace(/\s/g, ''), pw = $('#lg-pw').value;
+  if (!emp || emp.includes('@')) return fail('직번을 입력하세요. (이메일 로그인은 사용하지 않습니다)');
+  // 직번·비밀번호를 서버 함수로 보내 로그인합니다. 로그인 이메일은 서버 안에서만 찾습니다.
+  let session = null;
+  const { data, error } = await sb.functions.invoke(LOGIN_FN, { body: { emp_no: emp, password: pw } });
+  if (!error && data && data.access_token) {
+    session = data;
+  } else {
+    const res = error && error.context;
+    if (res && typeof res.json === 'function' && res.status !== 404) {
+      let m = LOGIN_WRONG; try { m = (await res.json()).error || m; } catch (x) { /* 무시 */ }
+      return fail(m);
+    }
+    // 서버 함수가 아직 배포되지 않았을 때만: 예전 방식 (sql/2026-11-14_직번로그인_서버처리.sql 실행 후에는 막힘)
+    const r = await sb.rpc('login_email', { p_emp_no: emp });
+    if (r.error) return fail('로그인 서버 함수(staff-login)가 아직 준비되지 않았습니다. 총괄관리자에게 문의하세요.');
+    if (!r.data) return fail(LOGIN_WRONG);
+    const s2 = await sb.auth.signInWithPassword({ email: r.data, password: pw });
+    if (s2.error) return fail(/Invalid login/i.test(s2.error.message) ? LOGIN_WRONG : s2.error.message);
+    S.user = s2.data.user;
   }
-  const { data, error } = await sb.auth.signInWithPassword({ email: id, password: $('#lg-pw').value });
-  if (error) return fail(/Invalid login/i.test(error.message) ? '직번(이메일) 또는 비밀번호가 올바르지 않습니다.' : error.message);
-  S.user = data.user;
+  if (session) {
+    const r = await sb.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
+    if (r.error || !r.data.user) return fail(r.error ? r.error.message : LOGIN_WRONG);
+    S.user = r.data.user;
+  }
   try { await afterLogin(); } catch (err) { renderFatal(err); }
 }
 function renderFatal(e) {

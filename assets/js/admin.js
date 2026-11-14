@@ -150,8 +150,10 @@ async function openAccounts() {
   const deptSel = (id, cls) => `<select class="${cls}"><option value="">-</option>${S.depts.map(d => `<option value="${d.id}" ${d.id === id ? 'selected' : ''}>${esc(d.name_ko)}</option>`).join('')}</select>`;
   const roleSel = (r, cls) => `<select class="${cls}">${Object.keys(ROLE_LABEL).map(k => `<option value="${k}" ${k === r ? 'selected' : ''}>${esc(ROLE_LABEL[k])}</option>`).join('')}</select>`;
   const hasEmp = S.profiles.some(p => 'emp_no' in p);
+  const noEmp = S.profiles.filter(p => p.active && !p.emp_no);
+  const noEmpWarn = noEmp.length ? `<div class="warn small" style="margin-top:6px">직번이 없는 사용 중 계정 ${noEmp.length}개: ${esc(noEmp.map(p => p.display_name || '(이름 없음)').join(', '))} — 직번을 넣어야 로그인할 수 있습니다.</div>` : '';
   openModal(`${mHead('계정 관리', '로그인 계정은 Supabase → Authentication → Users에서 만든 뒤, 여기서 권한을 지정합니다')}
-  <div class="m-body">${hasEmp ? '<div class="notice small">직번을 넣어 두면 그 직원은 로그인 화면에서 이메일 대신 직번으로 로그인할 수 있습니다.</div>' : ''}
+  <div class="m-body">${hasEmp ? `<div class="notice small">로그인은 <b>직번으로만</b> 합니다. 직번이 없는 계정은 로그인할 수 없습니다.</div>${noEmpWarn}` : ''}
   <div class="tbl-wrap"><table class="tbl" style="min-width:${hasEmp ? 840 : 720}px"><thead><tr><th>이름</th>${hasEmp ? '<th>직번</th>' : ''}<th>권한</th><th>학과(학과장만)</th><th>사용</th><th></th></tr></thead><tbody>
   ${S.profiles.map(p => `<tr data-id="${p.id}"><td><input class="an" value="${esc(p.display_name)}"></td>${hasEmp ? `<td><input class="ae" value="${esc(p.emp_no || '')}" placeholder="예: 2010081" style="width:110px"></td>` : ''}<td>${roleSel(p.role, 'ar')}</td><td>${deptSel(p.department_id, 'ad')}</td>
    <td><input class="aa" type="checkbox" ${p.active ? 'checked' : ''} ${p.id === S.user.id ? 'disabled' : ''}></td>
@@ -159,7 +161,7 @@ async function openAccounts() {
   <div class="sec" style="margin-top:14px"><h3>권한 추가</h3>
    <div class="muted small" style="margin-bottom:6px">Supabase에서 사용자를 만든 뒤 표시되는 “User UID”를 붙여 넣으세요.</div>
    <div class="grid2">${field('User UID', '<input id="na-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">')}${field('표시 이름', '<input id="na-name">')}
-   ${hasEmp ? field('직번 (선택 · 직번 로그인용)', '<input id="na-emp">') : ''}
+   ${hasEmp ? field('직번 (로그인 아이디)', '<input id="na-emp">', { req: 1 }) : ''}
    ${field('권한', roleSel('staff', 'x').replace('class="x"', 'id="na-role"'))}${field('학과 (학과장만)', deptSel(null, 'x').replace('class="x"', 'id="na-dept"'))}</div>
    <div style="margin-top:8px"><button class="btn pri" onclick="addAccount()">추가</button></div></div></div>
   <div class="m-foot"><button class="btn pri" onclick="closeModal(this.closest('.backdrop'))">닫기</button></div>`, { wide: true });
@@ -170,6 +172,7 @@ async function saveAccount(id, btn) {
   if (role === 'dept' && !dept) { toast('학과장은 학과를 선택해야 합니다.', 'err'); return; }
   const row = { display_name: $('.an', tr).value.trim(), role, department_id: role === 'dept' ? Number(dept) : null };
   if ($('.ae', tr)) row.emp_no = empNoOf($('.ae', tr).value);
+  if ($('.ae', tr) && !row.emp_no && (id === S.user.id || $('.aa', tr).checked)) { toast('직번을 입력하세요. 직번이 없으면 로그인할 수 없습니다.', 'err'); return; }
   if (id !== S.user.id) row.active = $('.aa', tr).checked;
   if (id === S.user.id && role !== 'admin') { toast('본인의 총괄관리자 권한은 바꿀 수 없습니다.', 'err'); return; }
   if (!row.display_name) { toast('이름을 입력하세요.', 'err'); return; }
@@ -186,6 +189,7 @@ async function addAccount() {
   if (role === 'dept' && !dept) { toast('학과장은 학과를 선택해야 합니다.', 'err'); return; }
   const row = { id, display_name: name, role, department_id: role === 'dept' ? Number(dept) : null };
   if ($('#na-emp')) row.emp_no = empNoOf($('#na-emp').value);
+  if ($('#na-emp') && !row.emp_no) { toast('직번을 입력하세요. 직번이 없으면 로그인할 수 없습니다.', 'err'); return; }
   const { error } = await sb.from('profiles').insert(row);
   if (error) { toast(empErr(error), 'err'); return; }
   toast('추가했습니다.');
