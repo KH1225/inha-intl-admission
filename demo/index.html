@@ -13,6 +13,13 @@
   p{margin:0 0 18px;color:var(--mute);font-size:15px}
   video{width:100%;border-radius:14px;background:#000;box-shadow:0 10px 30px rgba(11,42,91,.18);display:block}
   .note{margin-top:12px;font-size:13px;color:var(--mute)}
+  .try{margin-top:22px;background:#fff;border:1px solid #dbe3f0;border-radius:14px;padding:18px 20px}
+  .try h2{font-size:18px;margin:0 0 8px}
+  .try table{border-collapse:collapse;margin:10px 0 14px;font-size:15px}
+  .try td,.try th{border:1px solid #dbe3f0;padding:7px 14px;text-align:left}
+  .try th{background:#f1f5fb}
+  .try code{font-size:15px;font-weight:700;color:#0b2a5b}
+  .btn{display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:10px 18px;border-radius:10px}
 </style>
 </head>
 <body>
@@ -21,6 +28,16 @@
   <p>인하공업전문대학 국제교류팀 김경하 · 2026 AX 교육·행정혁신 우수사례 · 2026.11.14 개인정보 보호 강화 반영</p>
   <video src="demo.mp4?v=20261114k" poster="poster.jpg?v=20261114c" controls playsinline preload="metadata"></video>
   <div class="note">※ 영상 속 지원자 정보와 사진은 모두 시연용 가상 데이터입니다.</div>
+  <section class="try">
+    <h2>평가자용 체험 현황판</h2>
+    <p style="margin-bottom:6px">실제 화면을 직접 눌러 볼 수 있습니다. 모든 데이터는 가상 데이터이며 실제 DB에 연결되지 않고, 메일도 실제로 보내지지 않습니다. 새로고침하면 처음 상태로 돌아갑니다.</p>
+    <table>
+      <tr><th>체험 권한</th><th>직번</th><th>비밀번호</th></tr>
+      <tr><td>총괄관리자 (전체 기능)</td><td><code>9001</code></td><td><code>itc-demo-2026</code></td></tr>
+      <tr><td>학과장 (항공운항과 · 면접 평가 · 학점 인정)</td><td><code>9002</code></td><td><code>itc-demo-2026</code></td></tr>
+    </table>
+    <a class="btn" href="app/">체험 현황판 열기</a>
+  </section>
 </main>
 </body>
 </html>
