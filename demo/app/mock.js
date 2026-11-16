@@ -128,6 +128,8 @@
       for (const [c, asc] of st.orders.slice().reverse()) data = data.slice().sort((x, y) => (x[c] > y[c] ? 1 : x[c] < y[c] ? -1 : 0) * (asc ? 1 : -1));
       if (st.range) data = data.slice(st.range[0], st.range[1] + 1);
       if (st.limit != null) data = data.slice(0, st.limit);
+      // 지원자 행은 실제 서버처럼 복사본을 돌려줍니다 (화면에서 원문으로 풀어도 DB 쪽 암호문은 그대로)
+      if (table === 'applicants' || table === 'interview_targets') data = data.map(r => ({ ...r }));
       if (st.single || st.maybe) return { data: data[0] || null, error: null };
       return { data: st.head ? null : data, error: null, count: data.length };
     };
@@ -154,6 +156,19 @@
     ['2026-11-13T14:02:00+09:00', '항공운항과 학과장', '학점인정 서류 인쇄', 'ITC-2027-001', '아마노 유키', '검토의견서·사정표'],
     ['2026-11-12T17:44:00+09:00', '국제교류팀 직원', '문서 발급·인쇄', 'ITC-2027-006', '바야르 소롱고', '합격통지서']
   ].map(r => ({ at: r[0], user_name: r[1], action: r[2], receipt_no: r[3], name_ko: r[4], detail: r[5] }));
+  // ---- 체험판용 연락처 암호화 (진짜 열쇠 없이 흉내만: 암호문 ↔ 원문 대응표가 이 탭의 메모리에만 있음) ----
+  const PIIF = ['email', 'phone', 'cc_emails'], VAULT = new Map();
+  const encV = v => {
+    if (v == null || v === '' || String(v).startsWith('enc:v1:')) return v;
+    const rnd = new Uint8Array(30); crypto.getRandomValues(rnd);
+    const c = 'enc:v1:' + btoa(String.fromCharCode(...rnd)).replace(/=+$/, '');
+    VAULT.set(c, String(v)); return c;
+  };
+  const decV = v => (typeof v === 'string' && VAULT.has(v) ? VAULT.get(v) : v);
+  const isPlain = a => PIIF.some(f => a[f] && !String(a[f]).startsWith('enc:v1:'));
+  // 처음 상태: 지원자 10명은 이미 암호화, 마지막 3명은 기능 도입 전에 들어온 평문 → '지금 암호화'로 바꿔 볼 수 있음
+  APPS.forEach((a, i) => { if (i < APPS.length - 3) PIIF.forEach(f => { a[f] = encV(a[f]); }); });
+  window.__demoPiiSample = () => { const a = DB.applicants.find(x => String(x.email || '').startsWith('enc:v1:')); return a ? { name: a.name_ko, email: a.email, phone: a.phone } : null; };
   const RPC = {
     get_access_logs: () => LOGS, purge_preview: () => [{ term_id: 1, label: '2027학년도 1학기', year: 2027, n: 13 }], purge_history: () => [
       { purged_at: '2026-11-14T20:31:00+09:00', term_label: '여권번호·여권만료일·외국인등록번호 전체 삭제 (수집 중단)', n_applicants: 13, keep_years: 0, purged_by_name: '데모 관리자' },
@@ -182,13 +197,17 @@
           user.id = acc; user.email = acc === 'u-admin' ? 'evaluator-admin@example.com' : 'evaluator-dept@example.com';
           return { data: { access_token: 'demo', refresh_token: 'demo' }, error: null };
         }
-        if (n === 'pii-crypt') { // 체험판: 가상 데이터라 암호화 없이 그대로 돌려줌
+        if (n === 'pii-crypt') { // 체험판 암호화: 브라우저 메모리 안의 가짜 열쇠로 실제 서버와 같은 흐름을 흉내 냅니다
           const b = o.body || {};
-          if (b.action === 'encrypt') return { data: { items: (b.items || []).map(x => ({ ...x })) }, error: null };
-          if (b.action === 'decrypt') return { data: { rows: [] }, error: null };
-          return { data: { total: DB.applicants.length, plain_applicants: 0, plain_mail_logs: 0, encrypted_now: { applicants: 0, mail_logs: 0 } }, error: null };
+          await new Promise(r => setTimeout(r, 120));
+          if (b.action === 'encrypt') return { data: { items: (b.items || []).map(x => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, encV(v)]))) }, error: null };
+          if (b.action === 'decrypt') return { data: { rows: DB.applicants.filter(a => (b.ids || []).map(String).includes(String(a.id)))
+            .map(a => ({ id: a.id, ...Object.fromEntries(PIIF.map(f => [f, decV(a[f])])) })) }, error: null };
+          let na = 0;
+          if (b.action === 'migrate') DB.applicants.forEach(a => { if (isPlain(a)) { PIIF.forEach(f => { a[f] = encV(a[f]); }); na++; } });
+          return { data: { total: DB.applicants.length, plain_applicants: DB.applicants.filter(isPlain).length, plain_mail_logs: 0, encrypted_now: { applicants: na, mail_logs: 0 } }, error: null };
         }
-        await new Promise(r => setTimeout(r, 450)); return { data: { results: (o.body.applicant_ids || []).map(id => ({ id, ok: true, to: (DB.applicants.find(a => a.id === id) || {}).email })) }, error: null };
+        await new Promise(r => setTimeout(r, 450)); return { data: { results: (o.body.applicant_ids || []).map(id => ({ id, ok: true, to: decV((DB.applicants.find(a => a.id === id) || {}).email) })) }, error: null };
       } },
       channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {},
       auth: {

@@ -16,7 +16,7 @@
 <div id="app"><div class="center-msg"><div>불러오는 중…</div></div></div>
 <div id="printArea"></div>
 <div id="toast"></div>
-<script src="demo/app/mock.js?v=20261116a"></script>
+<script src="demo/app/mock.js?v=20261116b"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/config.js?v=20261116a"></script>
 <script src="js/core.js?v=20261116a"></script>
@@ -32,5 +32,20 @@
 <script src="js/privacy.js?v=20261116a"></script>
 <script src="js/print.js?v=20261116a"></script>
 <script src="js/main.js?v=20261116a"></script>
+<script>
+/* 체험판 전용: 암호화 창에 'DB에 실제로 저장된 모습' 예시를 덧붙여 보여 줍니다 */
+(function () {
+  const orig = showPiiStatus;
+  showPiiStatus = function (r, done) {
+    orig(r, done);
+    const out = document.getElementById('pc-out'), s = window.__demoPiiSample && window.__demoPiiSample();
+    if (!out || !s) return;
+    const box = document.createElement('div');
+    box.style.cssText = 'margin-top:10px;padding:10px 12px;border:1px dashed #cbd5e1;border-radius:8px;background:#f8fafc;font-size:12.5px;color:#334155';
+    box.innerHTML = '<b>체험판 예시 · DB에 실제로 저장된 모습</b> (' + esc(s.name) + ')<div style="font-family:ui-monospace,Consolas,monospace;word-break:break-all;margin-top:4px">email = ' + esc(s.email) + '<br>phone = ' + esc(s.phone) + '</div><div class="muted" style="margin-top:4px">화면에는 권한 있는 사용자에게만 풀어서 보여 주고, 저장소에는 이렇게 암호문만 남습니다.</div>';
+    out.appendChild(box);
+  };
+})();
+</script>
 </body>
 </html>
