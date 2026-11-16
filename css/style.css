@@ -439,3 +439,11 @@ table.tbl.list{min-width:1000px}
 
 
 .pmark{position:absolute;left:0;right:0;bottom:3mm;text-align:center;font-size:7pt;color:#888;letter-spacing:.2px}
+
+/* 빠른 이동 버튼 */
+.qjump{position:fixed;right:6px;bottom:18px;z-index:900;display:flex;flex-direction:column;gap:6px}
+.qjump.hide{display:none}
+.qjump button{display:flex;flex-direction:column;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;opacity:.85;border:1px solid var(--line);background:var(--card,#fff);color:#1e3a8a;font-size:15px;line-height:1.1;cursor:pointer;box-shadow:0 4px 14px rgba(15,23,42,.14)}
+.qjump button span{font-size:9.5px;margin-top:2px;color:var(--mute,#64748b)}
+.qjump button:hover{opacity:1;background:#eef3ff;border-color:#93b4f5}
+@media print{.qjump{display:none!important}}
