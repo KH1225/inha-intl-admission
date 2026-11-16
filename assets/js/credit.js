@@ -119,15 +119,16 @@ function crCardHtml(a) {
     <div style="flex:1;min-width:240px"><h3>${esc(a.name_ko)} <span class="muted small">${esc(a.name_en || '')} · ${esc(a.receipt_no)}</span>
       ${sub ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${sub && r.signature ? ` <span class="sign-mini">${crSignImg(r, '24px')}</span>` : ''}</h3>
      <div class="muted small">${esc(deptName(a.department_id))} · 편입학${a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''} · ${esc(a.nationality || '')}</div></div>
-    <div class="cr-sum"><div><span>전공 인정</span><b class="cr-maj">${crNum(s.maj, s.rMaj)}</b></div><div><span>교양 인정</span><b class="cr-gen">${crNum(s.gen, s.rGen)}</b></div><div><span>총계</span><b class="cr-tot">${crNum(s.total, s.rTotal)}</b></div></div></div>
+    </div>
    <div class="notice small cr-warn ${warn ? '' : 'hide'}" style="margin-top:8px">ℹ <span>${esc(warn)}</span></div>
    <div class="grid3" style="margin-top:10px">
     ${field(`전적교 대학명${crPartner(a) ? ' <span class="muted small">(협약학교)</span>' : ''}`, ed ? `<input class="cr-ps" value="${esc(crSchool(a))}" placeholder="예: Kyrgyz-Korean College">` : `<div>${esc(crSchool(a)) || '-'}</div>`)}
     ${field('전적교 학과명', ed ? `<input class="cr-pm" value="${esc(r.prev_major || '')}" placeholder="예: Airline Industry (Cabin Attendant)" ${S.crHasMajor ? '' : 'disabled title="sql/2026-11-12_전적교_학과명.sql 실행 후 입력할 수 있습니다"'}>` : `<div>${esc(r.prev_major || '') || '-'}</div>`)}
     ${field('전적교 학년', ed ? `<select class="cr-py"><option value="">-</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(r.prev_year) === n ? 'selected' : ''}>${n}학년</option>`).join('')}</select>` : `<div>${r.prev_year ? esc(r.prev_year) + '학년' : '-'}</div>`)}
    </div>
-   <div class="tbl-wrap" style="margin-top:8px;max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:0;width:auto"><colgroup><col style="width:44px"><col style="width:460px"><col style="width:84px"><col style="width:122px"><col style="width:76px">${ed && !crLock() ? '<col style="width:48px">' : ''}</colgroup><thead><tr><th>NO</th><th>교과목명</th><th>학점</th><th>구분</th><th>인정 여부</th>${ed && !crLock() ? '<th></th>' : ''}</tr></thead>
+   <div class="cr-body"><div class="tbl-wrap" style="max-height:420px;overflow:auto"><table class="tbl cr-tbl" style="min-width:0;width:auto"><colgroup><col style="width:44px"><col style="width:460px"><col style="width:84px"><col style="width:122px"><col style="width:76px">${ed && !crLock() ? '<col style="width:48px">' : ''}</colgroup><thead><tr><th>NO</th><th>교과목명</th><th>학점</th><th>구분</th><th>인정 여부</th>${ed && !crLock() ? '<th></th>' : ''}</tr></thead>
     <tbody>${rows.map((c, i) => crRowHtml(c, ed, i)).join('') || (ed && !crLock() ? '' : `<tr><td colspan="${ed && !crLock() ? 6 : 5}" class="muted c">${crLock() ? '국제교류팀이 아직 성적증명서 과목을 입력하지 않았습니다' : '입력된 과목이 없습니다'}</td></tr>`)}</tbody></table></div>
+    <div class="cr-sum big"><div class="maj"><span>전공 인정</span><b class="cr-maj">${crNum(s.maj, s.rMaj)}</b></div><div class="gen"><span>교양 인정</span><b class="cr-gen">${crNum(s.gen, s.rGen)}</b></div><div class="tot"><span>총계</span><b class="cr-tot">${crNum(s.total, s.rTotal)}</b></div><em>작은 숫자 = 체크한 학점 (편입 학년별 최대 인정 기준 초과분은 제외)</em></div></div>
    ${ed && crLock() ? '<div class="muted small" style="margin-top:6px">교과목명과 학점은 국제교류팀이 성적증명서대로 입력합니다. 과목마다 <b>구분</b>(전공/교양)과 <b>인정 여부</b>를 체크하고 저장해 주세요.</div>' : ''}
    ${ed && !crLock() ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn sm" onclick="crAddRow('${a.id}')">＋ 과목 추가</button>
      <button class="btn sm blue" onclick="crPaste('${a.id}')">과목 붙여넣기</button>
