@@ -43,7 +43,9 @@ async function createSamples() {
    .map(r => ({ ...r, term_id: S.term.id, email: SAMPLE_EMAIL, phone: '010-0000-0000', status: '서류심사', dorm_application: false }));
   if (!rows.length) { toast('이미 샘플 2명이 있습니다.'); return; }
   setBusy(true);
-  for (const r of rows) {
+  let encRows;
+  try { encRows = await piiEncryptRows(rows); } catch (e) { setBusy(false); toast(`샘플 만들기 실패(암호화): ${errMsg(e)}`, 'err'); return; }
+  for (const r of encRows) {
     const { error } = await sb.from('applicants').insert(r);
     if (error) { setBusy(false); toast(`샘플 만들기 실패: ${errMsg(error)}`, 'err'); await reloadAndRender(); return; }
   }

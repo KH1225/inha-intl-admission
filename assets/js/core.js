@@ -171,10 +171,56 @@ async function loadTermData() {
     }
     S.hasCol = Object.fromEntries(OPT_COLS.map(c => [c, opt.includes(c)]));
     S.noDomHs = !S.hasCol.domestic_hs;
+    await piiDecryptApps(S.apps);
   } else {
     S.apps = await fetchAll(() => sb.from('interview_targets').select('*').eq('term_id', S.term.id).order('id'));
+    S.apps.forEach(a => PII_FIELDS.forEach(f => { if (isPiiEnc(a[f])) a[f] = null; }));
   }
   await loadAux();
+}
+
+/* ---------- 이메일·연락처 암호화 ----------
+   DB 에는 'enc:v1:…' 암호문만 저장합니다. 열쇠는 서버 함수(pii-crypt)의 Secret 에만 있고,
+   브라우저는 저장 직전에 암호문을 받아 저장하고, 불러온 뒤에 권한 있는 지원자만 풀어서 화면(메모리)에서만 씁니다. */
+const PII_FN = 'pii-crypt', PII_PREFIX = 'enc:v1:', PII_FIELDS = ['email', 'phone', 'cc_emails'];
+const isPiiEnc = v => typeof v === 'string' && v.startsWith(PII_PREFIX);
+async function piiCall(body) {
+  const { data, error } = await sb.functions.invoke(PII_FN, { body });
+  if (error) {
+    let m = error.message || String(error);
+    try { const j = await error.context.json(); if (j && j.error) m = j.error; } catch (e) { /* 무시 */ }
+    if (/Failed to send a request|not found|404/i.test(m)) m = '암호화 서버 함수(pii-crypt)가 아직 Supabase에 없습니다. 설정 안내를 따라 만들어 주세요.';
+    throw new Error(m);
+  }
+  return data;
+}
+/* 저장할 값들의 이메일·연락처·추가 이메일을 암호문으로 바꿔 돌려줍니다 (실패하면 오류 → 저장하지 않음) */
+async function piiEncryptRows(rows) {
+  const items = rows.map(p => Object.fromEntries(PII_FIELDS.filter(f => f in p).map(f => [f, p[f]])));
+  if (!items.some(o => Object.keys(o).length)) return rows;
+  const { items: out } = await piiCall({ action: 'encrypt', items });
+  return rows.map((p, i) => ({ ...p, ...(out[i] || {}) }));
+}
+const piiEncrypt = async p => (await piiEncryptRows([p]))[0];
+/* 불러온 지원자의 암호문을 풀어 둡니다. 실패한 지원자는 _piiLocked 표시 → 수정 저장 때 빈 값으로 덮어쓰지 않음 */
+const PII_CACHE = new Map();
+async function piiDecryptApps(list) {
+  const need = list.filter(a => PII_FIELDS.some(f => isPiiEnc(a[f]) && !PII_CACHE.has(a[f])));
+  if (need.length) {
+    try {
+      const { rows } = await piiCall({ action: 'decrypt', ids: need.map(a => a.id) });
+      const byId = Object.fromEntries((rows || []).map(r => [String(r.id), r]));
+      need.forEach(a => {
+        const r = byId[String(a.id)];
+        if (r) PII_FIELDS.forEach(f => { if (isPiiEnc(a[f]) && f in r) PII_CACHE.set(a[f], r[f]); });
+      });
+    } catch (e) { toast('이메일·연락처를 풀지 못했습니다: ' + errMsg(e), 'err'); }
+  }
+  list.forEach(a => PII_FIELDS.forEach(f => {
+    if (!isPiiEnc(a[f])) return;
+    if (PII_CACHE.has(a[f])) a[f] = PII_CACHE.get(a[f]);
+    else { a[f] = null; a._piiLocked = true; }
+  }));
 }
 async function loadAux() {
   const ids = new Set(S.apps.map(a => a.id));
@@ -381,7 +427,7 @@ function toolbarHtml() {
   if (can.admin()) {
     b.push(`<button class="btn" onclick="openNewTerm()">새 학기</button>`);
     b.push(`<button class="btn" onclick="openAccounts()">계정 관리</button>`);
-    if (S.role === 'admin') b.push(`<button class="btn" onclick="openAccessLog()">열람 기록</button><button class="btn" onclick="openPurge()">개인정보 파기</button>`);
+    if (S.role === 'admin') b.push(`<button class="btn" onclick="openAccessLog()">열람 기록</button><button class="btn" onclick="openPurge()">개인정보 파기</button><button class="btn" onclick="openPiiCrypt()">연락처 암호화</button>`);
   }
   b.push(`<div class="who"><span class="dot"></span>[${esc(ROLE_LABEL[S.role])}] <span class="muted">(${esc(scopeLabel())})</span><button onclick="logout()">로그아웃</button></div>`);
   return b.join('');

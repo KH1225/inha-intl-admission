@@ -182,6 +182,12 @@
           user.id = acc; user.email = acc === 'u-admin' ? 'evaluator-admin@example.com' : 'evaluator-dept@example.com';
           return { data: { access_token: 'demo', refresh_token: 'demo' }, error: null };
         }
+        if (n === 'pii-crypt') { // 체험판: 가상 데이터라 암호화 없이 그대로 돌려줌
+          const b = o.body || {};
+          if (b.action === 'encrypt') return { data: { items: (b.items || []).map(x => ({ ...x })) }, error: null };
+          if (b.action === 'decrypt') return { data: { rows: [] }, error: null };
+          return { data: { total: DB.applicants.length, plain_applicants: 0, plain_mail_logs: 0, encrypted_now: { applicants: 0, mail_logs: 0 } }, error: null };
+        }
         await new Promise(r => setTimeout(r, 450)); return { data: { results: (o.body.applicant_ids || []).map(id => ({ id, ok: true, to: (DB.applicants.find(a => a.id === id) || {}).email })) }, error: null };
       } },
       channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {},

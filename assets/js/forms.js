@@ -320,9 +320,13 @@ async function saveApplicant(id) {
   if (errs.length) { box.textContent = errs.join('\n'); box.classList.remove('hide'); box.scrollIntoView({ block: 'center' }); return; }
   box.classList.add('hide');
   const btn = $('#af-save'); btn.disabled = true;
-  let error, savedId = id, photoErr = '';
-  if (id) ({ error } = await sb.from('applicants').update(p).eq('id', id));
-  else { p.term_id = S.term.id; if (g('receipt_no')) p.receipt_no = g('receipt_no'); const r = await sb.from('applicants').insert(p).select('id').single(); error = r.error; if (r.data) savedId = r.data.id; }
+  // 연락처를 풀지 못한 채 열린 지원자는, 비워 둔 칸으로 기존 값을 덮어쓰지 않습니다
+  const orig = id ? S.apps.find(x => String(x.id) === String(id)) : null;
+  if (orig && orig._piiLocked) PII_FIELDS.forEach(f => { if (!p[f]) delete p[f]; });
+  let error, savedId = id, photoErr = '', enc;
+  try { enc = await piiEncrypt(p); } catch (e) { btn.disabled = false; box.textContent = '이메일·연락처 암호화 실패로 저장하지 않았습니다: ' + errMsg(e); box.classList.remove('hide'); return; }
+  if (id) ({ error } = await sb.from('applicants').update(enc).eq('id', id));
+  else { enc.term_id = S.term.id; if (g('receipt_no')) enc.receipt_no = g('receipt_no'); const r = await sb.from('applicants').insert(enc).select('id').single(); error = r.error; if (r.data) savedId = r.data.id; }
   if (error) { btn.disabled = false; box.textContent = errMsg(error); box.classList.remove('hide'); return; }
   // 제출서류 체크 변경분 저장
   let docErr = 0;

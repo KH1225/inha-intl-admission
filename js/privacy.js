@@ -116,3 +116,34 @@ async function runPurge(termId, label, n) {
     closeModal(); await reloadAndRender(); openPurge();
   } catch (e) { setBusy(false); toast('파기 실패: ' + errMsg(e), 'err'); }
 }
+
+/* ---------- 이메일·연락처 암호화 전환 (총괄관리자) ----------
+   서버 함수 pii-crypt 가 열쇠(PII_KEY Secret)로 기존 평문을 암호문으로 바꿉니다. 여러 번 눌러도 안전합니다. */
+async function openPiiCrypt() {
+  const bd = openModal(`${mHead('이메일·연락처 암호화', '지원자 이메일·연락처·추가 이메일과 메일 발송 기록의 받는 주소를 AES-256 으로 암호화합니다')}
+   <div class="m-body">
+    <div class="notice small">암호화 열쇠는 DB 가 아니라 Supabase 서버 함수의 Secret(<b>PII_KEY</b>)에만 있습니다. DB 가 유출돼도 이 값들은 읽을 수 없습니다.<br>
+      ※ PII_KEY 를 잃어버리면 암호화된 값은 되살릴 수 없으니, 사본을 안전한 곳에 보관했는지 먼저 확인하세요.</div>
+    <div id="pc-out" class="muted" style="margin-top:10px">확인 중…</div></div>
+   <div class="m-foot"><button class="btn pri" id="pc-run" onclick="runPiiMigrate()" disabled>지금 암호화</button><button class="btn" onclick="closeModal(this.closest('.backdrop'))">닫기</button></div>`);
+  try { showPiiStatus(await piiCall({ action: 'status' })); }
+  catch (e) { $('#pc-out', bd).innerHTML = `<div class="warn">${esc(errMsg(e))}</div>`; }
+}
+function showPiiStatus(r, done) {
+  const out = $('#pc-out'); if (!out) return;
+  const left = (r.plain_applicants || 0) + (r.plain_mail_logs || 0);
+  out.innerHTML = `${done ? `<div><b>방금 암호화:</b> 지원자 ${r.encrypted_now.applicants}명, 메일 기록 ${r.encrypted_now.mail_logs}건</div>` : ''}
+    <div>전체 지원자 ${r.total}명 · <b>암호화 안 된 지원자 ${r.plain_applicants}명</b> · 암호화 안 된 메일 기록 ${r.plain_mail_logs}건</div>
+    ${left ? '' : '<div style="color:var(--ok, green);margin-top:6px"><b>✓ 모두 암호화되어 있습니다.</b> 이제 sql/2026-11-16_연락처_암호화_잠금.sql 을 실행해 평문 저장을 막아 두세요.</div>'}`;
+  const b = $('#pc-run'); if (b) b.disabled = !left;
+}
+async function runPiiMigrate() {
+  if (!confirm('저장된 이메일·연락처를 지금 암호화합니다. 계속할까요?')) return;
+  setBusy(true);
+  try {
+    const r = await piiCall({ action: 'migrate' });
+    logAccess('연락처 암호화 전환', null, `지원자 ${r.encrypted_now.applicants}명, 메일 기록 ${r.encrypted_now.mail_logs}건`);
+    setBusy(false); showPiiStatus(r, true); toast('암호화했습니다.');
+    await reloadAndRender();
+  } catch (e) { setBusy(false); toast('암호화 실패: ' + errMsg(e), 'err'); }
+}

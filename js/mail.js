@@ -495,7 +495,10 @@ async function mailSend(test) {
     }
     if (bad.length) { toast(`추가 이메일 형식을 확인하세요 (최대 3개): ${bad.join(', ')}`, 'err'); return; }
     for (const [a, v] of changed) {
-      const { error } = await sb.from('applicants').update({ cc_emails: v }).eq('id', a.id);
+      if (a._piiLocked && !v) continue; // 풀지 못한 값을 빈 값으로 덮어쓰지 않음
+      let encV;
+      try { encV = (await piiEncrypt({ cc_emails: v })).cc_emails; } catch (e) { toast(`${a.name_ko} 추가 이메일 암호화 실패: ${errMsg(e)}`, 'err'); return; }
+      const { error } = await sb.from('applicants').update({ cc_emails: encV }).eq('id', a.id);
       if (error) { toast(`${a.name_ko} 추가 이메일 저장 실패: ${errMsg(error)}`, 'err'); return; }
       a.cc_emails = v;
     }

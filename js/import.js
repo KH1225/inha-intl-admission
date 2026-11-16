@@ -145,6 +145,11 @@ async function runImport() {
     if (!error) { newAg[x.agencyNew.toLowerCase()] = data.id; S.agencies.push(data); }
   }
   rebuildMaps();
+  // 이메일·연락처는 한 번에 암호문으로 바꾼 뒤 저장합니다 (암호화에 실패하면 한 건도 저장하지 않음)
+  try {
+    const encd = await piiEncryptRows(list.map(x => x.rec));
+    list.forEach((x, i) => { x.rec = encd[i]; });
+  } catch (e) { setBusy(false); btn.disabled = false; $('#imp-result').innerHTML = `<div class="err-box">이메일·연락처 암호화 실패로 등록하지 않았습니다: ${esc(errMsg(e))}</div>`; return; }
   for (const x of list) {
     if (x.agencyNew) x.rec.agency_id = newAg[x.agencyNew.toLowerCase()] || (S.agencies.find(a => a.name.toLowerCase() === x.agencyNew.toLowerCase()) || {}).id || null;
     const { data, error } = await sb.from('applicants').insert(x.rec).select('id').single();

@@ -7,6 +7,7 @@
 //   MAIL_REPLY_TO  (선택) 답장 받을 주소
 //   방법 A — Gmail 등 SMTP:  SMTP_HOST=smtp.gmail.com  SMTP_PORT=465  SMTP_USER=계정  SMTP_PASS=앱 비밀번호
 //   방법 B — Resend:         RESEND_API_KEY=re_xxx  (보내는 도메인 인증 필요)
+//   PII_KEY        지원자 이메일 암호화 열쇠 (pii-crypt 와 같은 Secret — 프로젝트 공통이라 한 번만 등록)
 //
 // 받는 사람은 항상 DB에 저장된 지원자 이메일만 씁니다 (임의 주소로는 보낼 수 없음).
 // {이름}, {등록금}, {계좌번호} 같은 값도 모두 서버가 DB에서 읽어 채웁니다.
@@ -21,6 +22,37 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
 const MAX_PER_CALL = 25;
+
+/* ---------- 이메일 암호화 (pii-crypt 와 같은 열쇠 PII_KEY · AES-256-GCM) ----------
+   DB 의 지원자 이메일·추가 이메일은 'enc:v1:…' 암호문입니다. 보낼 때만 이 함수 안에서 풀고,
+   발송 기록(mail_logs.to_email)도 암호문으로 남깁니다. */
+const PII_PREFIX = "enc:v1:";
+let piiKeyP: Promise<CryptoKey> | null = null;
+function piiKey(): Promise<CryptoKey> {
+  if (!piiKeyP) {
+    piiKeyP = (async () => {
+      let raw: Uint8Array;
+      try { raw = Uint8Array.from(atob(env("PII_KEY").trim()), (c) => c.charCodeAt(0)); } catch { raw = new Uint8Array(); }
+      if (raw.length !== 32) throw new Error("PII_KEY 가 없거나 형식이 틀렸습니다.");
+      return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+    })();
+    piiKeyP.catch(() => { piiKeyP = null; });
+  }
+  return piiKeyP;
+}
+async function piiDec(v: unknown): Promise<string> {
+  const s = String(v ?? "");
+  if (!s.startsWith(PII_PREFIX)) return s;
+  const raw = Uint8Array.from(atob(s.slice(PII_PREFIX.length)), (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.slice(0, 12) }, await piiKey(), raw.slice(12)));
+}
+async function piiEnc(v: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await piiKey(), new TextEncoder().encode(v)));
+  const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+  let b = ""; for (const x of out) b += String.fromCharCode(x);
+  return PII_PREFIX + btoa(b);
+}
 const env = (k: string) => Deno.env.get(k) ?? "";
 
 /* 메일 종류별로 보낼 수 있는 지원자 조건 (실수 방지) */
@@ -300,10 +332,13 @@ Deno.serve(async (req) => {
     const pay = by(pays, a.id);
     const bad = KINDS[kind](a, pay);
     if (bad && !testTo) { results.push({ id: a.id, ok: false, error: bad }); continue; }
-    const to = testTo || (a.email ?? "").trim();
+    let aEmail = "", aCc = "";
+    try { aEmail = await piiDec(a.email); aCc = await piiDec(a.cc_emails); }
+    catch (err) { results.push({ id: a.id, ok: false, error: "이메일 복호화 실패: " + String((err as Error)?.message ?? err).slice(0, 200) }); continue; }
+    const to = testTo || aEmail.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { results.push({ id: a.id, ok: false, error: "이메일 없음/형식 오류" }); continue; }
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const cc = includeCc ? String(a.cc_emails ?? "").split(/[\s,;]+/).filter((e) => emailRe.test(e) && e !== to).slice(0, 3) : [];
+    const cc = includeCc ? aCc.split(/[\s,;]+/).filter((e) => emailRe.test(e) && e !== to).slice(0, 3) : [];
     const t = terms?.find((x) => x.id === a.term_id) ?? {};
     const vars = buildVars(a, t, depts?.find((d) => d.id === a.department_id)?.name_ko ?? "", by(ivs, a.id), pay,
       zoomByDept[String(a.department_id)] || zoomDefault, { ...extra, ...(extraById[String(a.id)] ?? {}) });
@@ -313,11 +348,11 @@ Deno.serve(async (req) => {
       await sendMail(to, cc, subject, text, attOf[String(a.id)] ?? []);
       const toLog = cc.length ? `${to} (참조: ${cc.join(", ")})` : to;
       results.push({ id: a.id, ok: true, to: toLog });
-      if (!testTo) await admin.from("mail_logs").insert({ applicant_id: a.id, kind, to_email: toLog, subject, sent_by: user.id, ok: true });
+      if (!testTo) await admin.from("mail_logs").insert({ applicant_id: a.id, kind, to_email: await piiEnc(toLog).catch(() => null), subject, sent_by: user.id, ok: true });
     } catch (err) {
       const msg = String((err as Error)?.message ?? err).slice(0, 300);
       results.push({ id: a.id, ok: false, to, error: msg });
-      if (!testTo) await admin.from("mail_logs").insert({ applicant_id: a.id, kind, to_email: to, subject, sent_by: user.id, ok: false, error: msg });
+      if (!testTo) await admin.from("mail_logs").insert({ applicant_id: a.id, kind, to_email: await piiEnc(to).catch(() => null), subject, sent_by: user.id, ok: false, error: msg });
     }
     if (testTo) break; // 테스트는 1통만
   }
