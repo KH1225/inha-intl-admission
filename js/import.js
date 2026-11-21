@@ -1,6 +1,6 @@
 'use strict';
 /* ===== 엑셀 일괄 등록 ===== */
-const IMPORT_HEADERS = ['접수번호(자동부여)', '한글성명*', '영문성명*', '성별(남/여)*', '생년월일(YYYY-MM-DD)*', '국적*', '입학구분(신입학/편입학)*', '지원학과(28개과)*', '지원경로', '전형유형', '어학능력(TOPIK)', '비자종류', '이메일*', '연락처', '출신고교', '출신대학', 'GPA(내신)', '심사진행상태', '장학금구분', '해외송금입금액', '비고메모'];
+const IMPORT_HEADERS = ['접수번호(자동부여)', '한글성명*', '영문성명*', '성별(남/여)*', '생년월일(YYYY-MM-DD)*', '국적*', '입학구분(신입학/편입학)*', '지원학과(28개과)*', '지원경로', '전형유형', '어학능력(TOPIK)', '사회통합프로그램(단계)', '비자종류', '이메일*', '연락처', '출신고교', '출신대학', 'GPA(내신)', '심사진행상태', '장학금구분', '해외송금입금액', '비고메모'];
 const normH = s => String(s == null ? '' : s).replace(/\(.*?\)/g, '').replace(/[*\s]/g, '');
 let importRows = [];
 
@@ -105,6 +105,10 @@ function buildImportPreview(rows) {
     if (qRaw && !qual) { if (/부모/.test(qRaw)) qual = 'T1'; else if (/전교육|해외/.test(qRaw)) qual = 'T2'; else errs.push(`전형유형 불일치(${qRaw})`); }
     const tk = cellStr(get(r, '어학능력')).match(/([1-6])\s*급?/);
     const topik = tk ? Number(tk[1]) : null;
+    const kpRaw = cellStr(get(r, '사회통합프로그램'));
+    const kp = kpRaw.match(/([0-5])/);
+    if (kpRaw && !kp) errs.push(`사회통합프로그램 단계 불일치(${kpRaw})`);
+    const kiip = kp ? Number(kp[1]) : null;
     let status = '서류심사';
     const stRaw = cellStr(get(r, '심사진행상태'));
     if (can.admin() && stRaw) { const st = stRaw === '서류접수' ? '서류심사' : stRaw; if (STATUSES.includes(st)) status = st; else errs.push(`상태 불일치(${stRaw})`); }
@@ -114,7 +118,7 @@ function buildImportPreview(rows) {
     const gpa = gpaRaw !== '' && !isNaN(Number(gpaRaw)) ? Number(gpaRaw) : null;
     const rec = {
       name_ko, name_en, gender, birth_date: birth, nationality: nat, admission_kind: kind, department_id: dept ? dept.id : null,
-      route, agency_id, ...(partnerId ? { partner_school_id: partnerId } : {}), qualification_code: qual || null, topik_level: topik,
+      route, agency_id, ...(partnerId ? { partner_school_id: partnerId } : {}), qualification_code: qual || null, topik_level: topik, ...(S.hasCol && S.hasCol.kiip_level && kiip != null ? { kiip_level: kiip } : {}),
       visa_type: cellStr(get(r, '비자종류')) || null,
       email: email || null, phone: cellStr(get(r, '연락처')) || null, high_school: cellStr(get(r, '출신고교')) || null, gpa,
       ...(S.hasCol && S.hasCol.prev_university && cellStr(get(r, '출신대학')) ? { prev_university: cellStr(get(r, '출신대학')) } : {}),

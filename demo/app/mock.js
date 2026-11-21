@@ -58,7 +58,7 @@
     agency_id: p[8] === '유학원' ? 1 : null, partner_school_id: p[8] === '협약학교 추천' ? 1 : null, topik_level: p[9], visa_type: p[10],
     email: `student${i + 1}@example.com`, phone: '010-0000-0000', high_school: 'Sample High School', gpa: null, dorm_application: i % 3 === 0,
     dorm_room: i === 5 ? '16-2B' : null, status: p[11], scholarship_type: p[12] ? 'TOPIK 우수' : null, scholarship_pct: p[12] ? 30 : 0,
-    scholarship_amount: p[12] ? 735000 : 0, scholarship_source: p[12] ? '자동' : null, memo: null, photo_path: `a${i + 1}.jpg`,
+    scholarship_amount: p[12] ? 735000 : 0, scholarship_source: p[12] ? '자동' : null, memo: null, photo_path: `a${i + 1}.jpg`, kiip_level: ({ 3: 3, 4: 2, 6: 5, 9: 4, 11: 2 })[i] ?? null,
     created_at: `2026-11-${String(2 + i).padStart(2, '0')}T10:00:00+09:00`, updated_at: '2026-11-14T10:00:00+09:00',
     domestic_hs: false, cc_emails: i === 0 ? 'parent@example.com' : null, prev_university: p[5] === '편입학' ? 'Sample College of Languages' : null
   }));

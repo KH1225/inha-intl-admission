@@ -150,7 +150,15 @@ function routeLabel(a) {
 }
 const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
 
-const OPT_COLS = ['domestic_hs', 'cc_emails', 'dorm_room', 'prev_university'];
+const OPT_COLS = ['domestic_hs', 'cc_emails', 'dorm_room', 'prev_university', 'kiip_level'];
+/* 어학능력: TOPIK 급수 + 사회통합프로그램(KIIP) 단계 */
+const KIIP_LEVELS = [0, 1, 2, 3, 4, 5];
+const kiipText = v => (v == null || v === '' ? '' : `사회통합 ${v}단계`);
+function langLabel(a, short) {
+  const t = a.topik_level ? (short ? `${a.topik_level}급` : `TOPIK ${a.topik_level}급`) : '';
+  const k = a.kiip_level != null ? (short ? `사통 ${a.kiip_level}단계` : kiipText(a.kiip_level)) : '';
+  return [t, k].filter(Boolean).join(' · ');
+}
 /* 쉼표·공백·세미콜론으로 구분된 이메일 목록 */
 const splitEmails = s => String(s || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
 const emailValid = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);

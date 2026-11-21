@@ -123,10 +123,13 @@ function chartsHtml() {
   const tpRow = (tag, color, n) => `<div class="tp"><span class="tag" style="background:${color}">${tag}</span><div class="tr"><b style="width:${total ? n / total * 100 : 0}%;background:${color}"></b></div><span><b>${n}명</b> <span class="muted small">(${total ? Math.round(n / total * 100) : 0}%)</span></span></div>`;
   const tp = [6, 5, 4, 3, 2, 1].map(l => tpRow(`TOPIK ${l}급`, TOPIK_COLOR[l], lv[l] || 0)).join('')
     + tpRow('TOPIK 없음', '#94a3b8', apps.filter(a => !a.topik_level).length);
+  const kv = {}; apps.forEach(a => { if (a.kiip_level != null) kv[a.kiip_level] = (kv[a.kiip_level] || 0) + 1; });
+  const kp = S.hasCol && S.hasCol.kiip_level ? '<div class="tp-sub">사회통합프로그램(KIIP)</div>' + [5, 4, 3, 2, 1, 0].filter(l => kv[l]).map(l => tpRow(`사회통합 ${l}단계`, '#0d9488', kv[l])).join('')
+    + tpRow('사회통합 없음', '#94a3b8', apps.filter(a => a.kiip_level == null).length) : '';
   return `
    <div class="panel"><h3>국적별 지원 분포 ${deptSel}</h3><div class="donut-wrap">${donut}<div class="legend">${legend || '<span class="muted">데이터가 없습니다</span>'}</div></div></div>
    <div class="panel"><h3>학과별 지원 현황 <small>국가별 인원 · 학과를 누르면 왼쪽에 국적 분포</small></h3><div class="bars scroll">${bars}</div></div>
-   <div class="panel"><h3>한국어(TOPIK) 어학 현황 <small>급수별 보유 인원</small></h3>${tp}</div>`;
+   <div class="panel"><h3>한국어 어학 현황 <small>TOPIK 급수 · 사회통합프로그램 단계별 인원</small></h3>${tp}${kp}</div>`;
 }
 
 /* ---------- 필터 / 검색 ---------- */
@@ -166,7 +169,7 @@ function sortVal(a, k) {
     case 'dept': return deptName(a.department_id);
     case 'order': { const o = orderOf(a); return o == null ? 1e9 : o; }
     case 'status': return STATUSES.indexOf(a.status);
-    case 'topik': return a.topik_level || 0;
+    case 'topik': return (a.topik_level || 0) * 10 + (a.kiip_level != null ? a.kiip_level + 1 : 0);
     default: return a[k] == null ? '' : a[k];
   }
 }
@@ -226,7 +229,7 @@ function rowHtml(a) {
     <td><div class="nm nw">${esc(d.name_ko || '-')} <span class="badge kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
       ${d.program_type ? `<div class="muted small">${esc(d.program_type === '전공심화' ? '전공심화과정' : d.program_type)}</div>` : ''}</td>
     <td><span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span></td>
-    <td style="white-space:nowrap">${a.topik_level ? `<b>TOPIK ${a.topik_level}급</b>` : '<span class="muted">-</span>'}</td>
+    <td style="white-space:nowrap">${langLabel(a) ? `<b>${esc(langLabel(a))}</b>` : '<span class="muted">-</span>'}</td>
     ${can.broad() ? `<td>${dp.need ? `<div class="dots">${dots}</div><div class="dc ${dp.got >= dp.need ? 'ok' : 'no'}">${dp.got}/${dp.need} 구비${dp.got >= dp.need ? '' : ' 미비'}</div>` : '<span class="muted">-</span>'}</td>` : ''}
     <td>${statusCell(a)}</td>
     <td class="muted small" style="white-space:nowrap">${fmtDate(a.created_at)}</td>
@@ -268,9 +271,9 @@ async function changeStatus(id, el) {
 /* ---------- CSV ---------- */
 function exportCsv() {
   const list = filteredApps();
-  const head = ['접수번호', '한글성명', '영문성명', '성별', '생년월일', '국적', '입학구분', '지원학과', '전형', '지원경로', 'TOPIK', '심사상태', '장학금', '장학금액', '지원일자'];
+  const head = ['접수번호', '한글성명', '영문성명', '성별', '생년월일', '국적', '입학구분', '지원학과', '전형', '지원경로', 'TOPIK', '사회통합프로그램', '심사상태', '장학금', '장학금액', '지원일자'];
   const cell = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) || /^[=+\-@]/.test(s) ? '"' + s.replace(/"/g, '""').replace(/^([=+\-@])/, "'$1") + '"' : s; };
-  const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), routeLabel(a), a.topik_level, a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
+  const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), routeLabel(a), a.topik_level, a.kiip_level != null ? a.kiip_level + '단계' : '', a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
   const csv = '﻿' + [[typeof privMarkText === 'function' ? privMarkText() : '개인정보 포함 · 외부 반출 금지'], head].concat(rows).map(r => r.map(cell).join(',')).join('\r\n');
   if (typeof logAccess === 'function') logAccess('엑셀(CSV) 내려받기', list.map(a => a.id), `${list.length}명`);
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
