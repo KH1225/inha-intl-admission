@@ -139,6 +139,9 @@ function filtersHtml() {
   const nats = Array.from(new Set(S.apps.map(a => a.nationality))).sort();
   const schols = Array.from(new Set(S.apps.map(a => a.scholarship_type).filter(Boolean))).sort();
   const deptIds = Array.from(new Set(S.apps.map(a => a.department_id)));
+  const agIds = Array.from(new Set(S.apps.map(a => a.agency_id).filter(Boolean)));
+  const agName = id => ((S.agencies || []).find(x => x.id === id) || {}).name || `유학원 #${id}`;
+  const ags = agIds.map(id => ({ id, nm: agName(id) })).sort((x, y) => x.nm.localeCompare(y.nm, 'ko'));
   return `<div class="filters"><input class="search" id="q" placeholder="지원자 성명, 영문명, 접수번호 검색..." value="${esc(f.q)}" oninput="onSearch(this.value)">
     <button class="btn sm" onclick="resetFilters()">필터 초기화</button></div>
    <div class="filters">
@@ -147,13 +150,14 @@ function filtersHtml() {
     <select onchange="setFilter('qual',this.value)"><option value="">전형구분</option>${S.quals.map(q => opt(q.code, q.name_ko, f.qual)).join('')}</select>
     <select onchange="setFilter('nat',this.value)"><option value="">국적</option>${nats.map(n => opt(n, n, f.nat)).join('')}</select>
     <select onchange="setFilter('dept',this.value)"><option value="">지원학과 (전체 전공)</option>${deptIds.map(id => opt(id, deptName(id), f.dept)).join('')}</select>
+    ${can.broad() ? `<select onchange="setFilter('agency',this.value)"><option value="">유학원</option><option value="__none__" ${f.agency === '__none__' ? 'selected' : ''}>유학원 경유 아님</option>${ags.map(x => opt(x.id, x.nm, f.agency)).join('')}</select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('schol',this.value)"><option value="">장학금</option><option value="__none__" ${f.schol === '__none__' ? 'selected' : ''}>장학금 없음</option>${schols.map(s => opt(s, s, f.schol)).join('')}</select>` : ''}
    </div>`;
 }
 function setFilter(k, v) { S.f[k] = v; S.f.page = 1; if (k === 'status') renderDash(); else renderTable(); }
 function cardFilter(st) { S.f.status = st; S.f.page = 1; renderDash(); }
 function resetFilters() {
-  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
+  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
   renderDash();
 }
 let searchTimer = null;
@@ -183,6 +187,7 @@ function filteredApps() {
     if (f.qual && a.qualification_code !== f.qual) return false;
     if (f.nat && a.nationality !== f.nat) return false;
     if (f.dept && String(a.department_id) !== String(f.dept)) return false;
+    if (f.agency) { if (f.agency === '__none__') { if (a.agency_id) return false; } else if (String(a.agency_id) !== String(f.agency)) return false; }
     if (f.schol) { if (f.schol === '__none__') { if (a.scholarship_type) return false; } else if (a.scholarship_type !== f.schol) return false; }
     if (q) {
       const hit = (a.name_ko || '').toLowerCase().includes(q) || (a.name_en || '').toLowerCase().includes(q) ||

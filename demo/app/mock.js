@@ -55,7 +55,7 @@
   const APPS = P.map((p, i) => ({
     id: 'a' + (i + 1), term_id: 1, receipt_no: `ITC-2027-${String(i + 1).padStart(3, '0')}`, name_ko: p[0], name_en: p[1], gender: p[2], birth_date: p[3],
     nationality: p[4], admission_kind: p[5], transfer_year: p[13] || null, department_id: p[6], qualification_code: p[7], route: p[8],
-    agency_id: p[8] === '유학원' ? 1 : null, partner_school_id: p[8] === '협약학교 추천' ? 1 : null, topik_level: p[9], visa_type: p[10],
+    agency_id: p[8] === '유학원' ? (i % 2 ? 2 : 1) : null, partner_school_id: p[8] === '협약학교 추천' ? 1 : null, topik_level: p[9], visa_type: p[10],
     email: `student${i + 1}@example.com`, phone: '010-0000-0000', high_school: 'Sample High School', gpa: null, dorm_application: i % 3 === 0,
     dorm_room: i === 5 ? '16-2B' : null, status: p[11], scholarship_type: p[12] ? 'TOPIK 우수' : null, scholarship_pct: p[12] ? 30 : 0,
     scholarship_amount: p[12] ? 735000 : 0, scholarship_source: p[12] ? '자동' : null, memo: null, photo_path: `a${i + 1}.jpg`, kiip_level: ({ 3: 3, 4: 2, 6: 5, 9: 4, 11: 2 })[i] ?? null,
@@ -67,7 +67,7 @@
   const DB = {
     terms: [T], departments: DEPTS,
     qualifications: [{ code: 'T1', name_ko: '유형1 (부모 모두 외국인)' }, { code: 'T2', name_ko: '유형2 (해외 전 교육과정 이수)' }],
-    agencies: [{ id: 1, name: '샘플 유학원' }], partner_schools: [{ id: 1, name: 'Sample College of Languages', active: true }],
+    agencies: [{ id: 1, name: '가상 유학원 A', active: true }, { id: 2, name: '가상 유학원 B', active: true }], partner_schools: [{ id: 1, name: 'Sample College of Languages', active: true }],
     scholarship_rules: [], topik_rates: [], document_types: null, applicants: APPS,
     profiles: [{ id: 'u-admin', display_name: '평가위원(총괄관리자 체험)', role: 'admin', active: true, department_id: null, emp_no: '9001' },
       { id: 'u-dept', display_name: '평가위원(항공운항과 학과장 체험)', role: 'dept', active: true, department_id: 1, emp_no: '9002' },
