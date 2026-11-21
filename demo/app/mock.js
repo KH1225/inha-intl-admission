@@ -187,6 +187,11 @@
         createSignedUrl: async () => ({ data: { signedUrl: bucket === 'seal' ? SEAL : '' }, error: null }),
         upload: async () => ({ data: {}, error: null }), remove: async () => ({ data: [], error: null }), list: async () => ({ data: [], error: null }) }) },
       functions: { invoke: async (n, o) => {
+        if (n === 'manage-account') {
+          const b = o.body;
+          if (b.action === 'create') { const id = 'u-' + Math.random().toString(36).slice(2, 8); DB.profiles.push({ id, display_name: b.display_name, role: b.role, department_id: b.department_id, emp_no: b.emp_no, active: true }); return { data: { ok: true, id }, error: null }; }
+          return { data: { ok: true }, error: null };
+        }
         if (n === 'staff-login') {
           const acc = { '9001': 'u-admin', '9002': 'u-dept' }[String(o.body.emp_no || '')];
           if (!acc || o.body.password !== 'itc-demo-2026') {

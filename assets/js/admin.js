@@ -152,18 +152,23 @@ async function openAccounts() {
   const hasEmp = S.profiles.some(p => 'emp_no' in p);
   const noEmp = S.profiles.filter(p => p.active && !p.emp_no);
   const noEmpWarn = noEmp.length ? `<div class="warn small" style="margin-top:6px">직번이 없는 사용 중 계정 ${noEmp.length}개: ${esc(noEmp.map(p => p.display_name || '(이름 없음)').join(', '))} — 직번을 넣어야 로그인할 수 있습니다.</div>` : '';
-  openModal(`${mHead('계정 관리', '로그인 계정은 Supabase → Authentication → Users에서 만든 뒤, 여기서 권한을 지정합니다')}
+  openModal(`${mHead('계정 관리', '계정을 만들고 비밀번호를 직접 지정합니다 · 로그인은 직번으로만')}
   <div class="m-body">${hasEmp ? `<div class="notice small">로그인은 <b>직번으로만</b> 합니다. 직번이 없는 계정은 로그인할 수 없습니다.</div>${noEmpWarn}` : ''}
   <div class="tbl-wrap"><table class="tbl" style="min-width:${hasEmp ? 840 : 720}px"><thead><tr><th>이름</th>${hasEmp ? '<th>직번</th>' : ''}<th>권한</th><th>학과(학과장만)</th><th>사용</th><th></th></tr></thead><tbody>
   ${S.profiles.map(p => `<tr data-id="${p.id}"><td><input class="an" value="${esc(p.display_name)}"></td>${hasEmp ? `<td><input class="ae" value="${esc(p.emp_no || '')}" placeholder="예: 2010081" style="width:110px"></td>` : ''}<td>${roleSel(p.role, 'ar')}</td><td>${deptSel(p.department_id, 'ad')}</td>
    <td><input class="aa" type="checkbox" ${p.active ? 'checked' : ''} ${p.id === S.user.id ? 'disabled' : ''}></td>
-   <td><button class="btn sm" onclick="saveAccount('${p.id}',this)">저장</button></td></tr>`).join('')}</tbody></table></div>
-  <div class="sec" style="margin-top:14px"><h3>권한 추가</h3>
-   <div class="muted small" style="margin-bottom:6px">Supabase에서 사용자를 만든 뒤 표시되는 “User UID”를 붙여 넣으세요.</div>
-   <div class="grid2">${field('User UID', '<input id="na-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">')}${field('표시 이름', '<input id="na-name">')}
-   ${hasEmp ? field('직번 (로그인 아이디)', '<input id="na-emp">', { req: 1 }) : ''}
-   ${field('권한', roleSel('staff', 'x').replace('class="x"', 'id="na-role"'))}${field('학과 (학과장만)', deptSel(null, 'x').replace('class="x"', 'id="na-dept"'))}</div>
-   <div style="margin-top:8px"><button class="btn pri" onclick="addAccount()">추가</button></div></div></div>
+   <td class="nw"><button class="btn sm" onclick="saveAccount('${p.id}',this)">저장</button> <button class="btn sm" onclick="openSetPassword('${p.id}')">비밀번호 변경</button></td></tr>`).join('')}</tbody></table></div>
+  <div class="sec" style="margin-top:14px"><h3>새 계정 만들기</h3>
+   <div class="muted small" style="margin-bottom:6px">직번과 비밀번호를 정해 알려 주면 그 직번으로 바로 로그인할 수 있습니다. 비밀번호는 8자 이상, 영문과 숫자를 함께 넣어 주세요.</div>
+   <div class="grid2">${field('이름', '<input id="na-name" placeholder="예: 항공운항과 학과장 홍길동">', { req: 1 })}${field('직번 (로그인 아이디)', '<input id="na-emp" autocomplete="off">', { req: 1 })}
+   ${field('권한', roleSel('dept', 'x').replace('class="x"', 'id="na-role"'))}${field('학과 (학과장만)', deptSel(null, 'x').replace('class="x"', 'id="na-dept"'))}
+   ${field('비밀번호', '<input id="na-pw" type="password" autocomplete="new-password">', { req: 1 })}${field('비밀번호 확인', '<input id="na-pw2" type="password" autocomplete="new-password">', { req: 1 })}
+   ${field('이메일 (선택)', '<input id="na-email" type="email" placeholder="비워 두면 직번으로 내부용 주소를 만듭니다" autocomplete="off">')}</div>
+   <div style="margin-top:8px"><button class="btn pri" id="na-go" onclick="createAccount()">계정 만들기</button></div>
+   <details style="margin-top:12px"><summary class="muted small">Supabase에서 이미 만든 사용자에게 권한만 주기 (User UID)</summary>
+    <div class="grid2" style="margin-top:8px">${field('User UID', '<input id="na-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">')}${field('직번', '<input id="na-emp2">')}</div>
+    <div class="muted small">이름·권한·학과는 위에서 입력한 값을 씁니다.</div>
+    <div style="margin-top:6px"><button class="btn sm" onclick="addAccount()">권한만 추가</button></div></details></div></div>
   <div class="m-foot"><button class="btn pri" onclick="closeModal(this.closest('.backdrop'))">닫기</button></div>`, { wide: true });
 }
 async function saveAccount(id, btn) {
@@ -184,14 +189,58 @@ const empNoOf = v => (String(v || '').trim().replace(/\s/g, '') || null);
 const empErr = e => (/profiles_emp_no|duplicate key/i.test(errMsg(e)) ? '이미 다른 계정에 등록된 직번입니다.' : errMsg(e));
 async function addAccount() {
   const id = $('#na-id').value.trim(), name = $('#na-name').value.trim(), role = $('#na-role').value, dept = $('#na-dept').value;
+  const empIn = $('#na-emp2').value || $('#na-emp').value;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) { toast('User UID 형식이 올바르지 않습니다.', 'err'); return; }
   if (!name) { toast('이름을 입력하세요.', 'err'); return; }
   if (role === 'dept' && !dept) { toast('학과장은 학과를 선택해야 합니다.', 'err'); return; }
   const row = { id, display_name: name, role, department_id: role === 'dept' ? Number(dept) : null };
-  if ($('#na-emp')) row.emp_no = empNoOf($('#na-emp').value);
-  if ($('#na-emp') && !row.emp_no) { toast('직번을 입력하세요. 직번이 없으면 로그인할 수 없습니다.', 'err'); return; }
+  row.emp_no = empNoOf(empIn);
+  if (!row.emp_no) { toast('직번을 입력하세요. 직번이 없으면 로그인할 수 없습니다.', 'err'); return; }
   const { error } = await sb.from('profiles').insert(row);
   if (error) { toast(empErr(error), 'err'); return; }
   toast('추가했습니다.');
   closeModal(); openAccounts();
+}
+
+/* ---------- 계정 만들기 · 비밀번호 지정 (서버 함수 manage-account) ---------- */
+const PW_RULE = '비밀번호는 8자 이상, 영문과 숫자를 함께 넣어 주세요.';
+const pwValid = p => p.length >= 8 && p.length <= 72 && /[A-Za-z]/.test(p) && /\d/.test(p);
+async function callManage(body) {
+  const { data, error } = await sb.functions.invoke('manage-account', { body });
+  if (!error) return data || {};
+  const res = error.context;
+  if (res && res.status === 404) throw new Error('계정 관리 서버 함수(manage-account)가 아직 배포되지 않았습니다.');
+  let m = error.message; try { m = (await res.json()).error || m; } catch (x) { /* 무시 */ }
+  throw new Error(m);
+}
+async function createAccount() {
+  const name = $('#na-name').value.trim(), emp = empNoOf($('#na-emp').value), role = $('#na-role').value, dept = $('#na-dept').value;
+  const pw = $('#na-pw').value, pw2 = $('#na-pw2').value, email = $('#na-email').value.trim();
+  if (!name) { toast('이름을 입력하세요.', 'err'); return; }
+  if (!emp) { toast('직번을 입력하세요.', 'err'); return; }
+  if (role === 'dept' && !dept) { toast('학과장은 학과를 선택해야 합니다.', 'err'); return; }
+  if (!pwValid(pw)) { toast(PW_RULE, 'err'); return; }
+  if (pw !== pw2) { toast('비밀번호 확인이 일치하지 않습니다.', 'err'); return; }
+  if (email && !emailValid(email)) { toast('이메일 형식을 확인하세요.', 'err'); return; }
+  const btn = $('#na-go'); btn.disabled = true;
+  try {
+    await callManage({ action: 'create', emp_no: emp, display_name: name, role, department_id: role === 'dept' ? Number(dept) : null, password: pw, email });
+    toast(`계정을 만들었습니다. 이제 직번(${emp})으로 로그인할 수 있습니다.`);
+    closeModal(); openAccounts();
+  } catch (e) { toast(e.message, 'err'); btn.disabled = false; }
+}
+function openSetPassword(id) {
+  const p = (S.profiles || []).find(x => x.id === id) || {};
+  openModal(`${mHead('비밀번호 변경', `${esc(p.display_name || '')}${p.emp_no ? ' · 직번 ' + esc(p.emp_no) : ''}`)}
+  <div class="m-body"><div class="grid2">${field('새 비밀번호', '<input id="sp-pw" type="password" autocomplete="new-password">', { req: 1 })}${field('새 비밀번호 확인', '<input id="sp-pw2" type="password" autocomplete="new-password">', { req: 1 })}</div>
+   <div class="muted small" style="margin-top:6px">${PW_RULE} 바꾼 비밀번호는 본인에게 직접 알려 주세요.</div></div>
+  <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" id="sp-go" onclick="setPassword('${id}')">변경</button></div>`);
+}
+async function setPassword(id) {
+  const pw = $('#sp-pw').value, pw2 = $('#sp-pw2').value;
+  if (!pwValid(pw)) { toast(PW_RULE, 'err'); return; }
+  if (pw !== pw2) { toast('비밀번호 확인이 일치하지 않습니다.', 'err'); return; }
+  const btn = $('#sp-go'); btn.disabled = true;
+  try { await callManage({ action: 'set_password', user_id: id, password: pw }); toast('비밀번호를 바꿨습니다.'); closeModal($('#sp-go').closest('.backdrop')); }
+  catch (e) { toast(e.message, 'err'); btn.disabled = false; }
 }
