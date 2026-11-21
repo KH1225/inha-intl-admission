@@ -15,8 +15,12 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 const env = (k: string) => Deno.env.get(k) ?? "";
 const ROLES = ["admin", "staff", "viewer", "director", "dept"];
-const pwOk = (p: string) => typeof p === "string" && p.length >= 8 && p.length <= 72 && /[A-Za-z]/.test(p) && /\d/.test(p);
-const PW_RULE = "비밀번호는 8자 이상, 영문과 숫자를 함께 넣어 주세요.";
+// 비밀번호 규칙: 숫자 6자리 또는 영문+숫자 8자 이상. 같은 숫자 반복·연속 숫자·짝 반복(121212 등)은 거절
+const weakPin = (p: string) => /^(\d)\1{5}$/.test(p) || /^(\d\d)\1\1$/.test(p) || /^(\d{3})\1$/.test(p) ||
+  "0123456789".includes(p) || "9876543210".includes(p);
+const pwOk = (p: string) => typeof p === "string" && p.length <= 72 &&
+  ((/^\d{6}$/.test(p) && !weakPin(p)) || (p.length >= 8 && /[A-Za-z]/.test(p) && /\d/.test(p)));
+const PW_RULE = "비밀번호는 숫자 6자리 또는 영문과 숫자를 섞은 8자 이상으로 정해 주세요. (111111, 123456, 121212 같은 쉬운 숫자는 쓸 수 없습니다)";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });

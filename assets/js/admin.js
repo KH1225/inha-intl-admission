@@ -159,10 +159,10 @@ async function openAccounts() {
    <td><input class="aa" type="checkbox" ${p.active ? 'checked' : ''} ${p.id === S.user.id ? 'disabled' : ''}></td>
    <td class="nw"><button class="btn sm" onclick="saveAccount('${p.id}',this)">저장</button> <button class="btn sm" onclick="openSetPassword('${p.id}')">비밀번호 변경</button></td></tr>`).join('')}</tbody></table></div>
   <div class="sec" style="margin-top:14px"><h3>새 계정 만들기</h3>
-   <div class="muted small" style="margin-bottom:6px">직번과 비밀번호를 정해 알려 주면 그 직번으로 바로 로그인할 수 있습니다. 비밀번호는 8자 이상, 영문과 숫자를 함께 넣어 주세요.</div>
+   <div class="muted small" style="margin-bottom:6px">직번과 비밀번호를 정해 알려 주면 그 직번으로 바로 로그인할 수 있습니다. 비밀번호는 <b>숫자 6자리</b>(예: 482915) 또는 영문과 숫자를 섞은 8자 이상으로 정합니다. 생년월일·전화번호처럼 남이 알 수 있는 숫자는 피해 주세요.</div>
    <div class="grid2">${field('이름', '<input id="na-name" placeholder="예: 항공운항과 학과장 홍길동">', { req: 1 })}${field('직번 (로그인 아이디)', '<input id="na-emp" autocomplete="off">', { req: 1 })}
    ${field('권한', roleSel('dept', 'x').replace('class="x"', 'id="na-role"'))}${field('학과 (학과장만)', deptSel(null, 'x').replace('class="x"', 'id="na-dept"'))}
-   ${field('비밀번호', '<input id="na-pw" type="password" autocomplete="new-password">', { req: 1 })}${field('비밀번호 확인', '<input id="na-pw2" type="password" autocomplete="new-password">', { req: 1 })}
+   ${field('비밀번호', '<input id="na-pw" type="password" inputmode="numeric" autocomplete="new-password" placeholder="숫자 6자리">', { req: 1 })}${field('비밀번호 확인', '<input id="na-pw2" type="password" autocomplete="new-password">', { req: 1 })}
    ${field('이메일 (선택)', '<input id="na-email" type="email" placeholder="비워 두면 직번으로 내부용 주소를 만듭니다" autocomplete="off">')}</div>
    <div style="margin-top:8px"><button class="btn pri" id="na-go" onclick="createAccount()">계정 만들기</button></div>
    <details style="margin-top:12px"><summary class="muted small">Supabase에서 이미 만든 사용자에게 권한만 주기 (User UID)</summary>
@@ -203,8 +203,9 @@ async function addAccount() {
 }
 
 /* ---------- 계정 만들기 · 비밀번호 지정 (서버 함수 manage-account) ---------- */
-const PW_RULE = '비밀번호는 8자 이상, 영문과 숫자를 함께 넣어 주세요.';
-const pwValid = p => p.length >= 8 && p.length <= 72 && /[A-Za-z]/.test(p) && /\d/.test(p);
+const PW_RULE = '비밀번호는 숫자 6자리 또는 영문과 숫자를 섞은 8자 이상으로 정해 주세요. (111111, 123456, 121212 같은 쉬운 숫자는 쓸 수 없습니다)';
+const weakPin = p => /^(\d)\1{5}$/.test(p) || /^(\d\d)\1\1$/.test(p) || /^(\d{3})\1$/.test(p) || '0123456789'.includes(p) || '9876543210'.includes(p);
+const pwValid = p => p.length <= 72 && ((/^\d{6}$/.test(p) && !weakPin(p)) || (p.length >= 8 && /[A-Za-z]/.test(p) && /\d/.test(p)));
 async function callManage(body) {
   const { data, error } = await sb.functions.invoke('manage-account', { body });
   if (!error) return data || {};
@@ -232,7 +233,7 @@ async function createAccount() {
 function openSetPassword(id) {
   const p = (S.profiles || []).find(x => x.id === id) || {};
   openModal(`${mHead('비밀번호 변경', `${esc(p.display_name || '')}${p.emp_no ? ' · 직번 ' + esc(p.emp_no) : ''}`)}
-  <div class="m-body"><div class="grid2">${field('새 비밀번호', '<input id="sp-pw" type="password" autocomplete="new-password">', { req: 1 })}${field('새 비밀번호 확인', '<input id="sp-pw2" type="password" autocomplete="new-password">', { req: 1 })}</div>
+  <div class="m-body"><div class="grid2">${field('새 비밀번호', '<input id="sp-pw" type="password" inputmode="numeric" autocomplete="new-password" placeholder="숫자 6자리">', { req: 1 })}${field('새 비밀번호 확인', '<input id="sp-pw2" type="password" autocomplete="new-password">', { req: 1 })}</div>
    <div class="muted small" style="margin-top:6px">${PW_RULE} 바꾼 비밀번호는 본인에게 직접 알려 주세요.</div></div>
   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" id="sp-go" onclick="setPassword('${id}')">변경</button></div>`);
 }
