@@ -15,7 +15,7 @@ const S = {
   partners: [], partnerMap: {}, docTypes: [], rules: [], topik: [],
   apps: [], docs: {}, interviews: {}, evals: {}, payments: {},
   tab: 'dash',
-  f: { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null },
+  f: { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', lang: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null },
   evalDraft: {}, evalFilter: { dept: '', pending: false }
 };
 

@@ -25,6 +25,42 @@ function docExempt(t, a) {
 function docRequired(t, a) {
   return !!a.qualification_code && docVisible(t, a) && !docExempt(t, a) && !!(a.qualification_code === 'T2' ? t.required_t2 : t.required_t1);
 }
+/* ===== 한국어능력 최종합격 요건 (2027학년도) =====
+   - 조선기계공학과: TOPIK 2급 이상 / 그 외 학과: TOPIK 3급 이상
+   - 사회통합프로그램 4단계 이상 이수도 인정 (전 학과)
+   - 서류만 내면 면접까지는 볼 수 있지만, 마감일까지 성적표를 내야 최종합격
+   - '충족' = 급수(또는 단계)가 기준 이상 + 제출서류의 '한국어능력 증빙서류'에 제출 체크 */
+const LANG_DEADLINE = '2026-12-10';
+const LANG_KIIP_MIN = 4;
+const LANG_SCOPE_OUT = ['접수취소', '불합격'];
+function langTopikMin(a) {
+  const d = S.deptMap[a.department_id];
+  return d && /조선\s*기계/.test(d.name_ko || '') ? 2 : 3;
+}
+function langDocCode(a) {
+  const t = S.docTypes.find(x => docVisible(x, a) && /한국어\s*능력/.test(x.name_ko || ''));
+  return t ? t.code : null;
+}
+/* { scope: 확인 대상인지, need: 추가제출 필요한지, min: 필요 TOPIK 급수, reason: 사유 } */
+function langReq(a) {
+  const min = langTopikMin(a);
+  const scope = !LANG_SCOPE_OUT.includes(a.status) && !(typeof isSample === 'function' && isSample(a));
+  const lvOk = (Number(a.topik_level) || 0) >= min || (a.kiip_level != null && a.kiip_level !== '' && Number(a.kiip_level) >= LANG_KIIP_MIN);
+  const code = langDocCode(a);
+  const docOk = code == null || !!(S.docs[a.id] && S.docs[a.id][code] && S.docs[a.id][code].received);
+  let reason = '';
+  if (!lvOk) reason = `TOPIK ${min}급 이상 또는 사회통합 ${LANG_KIIP_MIN}단계 이상 필요 (현재 ${langLabel(a) || '없음'})`;
+  else if (!docOk) reason = '급수는 충족 · 성적표 제출 체크 안 됨';
+  return { scope, need: scope && !(lvOk && docOk), min, reason };
+}
+/* 마감까지 남은 날 (D-day 표시) */
+function langDday() {
+  const end = new Date(LANG_DEADLINE + 'T23:59:59+09:00'), now = new Date();
+  const days = Math.ceil((new Date(LANG_DEADLINE + 'T00:00:00+09:00') - new Date(todayYMD() + 'T00:00:00+09:00')) / 86400000);
+  if (now > end) return '마감 지남';
+  return days === 0 ? 'D-day' : `D-${days}`;
+}
+const langDeadlineShort = () => LANG_DEADLINE.slice(5).replace('-', '.');
 const qualLabel = c => (S.qualMap[c] ? S.qualMap[c].name_ko : c === 'T2' ? '유형2 (해외 전 교육과정 이수)' : '유형1 (부모 모두 외국인)');
 
 /* 2027학년도 외국인 특별전형 모집요강 「IV. 제출서류」 기준

@@ -27,6 +27,7 @@ function openDetail(id, focus) {
     ${kv('어학능력', langLabel(a))}${kv('출신 고교', (a.high_school || '') + (a.domestic_hs ? ' (국내 고교)' : ''))}${a.prev_university ? kv('출신 대학', a.prev_university) : ''}${kv('GPA(내신)', a.gpa)}
     ${full ? kv('비자', a.visa_type) + kv('이메일', a.email) + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' + (dormRoom(a.dorm_room) ? ` — ${dormRoom(a.dorm_room).ko}` : '') : '미신청') : ''}
     ${kv('지원일자', fmtDate(a.created_at))}</div></div></div>
+    ${full && can.broad() && langReq(a).need ? `<div class="warn" style="margin-top:10px"><b>한국어성적표 추가제출 필요</b> — ${esc(langReq(a).reason)}. 면접은 볼 수 있지만 ${esc(LANG_DEADLINE)}까지 TOPIK ${langReq(a).min}급 이상(또는 사회통합 ${LANG_KIIP_MIN}단계 이상) 성적표를 내야 최종합격입니다. (${langDday()})</div>` : ''}
     ${full && a.memo ? `<div style="margin-top:10px"><span class="muted small">비고</span><div>${esc(a.memo)}</div></div>` : ''}</div>`;
 
   const docs = full ? `<div class="sec" id="sec-docs"><h3>제출서류 체크리스트 <span class="muted small">${esc(docKindOf(a) === '전공심화' ? '전공심화과정' : a.admission_kind)} · ${a.qualification_code ? esc(qualLabel(a.qualification_code)) : '전형유형 미선택'} · 필수 서류 ${docProgress(a).got}/${docProgress(a).need} 구비</span></h3>
@@ -259,11 +260,11 @@ function openApplicantForm(id, focus) {
     ${field('지원학과', `<select id="af-department_id"><option value="">선택</option>${deptOpts}</select>`, { req: 1 })}
     <div class="muted small ${a.admission_kind === '편입학' ? '' : 'hide'}" id="af-tr-note" style="grid-column:1/-1;margin-top:-6px">편입학은 ${esc(TRANSFER_DEPTS.join(', '))}만 지원할 수 있습니다.</div>
     ${field('전형유형', `<select id="af-qualification_code"><option value="">선택</option>${S.quals.map(q => `<option value="${q.code}" ${sel('qualification_code', q.code)}>${esc(q.name_ko)}</option>`).join('')}</select>`)}
-    ${field('지원경로', `<select id="af-route" onchange="$('#af-ag').classList.toggle('hide',this.value!=='유학원');$('#af-ps-lbl').textContent=this.value===ROUTE_PARTNER?'협약학교 *':'협약학교 (협약 장학금 대상)';if(this.value===ROUTE_DOMHS&&$('#af-domestic_hs'))$('#af-domestic_hs').checked=true"><option ${sel('route', '개별지원')}>개별지원</option><option ${sel('route', '유학원')}>유학원</option><option value="${ROUTE_PARTNER}" ${sel('route', ROUTE_PARTNER)}>${ROUTE_PARTNER_LABEL}</option><option ${sel('route', ROUTE_ALUMNI)}>${ROUTE_ALUMNI}</option><option ${sel('route', ROUTE_DOMHS)}>${ROUTE_DOMHS}</option></select>`)}
+    ${field('지원경로', `<select id="af-route" onchange="$('#af-ag').classList.toggle('hide',this.value!=='유학원');afPartnerToggle(this.value);if(this.value===ROUTE_DOMHS&&$('#af-domestic_hs'))$('#af-domestic_hs').checked=true"><option ${sel('route', '개별지원')}>개별지원</option><option ${sel('route', '유학원')}>유학원</option><option value="${ROUTE_PARTNER}" ${sel('route', ROUTE_PARTNER)}>${ROUTE_PARTNER_LABEL}</option><option ${sel('route', ROUTE_ALUMNI)}>${ROUTE_ALUMNI}</option><option ${sel('route', ROUTE_DOMHS)}>${ROUTE_DOMHS}</option></select>`)}
     <label class="fld ${a.route === '유학원' ? '' : 'hide'}" id="af-ag"><span>유학원</span><select id="af-agency_id" onchange="onAgencySel(this)"><option value="">선택</option>${S.agencies.filter(x => x.active || x.id === a.agency_id).map(x => `<option value="${x.id}" ${sel('agency_id', x.id)}>${esc(x.name)}</option>`).join('')}${can.edit() ? '<option value="__new">+ 새 유학원 추가</option>' : ''}</select></label>
     ${field('어학능력 (TOPIK)', `<select id="af-topik_level"><option value="">없음</option>${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${sel('topik_level', n)}>${n}급</option>`).join('')}</select>`)}
     ${S.hasCol && S.hasCol.kiip_level ? field('어학능력 (사회통합프로그램)', `<select id="af-kiip_level"><option value="">없음</option>${KIIP_LEVELS.map(n => `<option value="${n}" ${a.kiip_level === n ? 'selected' : ''}>${n}단계${n === 5 ? ' (이수)' : ''}</option>`).join('')}</select>`) : ''}
-    ${field(`<span id="af-ps-lbl">${a.route === ROUTE_PARTNER ? '협약학교 *' : '협약학교 (협약 장학금 대상)'}</span>`, `<select id="af-partner_school_id"><option value="">해당 없음</option>${S.partners.filter(p => p.active || p.id === a.partner_school_id).map(p => `<option value="${p.id}" ${sel('partner_school_id', p.id)}>${esc(p.name)}</option>`).join('')}</select>`)}
+    ${field(`<span id="af-ps-lbl">${a.route === ROUTE_PARTNER ? '협약학교 *' : '협약학교 (지원경로가 협약학교일 때만 선택)'}</span>`, `<select id="af-partner_school_id" ${a.route === ROUTE_PARTNER ? '' : 'disabled'}><option value="">해당 없음</option>${S.partners.filter(p => p.active || p.id === a.partner_school_id).map(p => `<option value="${p.id}" ${sel('partner_school_id', p.id)}>${esc(p.name)}</option>`).join('')}</select>`)}
    </div></div>
    <div class="sec"><h3>비자 · 연락처</h3><div class="grid2">
     ${field('비자 종류', `<input id="af-visa_type" value="${v('visa_type')}" placeholder="예: D-4, H-1 · 등록완료">`)}
@@ -282,6 +283,14 @@ function openApplicantForm(id, focus) {
   const bd = openModal(html, { wide: true, sticky: true });
   if (focus === 'docs') { const el = $('#af-docs', bd); if (el) setTimeout(() => el.scrollIntoView({ block: 'center' }), 50); }
 }
+/* 지원경로가 협약학교일 때만 협약학교 칸을 켭니다 (다른 경로로 바꾸면 선택값도 비움) */
+function afPartnerToggle(route) {
+  const on = route === ROUTE_PARTNER, sel = $('#af-partner_school_id');
+  $('#af-ps-lbl').textContent = on ? '협약학교 *' : '협약학교 (지원경로가 협약학교일 때만 선택)';
+  if (!sel) return;
+  sel.disabled = !on;
+  if (!on) sel.value = '';
+}
 async function saveApplicant(id) {
   const g = k => { const el = $('#af-' + k); return el ? el.value.trim() : ''; };
   const errs = [];
@@ -291,7 +300,7 @@ async function saveApplicant(id) {
     admission_kind: kind, transfer_year: kind === '편입학' && g('transfer_year') ? Number(g('transfer_year')) : null,
     department_id: Number(g('department_id')) || null, qualification_code: g('qualification_code') || null,
     route, agency_id: route === '유학원' ? (Number(g('agency_id')) || null) : null,
-    topik_level: g('topik_level') ? Number(g('topik_level')) : null, ...(S.hasCol && S.hasCol.kiip_level ? { kiip_level: g('kiip_level') === '' ? null : Number(g('kiip_level')) } : {}), partner_school_id: Number(g('partner_school_id')) || null,
+    topik_level: g('topik_level') ? Number(g('topik_level')) : null, ...(S.hasCol && S.hasCol.kiip_level ? { kiip_level: g('kiip_level') === '' ? null : Number(g('kiip_level')) } : {}), partner_school_id: route === ROUTE_PARTNER ? (Number(g('partner_school_id')) || null) : null,
     visa_type: g('visa_type') || null, email: g('email') || null, phone: g('phone') || null,
     high_school: g('high_school') || null, gpa: g('gpa') !== '' ? Number(g('gpa')) : null, dorm_application: $('#af-dorm').checked, memo: g('memo') || null
   };

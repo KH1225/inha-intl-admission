@@ -463,3 +463,5 @@ table.tbl.list{min-width:1000px}
 .cr-sum.big .tot b *{color:#c7d2fe!important}
 .cr-sum.big em{font-style:normal;font-size:11.5px;color:var(--mute);text-align:right}
 .cr-sum.big em{display:none}.cr-sum.big:has(small) em{display:block}
+/* 한국어성적 추가제출 표시 */
+.lang-need{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;white-space:nowrap}

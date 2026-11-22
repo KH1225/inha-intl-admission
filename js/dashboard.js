@@ -37,8 +37,9 @@ function renderDash() {
     { st: '최종합격', l: '최종 합격자', n: passed, s: '합격통지서·등록금고지서 발급 대상', c: '#059669' },
     { st: '등록완료', l: '등록 완료자', n: reg, s: `등록률 ${regRate}% (합격자 대비)`, c: '#0d9488' },
     { st: '접수취소', l: '접수 취소', n: cnt('접수취소'), s: '지원 철회 · 통계에서 제외', c: '#6b7280' }
-  ].map(c => `<button class="stat ${S.f.status === c.st && (c.st || !S.f.status) ? 'on' : ''}" style="--c:${c.c}" onclick="cardFilter('${c.st}')">
-      <div class="l"><i></i>${c.l}</div><div class="n">${c.n}</div><div class="s">${c.s}</div></button>`).join('');
+  ].map(c => `<button class="stat ${!S.f.lang && S.f.status === c.st && (c.st || !S.f.status) ? 'on' : ''}" style="--c:${c.c}" onclick="cardFilter('${c.st}')">
+      <div class="l"><i></i>${c.l}</div><div class="n">${c.n}</div><div class="s">${c.s}</div></button>`).join('')
+    + (can.broad() ? langCardHtml() : '');
 
   $('#main').innerHTML = `
     <section class="cards">${cards}</section>
@@ -151,13 +152,21 @@ function filtersHtml() {
     <select onchange="setFilter('nat',this.value)"><option value="">국적</option>${nats.map(n => opt(n, n, f.nat)).join('')}</select>
     <select onchange="setFilter('dept',this.value)"><option value="">지원학과 (전체 전공)</option>${deptIds.map(id => opt(id, deptName(id), f.dept)).join('')}</select>
     ${can.broad() ? `<select onchange="setFilter('agency',this.value)"><option value="">유학원</option><option value="__none__" ${f.agency === '__none__' ? 'selected' : ''}>유학원 경유 아님</option>${ags.map(x => opt(x.id, x.nm, f.agency)).join('')}</select>` : ''}
+    ${can.broad() ? `<select onchange="setFilter('lang',this.value)"><option value="">한국어성적</option>${opt('need', `추가제출 필요 (마감 ${langDeadlineShort()})`, f.lang)}${opt('ok', '요건 충족', f.lang)}</select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('schol',this.value)"><option value="">장학금</option><option value="__none__" ${f.schol === '__none__' ? 'selected' : ''}>장학금 없음</option>${schols.map(s => opt(s, s, f.schol)).join('')}</select>` : ''}
    </div>`;
 }
-function setFilter(k, v) { S.f[k] = v; S.f.page = 1; if (k === 'status') renderDash(); else renderTable(); }
-function cardFilter(st) { S.f.status = st; S.f.page = 1; renderDash(); }
+function setFilter(k, v) { S.f[k] = v; S.f.page = 1; if (k === 'status' || k === 'lang') renderDash(); else renderTable(); }
+function cardFilter(st) { S.f.status = st; S.f.lang = ''; S.f.page = 1; renderDash(); }
+/* 한국어성적 추가제출 카드: 누르면 해당 학생만 보기 (다시 누르면 해제) */
+function langCardHtml() {
+  const n = S.apps.filter(a => langReq(a).need).length;
+  return `<button class="stat ${S.f.lang === 'need' ? 'on' : ''}" style="--c:#dc2626" onclick="langCardFilter()" title="조선기계공학과 TOPIK 2급, 그 외 학과 TOPIK 3급 이상(또는 사회통합 ${LANG_KIIP_MIN}단계 이상) 성적표를 아직 내지 않은 학생">
+      <div class="l"><i></i>한국어성적 추가제출</div><div class="n">${n}</div><div class="s">최종합격 전 제출 · 마감 ${langDeadlineShort()} <b>(${langDday()})</b></div></button>`;
+}
+function langCardFilter() { S.f.lang = S.f.lang === 'need' ? '' : 'need'; S.f.status = ''; S.f.page = 1; renderDash(); }
 function resetFilters() {
-  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
+  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', lang: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
   renderDash();
 }
 let searchTimer = null;
@@ -188,6 +197,7 @@ function filteredApps() {
     if (f.nat && a.nationality !== f.nat) return false;
     if (f.dept && String(a.department_id) !== String(f.dept)) return false;
     if (f.agency) { if (f.agency === '__none__') { if (a.agency_id) return false; } else if (String(a.agency_id) !== String(f.agency)) return false; }
+    if (f.lang) { const lr = langReq(a); if (!lr.scope || (f.lang === 'need') !== lr.need) return false; }
     if (f.schol) { if (f.schol === '__none__') { if (a.scholarship_type) return false; } else if (a.scholarship_type !== f.schol) return false; }
     if (q) {
       const hit = (a.name_ko || '').toLowerCase().includes(q) || (a.name_en || '').toLowerCase().includes(q) ||
@@ -234,7 +244,7 @@ function rowHtml(a) {
     <td><div class="nm nw">${esc(d.name_ko || '-')} <span class="badge kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
       ${d.program_type ? `<div class="muted small">${esc(d.program_type === '전공심화' ? '전공심화과정' : d.program_type)}</div>` : ''}</td>
     <td><span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span></td>
-    <td style="white-space:nowrap">${langLabel(a) ? `<b>${esc(langLabel(a))}</b>` : '<span class="muted">-</span>'}</td>
+    <td style="white-space:nowrap">${langLabel(a) ? `<b>${esc(langLabel(a))}</b>` : '<span class="muted">-</span>'}${can.broad() && langReq(a).need ? `<div><span class="lang-need" title="${esc(langReq(a).reason)}">성적표 추가제출 (${langReq(a).min}급↑)</span></div>` : ''}</td>
     ${can.broad() ? `<td>${dp.need ? `<div class="dots">${dots}</div><div class="dc ${dp.got >= dp.need ? 'ok' : 'no'}">${dp.got}/${dp.need} 구비${dp.got >= dp.need ? '' : ' 미비'}</div>` : '<span class="muted">-</span>'}</td>` : ''}
     <td>${statusCell(a)}</td>
     <td class="muted small" style="white-space:nowrap">${fmtDate(a.created_at)}</td>
@@ -260,6 +270,7 @@ async function changeStatus(id, el) {
   const to = el.value, from = a.status;
   if (to === from) return;
   if (to === '접수취소') { el.value = from; cancelApplication(id); return; }
+  if (to === '최종합격' && langReq(a).need && !confirm(`⚠ ${a.name_ko} 지원자는 한국어능력 요건을 아직 채우지 못했습니다.\n${langReq(a).reason}\n\n조선기계공학과 TOPIK 2급, 그 외 학과 TOPIK 3급 이상(또는 사회통합 ${LANG_KIIP_MIN}단계 이상) 성적표를 제출해야 최종합격입니다.\n그래도 최종합격 처리할까요?`)) { el.value = from; return; }
   if ((to === '최종합격' || to === '불합격') && !confirm(`${a.name_ko} 지원자를 '${to}' 처리합니다. 계속할까요?`)) { el.value = from; return; }
   el.disabled = true;
   const { error } = await sb.from('applicants').update({ status: to }).eq('id', id);
@@ -276,9 +287,9 @@ async function changeStatus(id, el) {
 /* ---------- CSV ---------- */
 function exportCsv() {
   const list = filteredApps();
-  const head = ['접수번호', '한글성명', '영문성명', '성별', '생년월일', '국적', '입학구분', '지원학과', '전형', '지원경로', 'TOPIK', '사회통합프로그램', '심사상태', '장학금', '장학금액', '지원일자'];
+  const head = ['접수번호', '한글성명', '영문성명', '성별', '생년월일', '국적', '입학구분', '지원학과', '전형', '지원경로', 'TOPIK', '사회통합프로그램', '한국어 요건', '심사상태', '장학금', '장학금액', '지원일자'];
   const cell = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) || /^[=+\-@]/.test(s) ? '"' + s.replace(/"/g, '""').replace(/^([=+\-@])/, "'$1") + '"' : s; };
-  const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), routeLabel(a), a.topik_level, a.kiip_level != null ? a.kiip_level + '단계' : '', a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
+  const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), routeLabel(a), a.topik_level, a.kiip_level != null ? a.kiip_level + '단계' : '', langReq(a).scope ? (langReq(a).need ? `추가제출 필요(${langReq(a).min}급↑)` : '충족') : '', a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
   const csv = '﻿' + [[typeof privMarkText === 'function' ? privMarkText() : '개인정보 포함 · 외부 반출 금지'], head].concat(rows).map(r => r.map(cell).join(',')).join('\r\n');
   if (typeof logAccess === 'function') logAccess('엑셀(CSV) 내려받기', list.map(a => a.id), `${list.length}명`);
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
