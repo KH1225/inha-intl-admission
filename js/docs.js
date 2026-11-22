@@ -28,6 +28,7 @@ function docRequired(t, a) {
 /* ===== 한국어능력 최종합격 요건 (2027학년도) =====
    - 조선기계공학과: TOPIK 2급 이상 / 그 외 학과: TOPIK 3급 이상
    - 사회통합프로그램 4단계 이상 이수도 인정 (전 학과)
+   - 편입학 지원자는 한국어성적표 없이도 합격 가능 → 확인 대상 아님
    - 서류만 내면 면접까지는 볼 수 있지만, 마감일까지 성적표를 내야 최종합격
    - '충족' = 급수(또는 단계)가 기준 이상 + 제출서류의 '한국어능력 증빙서류'에 제출 체크 */
 const LANG_DEADLINE = '2026-12-10';
@@ -44,7 +45,7 @@ function langDocCode(a) {
 /* { scope: 확인 대상인지, need: 추가제출 필요한지, min: 필요 TOPIK 급수, reason: 사유 } */
 function langReq(a) {
   const min = langTopikMin(a);
-  const scope = !LANG_SCOPE_OUT.includes(a.status) && !(typeof isSample === 'function' && isSample(a));
+  const scope = a.admission_kind !== '편입학' && !LANG_SCOPE_OUT.includes(a.status) && !(typeof isSample === 'function' && isSample(a));
   const lvOk = (Number(a.topik_level) || 0) >= min || (a.kiip_level != null && a.kiip_level !== '' && Number(a.kiip_level) >= LANG_KIIP_MIN);
   const code = langDocCode(a);
   const docOk = code == null || !!(S.docs[a.id] && S.docs[a.id][code] && S.docs[a.id][code].received);
