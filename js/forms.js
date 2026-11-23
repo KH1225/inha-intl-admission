@@ -25,7 +25,7 @@ function openDetail(id, focus) {
     ${kv('입학구분', a.admission_kind + (a.transfer_year ? ` (${a.transfer_year}학년 편입)` : ''))}${kv('지원학과', d.name_ko)}${kv('전형', qualName(a.qualification_code))}
     ${full ? kv('지원경로', routeLabel(a)) : ''}
     ${kv('어학능력', langLabel(a))}${kv('출신 고교', (a.high_school || '') + (a.domestic_hs ? ' (국내 고교)' : ''))}${a.prev_university ? kv('출신 대학', a.prev_university) : ''}${kv('GPA(내신)', a.gpa)}
-    ${full ? kv('비자', a.visa_type) + kv('이메일', a.email) + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' + (dormRoom(a.dorm_room) ? ` — ${dormRoom(a.dorm_room).ko}` : '') : '미신청') : ''}
+    ${full ? kv('비자', a.visa_type) + kv('이메일', a.email) + (emailCheckOn() && emailCheckTarget(a) ? kv('이메일 확인', a.email_verified_at ? '확인 완료 (' + fmtDateTime(a.email_verified_at) + ')' : '미확인') : '') + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' + (dormRoom(a.dorm_room) ? ` — ${dormRoom(a.dorm_room).ko}` : '') : '미신청') : ''}
     ${kv('지원일자', fmtDate(a.created_at))}</div></div></div>
     ${full && can.broad() && langReq(a).need ? `<div class="warn" style="margin-top:10px"><b>한국어성적표 추가제출 필요</b> — ${esc(langReq(a).reason)}. 면접은 볼 수 있지만 ${esc(LANG_DEADLINE)}까지 TOPIK ${langReq(a).min}급 이상(또는 사회통합 ${LANG_KIIP_MIN}단계 이상) 성적표를 내야 최종합격입니다. (${langDday()})</div>` : ''}
     ${full && a.memo ? `<div style="margin-top:10px"><span class="muted small">비고</span><div>${esc(a.memo)}</div></div>` : ''}</div>`;
@@ -260,7 +260,7 @@ function openApplicantForm(id, focus) {
     ${field('지원학과', `<select id="af-department_id"><option value="">선택</option>${deptOpts}</select>`, { req: 1 })}
     <div class="muted small ${a.admission_kind === '편입학' ? '' : 'hide'}" id="af-tr-note" style="grid-column:1/-1;margin-top:-6px">편입학은 ${esc(TRANSFER_DEPTS.join(', '))}만 지원할 수 있습니다.</div>
     ${field('전형유형', `<select id="af-qualification_code"><option value="">선택</option>${S.quals.map(q => `<option value="${q.code}" ${sel('qualification_code', q.code)}>${esc(q.name_ko)}</option>`).join('')}</select>`)}
-    ${field('지원경로', `<select id="af-route" onchange="$('#af-ag').classList.toggle('hide',this.value!=='유학원');afPartnerToggle(this.value);if(this.value===ROUTE_DOMHS&&$('#af-domestic_hs'))$('#af-domestic_hs').checked=true"><option ${sel('route', '개별지원')}>개별지원</option><option ${sel('route', '유학원')}>유학원</option><option value="${ROUTE_PARTNER}" ${sel('route', ROUTE_PARTNER)}>${ROUTE_PARTNER_LABEL}</option><option ${sel('route', ROUTE_ALUMNI)}>${ROUTE_ALUMNI}</option><option ${sel('route', ROUTE_DOMHS)}>${ROUTE_DOMHS}</option></select>`)}
+    ${field('지원경로', `<select id="af-route" onchange="$('#af-ag').classList.toggle('hide',this.value!=='유학원');afPartnerToggle(this.value);afEmailChkToggle(this.value);if(this.value===ROUTE_DOMHS&&$('#af-domestic_hs'))$('#af-domestic_hs').checked=true"><option ${sel('route', '개별지원')}>개별지원</option><option ${sel('route', '유학원')}>유학원</option><option value="${ROUTE_PARTNER}" ${sel('route', ROUTE_PARTNER)}>${ROUTE_PARTNER_LABEL}</option><option ${sel('route', ROUTE_ALUMNI)}>${ROUTE_ALUMNI}</option><option ${sel('route', ROUTE_DOMHS)}>${ROUTE_DOMHS}</option></select>`)}
     <label class="fld ${a.route === '유학원' ? '' : 'hide'}" id="af-ag"><span>유학원</span><select id="af-agency_id" onchange="onAgencySel(this)"><option value="">선택</option>${S.agencies.filter(x => x.active || x.id === a.agency_id).map(x => `<option value="${x.id}" ${sel('agency_id', x.id)}>${esc(x.name)}</option>`).join('')}${can.edit() ? '<option value="__new">+ 새 유학원 추가</option>' : ''}</select></label>
     ${field('어학능력 (TOPIK)', `<select id="af-topik_level"><option value="">없음</option>${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${sel('topik_level', n)}>${n}급</option>`).join('')}</select>`)}
     ${S.hasCol && S.hasCol.kiip_level ? field('어학능력 (사회통합프로그램)', `<select id="af-kiip_level"><option value="">없음</option>${KIIP_LEVELS.map(n => `<option value="${n}" ${a.kiip_level === n ? 'selected' : ''}>${n}단계${n === 5 ? ' (이수)' : ''}</option>`).join('')}</select>`) : ''}
@@ -268,7 +268,8 @@ function openApplicantForm(id, focus) {
    </div></div>
    <div class="sec"><h3>비자 · 연락처</h3><div class="grid2">
     ${field('비자 종류', `<input id="af-visa_type" value="${v('visa_type')}" placeholder="예: D-4, H-1 · 등록완료">`)}
-    ${field('이메일', `<input id="af-email" type="email" value="${v('email')}">`)}
+    ${field('이메일', `<input id="af-email" type="email" value="${v('email')}" oninput="if($('#af-email_ok')&&this.value.trim()!==this.defaultValue.trim())$('#af-email_ok').checked=false">`)}
+    ${emailCheckOn() ? `<label class="fld ${emailCheckTarget(a) ? '' : 'hide'}" id="af-email-chk"><span>이메일 확인 (개별지원·국내 고교 졸업)</span><label style="display:flex;gap:6px;align-items:center;font-weight:500"><input id="af-email_ok" type="checkbox" style="width:auto" ${a.email_verified_at ? 'checked' : ''}> 이메일 주소 확인 완료${a.email_verified_at ? ` <span class="muted small">(${esc(fmtDateTime(a.email_verified_at))})</span>` : ''}</label></label>` : ''}
     ${field('연락처', `<input id="af-phone" value="${v('phone')}">`)}
     ${S.hasCol && S.hasCol.cc_emails ? field('추가 이메일 (보호자·유학원 등, 쉼표로 구분 · 최대 3개)', `<input id="af-cc_emails" value="${v('cc_emails')}" placeholder="예: parent@example.com, agency@example.com">`, { full: 1 }) : ''}
     ${field('출신 고교', `<input id="af-high_school" value="${v('high_school')}">`)}
@@ -291,6 +292,10 @@ function afPartnerToggle(route) {
   sel.disabled = !on;
   if (!on) sel.value = '';
 }
+function afEmailChkToggle(route) {
+  const box = $('#af-email-chk');
+  if (box) box.classList.toggle('hide', !EMAIL_CHECK_ROUTES.includes(route || '개별지원'));
+}
 async function saveApplicant(id) {
   const g = k => { const el = $('#af-' + k); return el ? el.value.trim() : ''; };
   const errs = [];
@@ -309,6 +314,10 @@ async function saveApplicant(id) {
     if (cc.some(e => !emailValid(e))) errs.push('추가 이메일 형식을 확인하세요.');
     if (cc.length > 3) errs.push('추가 이메일은 3개까지 넣을 수 있습니다.');
     p.cc_emails = cc.join(', ') || null;
+  }
+  if ($('#af-email_ok')) {
+    const prev = id ? (S.apps.find(x => x.id === id) || {}).email_verified_at : null;
+    p.email_verified_at = EMAIL_CHECK_ROUTES.includes(route || '개별지원') && $('#af-email_ok').checked ? (prev || new Date().toISOString()) : null;
   }
   if ($('#af-prev_university')) p.prev_university = $('#af-prev_university').value.trim() || null;
   if ($('#af-dorm_room')) p.dorm_room = p.dorm_application ? ($('#af-dorm_room').value || null) : null;

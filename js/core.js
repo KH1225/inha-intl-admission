@@ -15,7 +15,7 @@ const S = {
   partners: [], partnerMap: {}, docTypes: [], rules: [], topik: [],
   apps: [], docs: {}, interviews: {}, evals: {}, payments: {},
   tab: 'dash',
-  f: { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', lang: '', route: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null },
+  f: { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', lang: '', route: '', emailchk: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null },
   evalDraft: {}, evalFilter: { dept: '', pending: false }
 };
 
@@ -150,7 +150,11 @@ function routeLabel(a) {
 }
 const APP_COLS = 'id,term_id,receipt_no,name_ko,name_en,gender,birth_date,nationality,admission_kind,transfer_year,department_id,qualification_code,route,agency_id,topik_level,visa_type,email,phone,high_school,gpa,dorm_application,status,scholarship_type,scholarship_pct,scholarship_amount,scholarship_source,partner_school_id,memo,photo_path,created_at,updated_at';
 
-const OPT_COLS = ['domestic_hs', 'cc_emails', 'dorm_room', 'prev_university', 'kiip_level'];
+const OPT_COLS = ['domestic_hs', 'cc_emails', 'dorm_room', 'prev_university', 'kiip_level', 'email_verified_at'];
+/* 이메일 확인: 개별지원·국내 고교 졸업 지원자만 (유학원·협약학교·우리대학 졸업은 해당 없음) */
+const EMAIL_CHECK_ROUTES = ['개별지원', '국내 고교 졸업'];
+const emailCheckTarget = a => EMAIL_CHECK_ROUTES.includes(a.route || '개별지원');
+const emailCheckOn = () => !!(S.hasCol && S.hasCol.email_verified_at);
 /* 어학능력: TOPIK 급수 + 사회통합프로그램(KIIP) 단계 */
 const KIIP_LEVELS = [0, 1, 2, 3, 4, 5];
 const kiipText = v => (v == null || v === '' ? '' : `사회통합 ${v}단계`);

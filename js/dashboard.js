@@ -152,6 +152,7 @@ function filtersHtml() {
     <select onchange="setFilter('nat',this.value)"><option value="">국적</option>${nats.map(n => opt(n, n, f.nat)).join('')}</select>
     <select onchange="setFilter('dept',this.value)"><option value="">지원학과 (전체 전공)</option>${deptIds.map(id => opt(id, deptName(id), f.dept)).join('')}</select>
     ${can.broad() ? `<select onchange="setFilter('route',this.value)"><option value="">지원경로</option>${ROUTES.map(r => opt(r, r === ROUTE_PARTNER ? ROUTE_PARTNER_LABEL : r, f.route)).join('')}</select>` : ''}
+    ${can.broad() && emailCheckOn() ? `<select onchange="setFilter('emailchk',this.value)"><option value="">이메일 확인</option>${opt('no', '미확인 (개별·국내고교)', f.emailchk)}${opt('yes', '확인 완료', f.emailchk)}</select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('agency',this.value)"><option value="">유학원</option><option value="__none__" ${f.agency === '__none__' ? 'selected' : ''}>유학원 경유 아님</option>${ags.map(x => opt(x.id, x.nm, f.agency)).join('')}</select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('lang',this.value)"><option value="">한국어성적</option>${opt('need', `추가제출 필요 (마감 ${langDeadlineShort()})`, f.lang)}${opt('ok', '요건 충족', f.lang)}</select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('schol',this.value)"><option value="">장학금</option><option value="__none__" ${f.schol === '__none__' ? 'selected' : ''}>장학금 없음</option>${schols.map(s => opt(s, s, f.schol)).join('')}</select>` : ''}
@@ -167,7 +168,7 @@ function langCardHtml() {
 }
 function langCardFilter() { S.f.lang = S.f.lang === 'need' ? '' : 'need'; S.f.status = ''; S.f.page = 1; renderDash(); }
 function resetFilters() {
-  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', lang: '', route: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
+  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', lang: '', route: '', emailchk: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
   renderDash();
 }
 let searchTimer = null;
@@ -198,6 +199,7 @@ function filteredApps() {
     if (f.nat && a.nationality !== f.nat) return false;
     if (f.dept && String(a.department_id) !== String(f.dept)) return false;
     if (f.route && (a.route || '개별지원') !== f.route) return false;
+    if (f.emailchk && (!emailCheckTarget(a) || (f.emailchk === 'yes') !== !!a.email_verified_at)) return false;
     if (f.agency) { if (f.agency === '__none__') { if (a.agency_id) return false; } else if (String(a.agency_id) !== String(f.agency)) return false; }
     if (f.lang) { const lr = langReq(a); if (!lr.scope || (f.lang === 'need') !== lr.need) return false; }
     if (f.schol) { if (f.schol === '__none__') { if (a.scholarship_type) return false; } else if (a.scholarship_type !== f.schol) return false; }
@@ -241,6 +243,7 @@ function rowHtml(a) {
     <td><div class="who-cell">${avatarHtml(a)}<div>
       <div class="nm"><span class="nw">${esc(a.name_ko)}</span> <span class="muted small">${a.gender === '여' ? '여' : '남'}</span>${ag}</div>
       <div class="muted small">${esc(a.name_en)}</div>
+      ${full && emailCheckOn() && emailCheckTarget(a) ? emailChipHtml(a) : ''}
       ${full && a.dorm_application ? `<div class="small" style="color:#0d9488;font-weight:700">기숙사: ${esc(dormRoom(a.dorm_room) ? dormRoom(a.dorm_room).ko : '신청 (객실 미정)')}</div>` : ''}</div></div></td>
     <td style="white-space:nowrap">${esc(a.nationality)}</td>
     <td><div class="nm nw">${esc(d.name_ko || '-')} <span class="badge kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
@@ -254,6 +257,27 @@ function rowHtml(a) {
       ${can.broad() ? `<button class="btn sm" onclick="openDetail('${a.id}','docs')">서류</button>` : ''}
       ${can.edit() ? `<button class="btn sm" onclick="openPrintMenu('${a.id}')">인쇄</button>` : ''}
       <button class="btn sm" onclick="openDetail('${a.id}')">상세</button></div></td></tr>`;
+}
+/* 이메일 확인 표시 (편집 권한이 있으면 눌러서 확인/취소) */
+function emailChipHtml(a) {
+  const ok = !!a.email_verified_at;
+  const tip = ok ? `이메일 확인 ${fmtDateTime(a.email_verified_at)}` : '이메일 미확인';
+  const body = `✉ ${ok ? '이메일 확인' : '이메일 미확인'}`;
+  return can.edit()
+    ? `<button type="button" class="mail-chk ${ok ? 'ok' : 'no'}" title="${esc(tip)} · 눌러서 ${ok ? '확인 취소' : '확인 처리'}" onclick="toggleEmailVerified('${a.id}')">${body}</button>`
+    : `<span class="mail-chk ${ok ? 'ok' : 'no'}" title="${esc(tip)}">${body}</span>`;
+}
+async function toggleEmailVerified(id) {
+  const a = S.apps.find(x => x.id === id);
+  if (!a || !can.edit()) return;
+  const on = !a.email_verified_at;
+  if (!on && !confirm(`${a.name_ko} 지원자의 이메일 확인을 취소할까요?`)) return;
+  const val = on ? new Date().toISOString() : null;
+  const { error } = await sb.from('applicants').update({ email_verified_at: val }).eq('id', id);
+  if (error) { toast(errMsg(error), 'err'); return; }
+  a.email_verified_at = val;
+  renderTable();
+  toast(`${a.name_ko}: 이메일 ${on ? '확인 완료' : '확인 취소'}`);
 }
 function renderTable() {
   const list = filteredApps();
@@ -289,9 +313,9 @@ async function changeStatus(id, el) {
 /* ---------- CSV ---------- */
 function exportCsv() {
   const list = filteredApps();
-  const head = ['접수번호', '한글성명', '영문성명', '성별', '생년월일', '국적', '입학구분', '지원학과', '전형', '지원경로', 'TOPIK', '사회통합프로그램', '한국어 요건', '심사상태', '장학금', '장학금액', '지원일자'];
+  const head = ['접수번호', '한글성명', '영문성명', '성별', '생년월일', '국적', '입학구분', '지원학과', '전형', '지원경로', 'TOPIK', '사회통합프로그램', '한국어 요건', '이메일 확인', '심사상태', '장학금', '장학금액', '지원일자'];
   const cell = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) || /^[=+\-@]/.test(s) ? '"' + s.replace(/"/g, '""').replace(/^([=+\-@])/, "'$1") + '"' : s; };
-  const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), routeLabel(a), a.topik_level, a.kiip_level != null ? a.kiip_level + '단계' : '', langReq(a).scope ? (langReq(a).need ? `추가제출 필요(${langReq(a).min}급↑)` : '충족') : '', a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
+  const rows = list.map(a => [a.receipt_no, a.name_ko, a.name_en, a.gender, a.birth_date, a.nationality, a.admission_kind, deptName(a.department_id), qualName(a.qualification_code), routeLabel(a), a.topik_level, a.kiip_level != null ? a.kiip_level + '단계' : '', langReq(a).scope ? (langReq(a).need ? `추가제출 필요(${langReq(a).min}급↑)` : '충족') : '', emailCheckTarget(a) ? (a.email_verified_at ? '확인 ' + fmtDate(a.email_verified_at) : '미확인') : '', a.status, a.scholarship_type, a.scholarship_amount, fmtDate(a.created_at)]);
   const csv = '﻿' + [[typeof privMarkText === 'function' ? privMarkText() : '개인정보 포함 · 외부 반출 금지'], head].concat(rows).map(r => r.map(cell).join(',')).join('\r\n');
   if (typeof logAccess === 'function') logAccess('엑셀(CSV) 내려받기', list.map(a => a.id), `${list.length}명`);
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
