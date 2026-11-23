@@ -151,6 +151,7 @@ function filtersHtml() {
     <select onchange="setFilter('qual',this.value)"><option value="">전형구분</option>${S.quals.map(q => opt(q.code, q.name_ko, f.qual)).join('')}</select>
     <select onchange="setFilter('nat',this.value)"><option value="">국적</option>${nats.map(n => opt(n, n, f.nat)).join('')}</select>
     <select onchange="setFilter('dept',this.value)"><option value="">지원학과 (전체 전공)</option>${deptIds.map(id => opt(id, deptName(id), f.dept)).join('')}</select>
+    ${can.broad() ? `<select onchange="setFilter('route',this.value)"><option value="">지원경로</option>${ROUTES.map(r => opt(r, r === ROUTE_PARTNER ? ROUTE_PARTNER_LABEL : r, f.route)).join('')}</select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('agency',this.value)"><option value="">유학원</option><option value="__none__" ${f.agency === '__none__' ? 'selected' : ''}>유학원 경유 아님</option>${ags.map(x => opt(x.id, x.nm, f.agency)).join('')}</select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('lang',this.value)"><option value="">한국어성적</option>${opt('need', `추가제출 필요 (마감 ${langDeadlineShort()})`, f.lang)}${opt('ok', '요건 충족', f.lang)}</select>` : ''}
     ${can.broad() ? `<select onchange="setFilter('schol',this.value)"><option value="">장학금</option><option value="__none__" ${f.schol === '__none__' ? 'selected' : ''}>장학금 없음</option>${schols.map(s => opt(s, s, f.schol)).join('')}</select>` : ''}
@@ -166,7 +167,7 @@ function langCardHtml() {
 }
 function langCardFilter() { S.f.lang = S.f.lang === 'need' ? '' : 'need'; S.f.status = ''; S.f.page = 1; renderDash(); }
 function resetFilters() {
-  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', lang: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
+  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', lang: '', route: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
   renderDash();
 }
 let searchTimer = null;
@@ -196,6 +197,7 @@ function filteredApps() {
     if (f.qual && a.qualification_code !== f.qual) return false;
     if (f.nat && a.nationality !== f.nat) return false;
     if (f.dept && String(a.department_id) !== String(f.dept)) return false;
+    if (f.route && (a.route || '개별지원') !== f.route) return false;
     if (f.agency) { if (f.agency === '__none__') { if (a.agency_id) return false; } else if (String(a.agency_id) !== String(f.agency)) return false; }
     if (f.lang) { const lr = langReq(a); if (!lr.scope || (f.lang === 'need') !== lr.need) return false; }
     if (f.schol) { if (f.schol === '__none__') { if (a.scholarship_type) return false; } else if (a.scholarship_type !== f.schol) return false; }
