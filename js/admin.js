@@ -157,7 +157,7 @@ async function openAccounts() {
   <div class="tbl-wrap"><table class="tbl" style="min-width:${hasEmp ? 840 : 720}px"><thead><tr><th>이름</th>${hasEmp ? '<th>직번</th>' : ''}<th>권한</th><th>학과(학과장만)</th><th>사용</th><th></th></tr></thead><tbody>
   ${S.profiles.map(p => `<tr data-id="${p.id}"><td><input class="an" value="${esc(p.display_name)}"></td>${hasEmp ? `<td><input class="ae" value="${esc(p.emp_no || '')}" placeholder="예: 2010081" style="width:110px"></td>` : ''}<td>${roleSel(p.role, 'ar')}</td><td>${deptSel(p.department_id, 'ad')}</td>
    <td><input class="aa" type="checkbox" ${p.active ? 'checked' : ''} ${p.id === S.user.id ? 'disabled' : ''}></td>
-   <td class="nw"><button class="btn sm" onclick="saveAccount('${p.id}',this)">저장</button> <button class="btn sm" onclick="openSetPassword('${p.id}')">비밀번호 변경</button></td></tr>`).join('')}</tbody></table></div>
+   <td class="nw"><button class="btn sm" onclick="saveAccount('${p.id}',this)">저장</button> <button class="btn sm" onclick="openSetPassword('${p.id}')">비밀번호 변경</button>${p.id === S.user.id ? '' : ` <button class="btn sm" style="color:#c0392b;border-color:#e3a59d" onclick="deleteAccount('${p.id}')">삭제</button>`}</td></tr>`).join('')}</tbody></table></div>
   <div class="sec" style="margin-top:14px"><h3>새 계정 만들기</h3>
    <div class="muted small" style="margin-bottom:6px">직번과 비밀번호를 정해 알려 주면 그 직번으로 바로 로그인할 수 있습니다. 비밀번호는 <b>숫자 6자리</b>(예: 482915) 또는 영문과 숫자를 섞은 8자 이상으로 정합니다. 생년월일·전화번호처럼 남이 알 수 있는 숫자는 피해 주세요.</div>
    <div class="grid2">${field('이름', '<input id="na-name" placeholder="예: 항공운항과 학과장 홍길동">', { req: 1 })}${field('직번 (로그인 아이디)', '<input id="na-emp" autocomplete="off">', { req: 1 })}
@@ -213,6 +213,19 @@ async function callManage(body) {
   if (res && res.status === 404) throw new Error('계정 관리 서버 함수(manage-account)가 아직 배포되지 않았습니다.');
   let m = error.message; try { m = (await res.json()).error || m; } catch (x) { /* 무시 */ }
   throw new Error(m);
+}
+/* 계정 삭제: 면접 평가·학점인정 기록이 없는 계정만 (기록이 있으면 서버가 거절하고 '사용 중지'를 안내) */
+async function deleteAccount(id) {
+  const p = (S.profiles || []).find(x => x.id === id); if (!p) return;
+  if (!confirm(`“${p.display_name || '(이름 없음)'}” 계정을 완전히 삭제할까요?\n\n삭제하면 되돌릴 수 없고 이 직번으로 다시 로그인할 수 없습니다.\n면접 평가·학점인정 기록이 있는 계정은 삭제되지 않으니 '사용' 체크를 해제해 사용 중지하세요.`)) return;
+  setBusy(true);
+  try {
+    await callManage({ action: 'delete', user_id: id });
+    toast('계정을 삭제했습니다.');
+    closeModal(); openAccounts();
+  } catch (e) {
+    toast(/알 수 없는 요청/.test(e.message) ? '계정 관리 서버 함수(manage-account)를 새 버전으로 다시 배포해야 삭제할 수 있습니다.' : e.message, 'err');
+  } finally { setBusy(false); }
 }
 async function createAccount() {
   const name = $('#na-name').value.trim(), emp = empNoOf($('#na-emp').value), role = $('#na-role').value, dept = $('#na-dept').value;
