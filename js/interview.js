@@ -79,7 +79,7 @@ function renderEval() {
     ? (S.role === 'director' ? '국제교류원장으로서 전 학과 지원자를 평가합니다. 학과장 평가는 참고용으로 표시됩니다.'
       : '국제교류원 면접위원으로 배정된 지원자를 평가합니다. 나머지 지원자는 조회만 됩니다. 학과 평가는 참고용으로 표시됩니다.')
     : t === '학과장'
-      ? '내가 맡은 지원자만 표시됩니다. 제출하면 수정할 수 없으니 확인 후 제출하세요.'
+      ? '내가 맡은 지원자만 표시됩니다. 입력 내용은 자동 저장되며, 평가를 다 입력한 뒤 화면 맨 아래 [한 번에 서명하고 제출]로 제출하세요. 제출하면 수정할 수 없습니다.'
       : (can.admin() ? '면접 순서와 면접위원을 지정하고 평가 진행 상황을 확인할 수 있습니다. (평가 입력은 원장·학과장·배정된 면접위원만 가능)' : '평가 진행 상황을 조회합니다.');
   const mine = myPanels();
   const unsigned = t ? unsignedEvals(t) : [];
@@ -167,7 +167,7 @@ function evalCardEdit(a, t) {
    ${ref ? `<div class="ev-ref"><span>${esc(whoLabel(a, refT))} 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
    <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (선택)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value;evTouch('${a.id}')">${esc(d.comment)}</textarea>
     ${resHtml}
-    ${locked ? '' : `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="muted small ev-saved">${evSavedText(a.id)}</span><button class="btn" onclick="saveEval('${a.id}',false)">지금 저장</button><button class="btn pri" onclick="saveEval('${a.id}',true)">평가 제출</button></div>`}</div></div>`;
+    ${locked ? '' : `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="muted small ev-saved">${evSavedText(a.id)}</span><button class="btn" onclick="saveEval('${a.id}',false)">지금 저장</button>${S.role === 'dept' ? '' : `<button class="btn pri" onclick="saveEval('${a.id}',true)">평가 제출</button>`}</div>`}</div></div>`;
 }
 function setGrade(id, k, g) {
   const d = draftOf(id);
