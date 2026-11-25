@@ -13,6 +13,11 @@ const hasFull = a => 'route' in a;
 function requiredDocCodes(a) {
   return S.docTypes.filter(d => docRequired(d, a)).map(d => d.code);
 }
+/* 제출서류 체크리스트에서 아직 받지 않은 필수 서류 (이름 목록) */
+function missingDocs(a) {
+  if (!can.broad()) return [];
+  return S.docTypes.filter(d => docRequired(d, a) && !(S.docs[a.id] && S.docs[a.id][d.code] && S.docs[a.id][d.code].received)).map(d => d.name_ko || d.code);
+}
 function docProgress(a) {
   const req = requiredDocCodes(a);
   const got = req.filter(c => S.docs[a.id] && S.docs[a.id][c] && S.docs[a.id][c].received).length;
@@ -43,6 +48,7 @@ function renderDash() {
 
   $('#main').innerHTML = `
     <section class="cards">${cards}</section>
+    ${fixPanelHtml()}
     <section class="panels">${chartsHtml()}</section>
     <section class="panel" id="listPanel">
       ${filtersHtml()}
@@ -322,4 +328,56 @@ function exportCsv() {
   const l = document.createElement('a'); l.href = url; l.download = `지원자목록_${S.term.name}_${todayYMD()}.csv`; l.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
   toast(`${list.length}명을 내보냈습니다. 개인정보가 들어 있으니 안전하게 보관하세요.`);
+}
+
+
+/* ---------- 서류 보완 현황 ----------
+   '보완요청' 학생과, 면접으로 넘겼지만 필수 서류가 아직 미비한 학생을 따로 모아 보여 줍니다.
+   미비 여부는 제출서류 체크리스트(받음 체크) 기준입니다. */
+function fixTargets() {
+  if (!can.broad()) return [];
+  return S.apps.filter(a => a.status !== '접수취소' && !(typeof isSample === 'function' && isSample(a)))
+    .map(a => ({ a, miss: missingDocs(a) }))
+    .filter(x => x.a.status === '보완요청' || (x.a.status === '면접심사' && x.miss.length))
+    .sort((x, y) => (x.a.status === '보완요청' ? 0 : 1) - (y.a.status === '보완요청' ? 0 : 1) || String(x.a.receipt_no).localeCompare(String(y.a.receipt_no)));
+}
+function fixPanelHtml() {
+  const list = fixTargets(); if (!list.length) return '';
+  const req = list.filter(x => x.a.status === '보완요청'), intv = list.length - req.length;
+  const canGo = a => can.edit() && statusOptions(a).opts.includes('면접심사') && !statusOptions(a).disabled;
+  const goable = req.filter(x => canGo(x.a));
+  const open = S.fixOpen !== false;
+  return `<section class="panel fix-panel">
+    <div class="fix-head" onclick="S.fixOpen=${open ? 'false' : 'true'};renderDash()"><b>📎 서류 보완 현황</b>
+      <span class="pill s-fix">보완요청 ${req.length}명</span>${intv ? ` <span class="pill s-intv">면접 진행 중 · 서류 미비 ${intv}명</span>` : ''}
+      <span class="sp"></span>${open && goable.length > 1 ? `<button class="btn sm pri" onclick="event.stopPropagation();goInterview(${esc(JSON.stringify(goable.map(x => x.a.id)))})">보완요청 ${goable.length}명 모두 면접 진행</button>` : ''}
+      <span class="muted small">${open ? '접기 ▲' : '펼치기 ▼'}</span></div>
+    ${open ? `<div class="tbl-wrap" style="margin-top:10px"><table class="tbl"><thead><tr><th>접수번호</th><th>성명</th><th>학과</th><th>상태</th><th>미비 서류 (제출서류 체크리스트 기준)</th><th></th></tr></thead><tbody>
+    ${list.map(({ a, miss }) => `<tr><td><span class="rno">${esc(a.receipt_no)}</span></td><td><b>${esc(a.name_ko)}</b> <span class="muted small">${esc(a.name_en || '')}</span></td>
+      <td class="nw">${esc(deptName(a.department_id))}</td>
+      <td><span class="pill ${STATUS_CLS[a.status]}">${a.status === '면접심사' ? '면접 진행 중' : esc(a.status)}</span></td>
+      <td>${miss.length ? `<span class="dc no">${miss.length}건</span> <span class="small">${miss.map(esc).join(', ')}</span>` : '<span class="dc ok">필수 서류 모두 받음</span>'}${a.memo ? `<div class="muted small">메모: ${esc(a.memo)}</div>` : ''}</td>
+      <td class="nw"><button class="btn sm" onclick="openDetail('${a.id}','docs')">서류</button>
+        ${a.status === '보완요청' && canGo(a) ? ` <button class="btn sm pri" onclick="goInterview(['${a.id}'])">면접 진행 →</button>` : ''}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="muted small" style="margin-top:6px">면접 진행으로 넘겨도 미비 서류가 남아 있으면 이 표와 면접 평가 카드에 계속 표시됩니다. 서류를 받으면 [서류]에서 ‘받음’을 체크하세요.</div>` : ''}
+  </section>`;
+}
+/* 보완요청 → 면접심사 (면접 진행) */
+async function goInterview(ids) {
+  const list = ids.map(id => S.apps.find(x => x.id === id)).filter(a => a && a.status === '보완요청');
+  if (!list.length) return;
+  const miss = list.filter(a => missingDocs(a).length);
+  if (!confirm(`${list.length === 1 ? list[0].name_ko + ' 지원자를' : list.length + '명을'} 면접 진행(면접심사)으로 바꿉니다.${miss.length ? `\n\n미비 서류가 남은 ${miss.length}명은 ‘서류 미비’ 표시가 계속 남습니다.` : ''}\n계속할까요?`)) return;
+  setBusy(true);
+  let n = 0, err = '';
+  for (const a of list) {
+    const { error } = await sb.from('applicants').update({ status: '면접심사' }).eq('id', a.id);
+    if (error) { err = `${a.name_ko}: ${errMsg(error)}`; break; }
+    a.status = '면접심사'; n++;
+  }
+  try { await syncScholarships(); await loadTermData(); } catch (e) { toast(errMsg(e), 'err'); }
+  setBusy(false);
+  const y = window.scrollY; renderShell(); window.scrollTo(0, y);
+  toast(err ? `${err}${n ? ` (${n}명은 면접 진행으로 변경됨)` : ''}` : `${n}명을 면접 진행으로 변경했습니다. 면접 순서를 지정해 주세요.`, err ? 'err' : 'ok');
 }
