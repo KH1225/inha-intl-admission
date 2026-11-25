@@ -417,8 +417,15 @@ function startIdleTimer() {
 }
 
 /* ---------- 화면 뼈대 ---------- */
+/* 학과장이 맡은 학과 (기본 학과 + 추가 학과) */
+function myDeptIds() {
+  if (S.role !== 'dept' || !S.profile) return [];
+  return [S.profile.department_id, ...(S.profile.extra_department_ids || [])].filter(x => x != null).map(String)
+    .filter((x, i, arr) => arr.indexOf(x) === i);
+}
+const isMyDept = id => myDeptIds().includes(String(id));
 function scopeLabel() {
-  if (S.role === 'dept') return deptName(S.profile.department_id);
+  if (S.role === 'dept') return myDeptIds().map(deptName).join(' · ');
   return '전체 학과';
 }
 function interviewProgress() {

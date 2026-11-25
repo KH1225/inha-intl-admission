@@ -24,7 +24,7 @@ const myEvalType = () => (S.role === 'director' ? '원장' : S.role === 'dept' ?
 function myTypeFor(a) {
   const t = myEvalType();
   if (!t || !a) return null;
-  if (t === '학과장' && String(a.department_id) !== String(S.profile.department_id)) return null;
+  if (t === '학과장' && !isMyDept(a.department_id)) return null;
   if (!isSplit(a, t)) return (S.role === 'director' || S.role === 'dept') ? t : null;
   const p = panelOf(a, t);
   return p && p.profile_id === S.user.id ? t : null;
@@ -74,7 +74,7 @@ function evalTargets(allStatus) {
 function renderEval() {
   const t = myEvalType();
   const list = evalTargets();
-  const depts = S.role === 'dept' ? [] : S.depts.filter(d => S.apps.some(a => a.department_id === d.id && (S.interviews[a.id] || a.status === '면접심사')));
+  const depts = S.role === 'dept' && myDeptIds().length < 2 ? [] : S.depts.filter(d => S.apps.some(a => a.department_id === d.id && (S.interviews[a.id] || a.status === '면접심사')));
   const intro = t === '원장'
     ? (S.role === 'director' ? '국제교류원장으로서 전 학과 지원자를 평가합니다. 학과장 평가는 참고용으로 표시됩니다.'
       : '국제교류원 면접위원으로 배정된 지원자를 평가합니다. 나머지 지원자는 조회만 됩니다. 학과 평가는 참고용으로 표시됩니다.')
@@ -514,7 +514,7 @@ function panelProgressHtml() {
   const sides = S.role === 'dept' ? ['학과장'] : ['학과장', '원장'];
   const rows = [];
   S.depts.forEach(d => sides.forEach(t => panelsFor(d.id, t).forEach(p => {
-    if (S.role === 'dept' && String(d.id) !== String(S.profile.department_id)) return;
+    if (S.role === 'dept' && !isMyDept(d.id)) return;
     const apps = S.apps.filter(a => a.department_id === d.id && S.interviews[a.id] && panelOf(a, t) === p);
     const done = apps.filter(a => { const e = getEv(a.id, t); return e && e.submitted; }).length;
     rows.push(`<tr><td>${esc(d.name_ko)}</td><td>${t === '원장' ? '국제교류원' : '학과'}</td><td>${esc(p.evaluator_name || '')}</td><td>${p.order_from}~${p.order_to}번</td><td>${done}/${apps.length} ${apps.length && done === apps.length ? '✔' : ''}</td></tr>`);
@@ -605,7 +605,7 @@ function renderPanelBody() {
   const max = orders.length ? Math.max(...orders) : 0, noOrder = apps.length - orders.length;
   const side = t => {
     const rows = panelDraft.map((p, i) => ({ p, i })).filter(x => String(x.p.department_id) === panelDept && x.p.evaluator_type === t);
-    const cands = panelProfiles.filter(p => t === '학과장' ? p.role === 'dept' && String(p.department_id) === panelDept : ['director', 'staff', 'admin'].includes(p.role));
+    const cands = panelProfiles.filter(p => t === '학과장' ? p.role === 'dept' && [p.department_id, ...(p.extra_department_ids || [])].map(String).includes(panelDept) : ['director', 'staff', 'admin'].includes(p.role));
     const covered = apps.filter(a => { const o = orderOf(a); return o != null && rows.some(x => o >= x.p.order_from && o <= x.p.order_to); }).length;
     const title = t === '학과장' ? '학과 면접위원' : '국제교류원 면접위원';
     const state = rows.length ? `배정된 지원자 ${covered}/${apps.length}명${covered < apps.length ? ' — <b style="color:var(--red,#c00)">배정 안 된 지원자가 있습니다</b>' : ''}`

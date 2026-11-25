@@ -150,12 +150,15 @@ async function openAccounts() {
   const deptSel = (id, cls) => `<select class="${cls}"><option value="">-</option>${S.depts.map(d => `<option value="${d.id}" ${d.id === id ? 'selected' : ''}>${esc(d.name_ko)}</option>`).join('')}</select>`;
   const roleSel = (r, cls) => `<select class="${cls}">${Object.keys(ROLE_LABEL).map(k => `<option value="${k}" ${k === r ? 'selected' : ''}>${esc(ROLE_LABEL[k])}</option>`).join('')}</select>`;
   const hasEmp = S.profiles.some(p => 'emp_no' in p);
+  const hasExtra = S.profiles.some(p => 'extra_department_ids' in p);
+  const extraCell = p => !hasExtra ? '' : p.role !== 'dept' ? '<span class="muted small">-</span>'
+    : `<div class="small">${(p.extra_department_ids || []).map(id => esc(deptName(id))).join(', ') || '<span class="muted">없음</span>'}</div><button class="btn sm" onclick="openExtraDepts('${p.id}')">추가 학과 지정</button>`;
   const noEmp = S.profiles.filter(p => p.active && !p.emp_no);
   const noEmpWarn = noEmp.length ? `<div class="warn small" style="margin-top:6px">직번이 없는 사용 중 계정 ${noEmp.length}개: ${esc(noEmp.map(p => p.display_name || '(이름 없음)').join(', '))} — 직번을 넣어야 로그인할 수 있습니다.</div>` : '';
   openModal(`${mHead('계정 관리', '계정을 만들고 비밀번호를 직접 지정합니다 · 로그인은 직번으로만')}
   <div class="m-body">${hasEmp ? `<div class="notice small">로그인은 <b>직번으로만</b> 합니다. 직번이 없는 계정은 로그인할 수 없습니다.</div>${noEmpWarn}` : ''}
-  <div class="tbl-wrap"><table class="tbl" style="min-width:${hasEmp ? 840 : 720}px"><thead><tr><th>이름</th>${hasEmp ? '<th>직번</th>' : ''}<th>권한</th><th>학과(학과장만)</th><th>사용</th><th></th></tr></thead><tbody>
-  ${S.profiles.map(p => `<tr data-id="${p.id}"><td><input class="an" value="${esc(p.display_name)}"></td>${hasEmp ? `<td><input class="ae" value="${esc(p.emp_no || '')}" placeholder="예: 2010081" style="width:110px"></td>` : ''}<td>${roleSel(p.role, 'ar')}</td><td>${deptSel(p.department_id, 'ad')}</td>
+  <div class="tbl-wrap"><table class="tbl" style="min-width:${hasEmp ? 840 : 720}px"><thead><tr><th>이름</th>${hasEmp ? '<th>직번</th>' : ''}<th>권한</th><th>학과(학과장만)</th>${hasExtra ? '<th>추가 학과</th>' : ''}<th>사용</th><th></th></tr></thead><tbody>
+  ${S.profiles.map(p => `<tr data-id="${p.id}"><td><input class="an" value="${esc(p.display_name)}"></td>${hasEmp ? `<td><input class="ae" value="${esc(p.emp_no || '')}" placeholder="예: 2010081" style="width:110px"></td>` : ''}<td>${roleSel(p.role, 'ar')}</td><td>${deptSel(p.department_id, 'ad')}</td>${hasExtra ? `<td>${extraCell(p)}</td>` : ''}
    <td><input class="aa" type="checkbox" ${p.active ? 'checked' : ''} ${p.id === S.user.id ? 'disabled' : ''}></td>
    <td class="nw"><button class="btn sm" onclick="saveAccount('${p.id}',this)">저장</button> <button class="btn sm" onclick="openSetPassword('${p.id}')">비밀번호 변경</button>${p.id === S.user.id ? '' : ` <button class="btn sm" style="color:#c0392b;border-color:#e3a59d" onclick="deleteAccount('${p.id}')">삭제</button>`}</td></tr>`).join('')}</tbody></table></div>
   <div class="sec" style="margin-top:14px"><h3>새 계정 만들기</h3>
@@ -170,6 +173,27 @@ async function openAccounts() {
     <div class="muted small">이름·권한·학과는 위에서 입력한 값을 씁니다.</div>
     <div style="margin-top:6px"><button class="btn sm" onclick="addAccount()">권한만 추가</button></div></details></div></div>
   <div class="m-foot"><button class="btn pri" onclick="closeModal(this.closest('.backdrop'))">닫기</button></div>`, { wide: true });
+}
+/* 학과장 한 명이 여러 학과를 맡을 때: 기본 학과 외에 추가로 맡는 학과 */
+function openExtraDepts(id) {
+  const p = S.profiles.find(x => x.id === id); if (!p) return;
+  const cur = (p.extra_department_ids || []).map(String);
+  openModal(`${mHead('추가 학과 지정', `${esc(p.display_name || '')} · 기본 학과: ${esc(deptName(p.department_id) || '-')}`)}
+   <div class="m-body"><div class="notice small" style="margin-bottom:10px">체크한 학과의 지원자도 이 계정으로 보고, 면접 평가·학점인정 심의를 할 수 있습니다.</div>
+    <div class="grid2">${S.depts.filter(d => String(d.id) !== String(p.department_id)).map(d =>
+      `<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="xd" value="${d.id}" ${cur.includes(String(d.id)) ? 'checked' : ''} style="width:auto"> ${esc(d.name_ko)}</label>`).join('')}</div></div>
+   <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button><button class="btn pri" onclick="saveExtraDepts('${id}',this)">저장</button></div>`, { sticky: true });
+}
+async function saveExtraDepts(id, btn) {
+  const bd = btn.closest('.backdrop');
+  const ids = $$('.xd', bd).filter(x => x.checked).map(x => Number(x.value));
+  btn.disabled = true;
+  const { error } = await sb.from('profiles').update({ extra_department_ids: ids }).eq('id', id);
+  if (error) { toast(errMsg(error), 'err'); btn.disabled = false; return; }
+  const p = S.profiles.find(x => x.id === id); if (p) p.extra_department_ids = ids;
+  if (S.profile && S.profile.id === id) S.profile.extra_department_ids = ids;
+  toast(ids.length ? `추가 학과를 저장했습니다: ${ids.map(deptName).join(', ')}` : '추가 학과를 비웠습니다.');
+  closeModal(bd); openAccounts();
 }
 async function saveAccount(id, btn) {
   const tr = btn.closest('tr');
