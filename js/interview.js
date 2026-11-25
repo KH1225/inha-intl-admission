@@ -148,7 +148,7 @@ function evalCardEdit(a, t) {
   const locked = !!e.submitted || (a.status !== '면접심사');
   const o = orderOf(a);
   const res = d.result || autoResult(d);
-  const ref = t === '원장' ? getEv(a.id, '학과장') : null;
+  const refT = t === '원장' ? '학과장' : '원장', ref = getEv(a.id, refT);
   const items = EV_ITEMS.map((nm, i) => {
     const k = 'item' + (i + 1);
     return `<div class="ev-item"><div class="t"><span>${i + 1}. ${esc(nm)}</span></div><div class="grades">${['A', 'B', 'C'].map(g =>
@@ -164,7 +164,7 @@ function evalCardEdit(a, t) {
     ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${e.submitted && signImg(e, '26px') ? ` <span class="sign-mini">${signImg(e, '26px')}</span>` : ''}</h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.prev_university ? ' · ' + esc(a.prev_university) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''} ${ivWhen(a)}</div></div></div>
    <div class="ev-3">${items}</div>
-   ${ref ? `<div class="ev-ref"><span>${esc(whoLabel(a, '학과장'))} 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
+   ${ref ? `<div class="ev-ref"><span>${esc(whoLabel(a, refT))} 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
    <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (선택)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value;evTouch('${a.id}')">${esc(d.comment)}</textarea>
     ${resHtml}
     ${locked ? '' : `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="muted small ev-saved">${evSavedText(a.id)}</span><button class="btn" onclick="saveEval('${a.id}',false)">지금 저장</button><button class="btn pri" onclick="saveEval('${a.id}',true)">평가 제출</button></div>`}</div></div>`;
@@ -526,7 +526,7 @@ function panelProgressHtml() {
 /* ---------- 면접평가표 인쇄 ---------- */
 function printEvalSheet() { const list = evalTargets(); if (!list.length) { toast('인쇄할 지원자가 없습니다.', 'err'); return; } printHtml(evalSheetHtml(list), { mark: true }); if (typeof logAccess === 'function') logAccess('면접평가표 인쇄', list.map(a => a.id)); }
 function evalSheetHtml(list) {
-  const showDir = S.role !== 'dept';
+  const showDir = true; // 학과장 출력물에도 국제교류원 평가를 함께 표시 (2026-11-25)
   // 학과별로 나누고, 학과 면접위원이 배정된 학과는 면접위원마다 따로 한 장씩
   const groups = [], gmap = {};
   list.forEach(a => {
