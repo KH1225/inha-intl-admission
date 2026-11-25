@@ -103,10 +103,20 @@ function evBadge(e) {
   if (!e) return '<span class="muted">미작성</span>';
   return `${[e.item1, e.item2, e.item3].map(x => x || '-').join(' / ')} → <b>${esc(e.result || '-')}</b>${e.submitted ? ' (제출됨)' : ' (임시저장)'}`;
 }
+/* 편입학 지원자: 편입 학년과 협약학교 표시 */
+const partnerName = a => (a && a.partner_school_id && S.partnerMap && S.partnerMap[a.partner_school_id] ? S.partnerMap[a.partner_school_id].name : '');
+/* 학교 목록을 못 읽는 권한이어도 협약 여부는 지원자 정보로 판단 */
+const isPartner = a => !!(a && (a.partner_school_id || a.route === ROUTE_PARTNER));
+function transferBadges(a) {
+  if (a.admission_kind !== '편입학') return '';
+  const ps = partnerName(a), isP = isPartner(a);
+  return ` <span class="badge kind tr">편입학${a.transfer_year ? ' ' + esc(a.transfer_year) + '학년' : ''}</span>`
+    + ` <span class="badge kind ${isP ? 'tr' : ''}">${isP ? '협약학교' + (ps ? ' · ' + esc(ps) : '') : '협약학교 아님'}</span>`;
+}
 function evalCardView(a) {
   const e1 = getEv(a.id, '원장'), e2 = getEv(a.id, '학과장'), o = orderOf(a);
   const done = e1 && e1.submitted;
-  return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span> <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
+  return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)} <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''}</div>
    
    <div class="kv" style="margin-top:8px"><div><span>${esc(whoLabel(a, '원장'))}</span><b>${evBadge(e1)} ${e1 && e1.submitted ? signImg(e1, '22px') : ''}</b></div><div><span>${esc(whoLabel(a, '학과장'))}</span><b>${evBadge(e2)} ${e2 && e2.submitted ? signImg(e2, '22px') : ''}</b></div></div>
@@ -136,7 +146,7 @@ function evalCardEdit(a, t) {
   } else {
     resHtml = `<div><div class="muted small" style="margin-bottom:4px">자동 판정</div><span class="res-btn on r-${res || '보류'}" style="${res ? '' : 'background:var(--soft);color:var(--mute);border-color:var(--line)'}">${esc(res || '-')}</span></div>`;
   }
-  return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>
+  return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)}
     ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${e.submitted && signImg(e, '26px') ? ` <span class="sign-mini">${signImg(e, '26px')}</span>` : ''}</h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.prev_university ? ' · ' + esc(a.prev_university) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''}</div></div></div>
    <div class="ev-3">${items}</div>
@@ -440,7 +450,7 @@ function evalSheetHtml(list) {
       const o = orderOf(a);
       const rowsEv = [['학과장', getEv(a.id, '학과장')]].concat(showDir ? [['원장', getEv(a.id, '원장')]] : []);
       const rs = `rowspan="${rowsEv.length}"`;
-      return rowsEv.map(([t, e], i) => `<tr>${i === 0 ? `<td ${rs} class="nw">${o == null ? '' : o}</td><td ${rs} class="nw">${esc(a.receipt_no)}<br><span class="kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind || '')}${a.admission_kind === '편입학' && a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''}</span></td>
+      return rowsEv.map(([t, e], i) => `<tr>${i === 0 ? `<td ${rs} class="nw">${o == null ? '' : o}</td><td ${rs} class="nw">${esc(a.receipt_no)}<br><span class="kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind || '')}${a.admission_kind === '편입학' && a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''}</span>${a.admission_kind === '편입학' ? `<br><small>${isPartner(a) ? '협약' + (partnerName(a) ? ' · ' + esc(partnerName(a)) : '') : '비협약'}</small>` : ''}</td>
         <td ${rs}>${photoUrl(a) ? `<img src="${esc(photoUrl(a))}" style="width:14mm;height:18.6mm;object-fit:cover" alt="">` : ''}</td>
         <td ${rs} class="nm">${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td ${rs} class="nw">${esc(a.nationality)}</td><td ${rs} class="nw">${esc(langLabel(a, true))}</td><td ${rs} class="hs">${esc(a.high_school || '')}</td>` : ''}
         ${showDir ? `<td class="nw">${isSplit(a, t) ? esc(whoName(a, t) || '미배정') : (t === '원장' ? '국제교류원장' : '학과장')}</td>` : ''}<td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td class="nw">${e ? esc(e.result || '') : ''}</td>
