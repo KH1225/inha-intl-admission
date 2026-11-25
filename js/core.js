@@ -397,6 +397,7 @@ async function afterLogin() {
   if (error) throw error;
   if (!prof || !prof.active) { renderNoAccess(); return; }
   S.profile = prof; S.role = prof.role;
+  if (S.role === 'dept') S.f.sortKey = 'order'; // 학과장: 지원자 목록을 면접 순서대로
   await loadStatic();
   S.term = S.terms.find(t => t.is_current) || S.terms[S.terms.length - 1] || null;
   await loadTermData();
