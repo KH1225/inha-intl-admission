@@ -470,3 +470,7 @@ table.tbl.list{min-width:1000px}
 button.mail-chk{cursor:pointer}
 .mail-chk.ok{color:#047857;border-color:#a7f3d0;background:#ecfdf5}
 .mail-chk.no{color:#c2410c;border-color:#fed7aa;background:#fff7ed}
+
+/* 면접 평가 카드: 면접 일시 */
+.ev-when{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:700;color:#1d4ed8;background:#eff4ff;border:1px solid #b6c9f6;white-space:nowrap}
+.ev-when.none{color:var(--mute);background:var(--soft);border-color:var(--line);font-weight:600}
