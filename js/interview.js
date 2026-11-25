@@ -113,11 +113,19 @@ function transferBadges(a) {
   return ` <span class="badge kind tr">편입학${a.transfer_year ? ' ' + esc(a.transfer_year) + '학년' : ''}</span>`
     + ` <span class="badge kind ${isP ? 'tr' : ''}">${isP ? '협약학교' + (ps ? ' · ' + esc(ps) : '') : '협약학교 아님'}</span>`;
 }
+/* 면접 일시: 11월 28일(금) 14:30 */
+function ivWhen(a) {
+  const v = (S.interviews[a.id] || {}).scheduled_at;
+  const d = v ? new Date(v) : null;
+  if (!d || isNaN(d)) return '<span class="ev-when none">면접일시 미정</span>';
+  const p = n => String(n).padStart(2, '0');
+  return `<span class="ev-when">🗓 ${d.getMonth() + 1}월 ${d.getDate()}일(${'일월화수목금토'[d.getDay()]}) ${p(d.getHours())}:${p(d.getMinutes())}</span>`;
+}
 function evalCardView(a) {
   const e1 = getEv(a.id, '원장'), e2 = getEv(a.id, '학과장'), o = orderOf(a);
   const done = e1 && e1.submitted;
   return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)} <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
-   <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''}</div>
+   <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''} ${ivWhen(a)}</div>
    
    <div class="kv" style="margin-top:8px"><div><span>${esc(whoLabel(a, '원장'))}</span><b>${evBadge(e1)} ${e1 && e1.submitted ? signImg(e1, '22px') : ''}</b></div><div><span>${esc(whoLabel(a, '학과장'))}</span><b>${evBadge(e2)} ${e2 && e2.submitted ? signImg(e2, '22px') : ''}</b></div></div>
    ${e1 && e1.comment ? `<div class="muted small" style="margin-top:6px">${isSplit(a, '원장') ? '국제교류원' : '원장'} 의견: ${esc(e1.comment)}</div>` : ''}
@@ -148,7 +156,7 @@ function evalCardEdit(a, t) {
   }
   return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)}
     ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${e.submitted && signImg(e, '26px') ? ` <span class="sign-mini">${signImg(e, '26px')}</span>` : ''}</h3>
-   <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.prev_university ? ' · ' + esc(a.prev_university) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''}</div></div></div>
+   <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.prev_university ? ' · ' + esc(a.prev_university) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''} ${ivWhen(a)}</div></div></div>
    <div class="ev-3">${items}</div>
    ${ref ? `<div class="ev-ref"><span>${esc(whoLabel(a, '학과장'))} 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
    <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (선택)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value">${esc(d.comment)}</textarea>
