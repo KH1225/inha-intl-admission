@@ -474,3 +474,8 @@ button.mail-chk{cursor:pointer}
 /* 면접 평가 카드: 면접 일시 */
 .ev-when{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:700;color:#1d4ed8;background:#eff4ff;border:1px solid #b6c9f6;white-space:nowrap}
 .ev-when.none{color:var(--mute);background:var(--soft);border-color:var(--line);font-weight:600}
+
+/* 면접 평가: 한꺼번에 저장·제출 바 (화면 아래 고정) */
+.ev-batch{position:sticky;bottom:0;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding:12px 16px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 -4px 16px rgba(15,23,42,.08)}
+.ev-batch .sp{flex:1}
+@media print{.ev-batch{display:none}}

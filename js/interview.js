@@ -95,7 +95,7 @@ function renderEval() {
     ${can.admin() ? `<button class="btn" onclick="openOrderModal()">면접 순서 · 일정 지정</button><button class="btn" onclick="openPanelModal()">면접위원 배정</button>` : ''}
     ${can.edit() ? `<button class="btn blue" onclick="openMailModal('면접안내')">면접 안내 메일</button>` : ''}
     <button class="btn" onclick="printEvalSheet()">면접평가표 인쇄</button></div>
-  ${list.length ? `<div class="ev-list">${list.map(a => { const mt = myTypeFor(a); return mt ? evalCardEdit(a, mt) : evalCardView(a); }).join('')}</div>`
+  ${list.length ? `<div class="ev-list">${list.map(a => { const mt = myTypeFor(a); return mt ? evalCardEdit(a, mt) : evalCardView(a); }).join('')}</div>${evalBatchBar()}`
     : '<div class="center-msg"><div><h2>평가할 지원자가 없습니다</h2><p>면접심사 단계로 변경된 지원자가 여기에 표시됩니다.</p></div></div>'}`;
 }
 
@@ -184,11 +184,20 @@ async function saveEval(id, submit, signature) {
   const complete = d.item1 && d.item2 && d.item3;
   if (submit) {
     if (!complete) { toast('3개 항목을 모두 평가해야 제출할 수 있습니다.', 'err'); return; }
-    const a = S.apps.find(x => x.id === id);
-    const res = d.result || autoResult(d);
     if (!signature) { openSignPad(id); return; }
   }
-  const row = { item1: d.item1 || null, item2: d.item2 || null, item3: d.item3 || null, comment: d.comment.trim() || null, result: complete ? (d.result || autoResult(d)) : null };
+  const err = await writeEval(id, t, d, submit, signature);
+  if (err) { toast(err, 'err'); return false; }
+  toast(submit ? '평가를 제출했습니다.' : '임시저장했습니다.');
+  if (t === '원장') await loadAux();
+  const hdr = $('.toolbar'); if (hdr) hdr.innerHTML = toolbarHtml();
+  keepScrollRender(id);
+  return true;
+}
+/* 평가 1건 저장 (화면 갱신 없음). 실패하면 오류 문구, 성공하면 '' */
+async function writeEval(id, t, d, submit, signature) {
+  const complete = d.item1 && d.item2 && d.item3;
+  const row = { item1: d.item1 || null, item2: d.item2 || null, item3: d.item3 || null, comment: (d.comment || '').trim() || null, result: complete ? (d.result || autoResult(d)) : null };
   if (submit) { row.submitted = true; row.submitted_at = new Date().toISOString(); if (signature) row.signature = signature; }
   // 누가 평가했는지 기록 (면접위원 배정 SQL을 적용한 뒤부터)
   if (S.panelReady) { row.evaluator_id = S.user.id; row.evaluator_name = S.profile.display_name || null; }
@@ -196,14 +205,69 @@ async function saveEval(id, submit, signature) {
   let res;
   if (exist) res = await sb.from('interview_evaluations').update(row).eq('applicant_id', id).eq('evaluator_type', t).select().single();
   else res = await sb.from('interview_evaluations').insert({ applicant_id: id, evaluator_type: t, ...row }).select().single();
-  if (res.error) { toast(/signature/.test(errMsg(res.error)) ? '서명 저장 칸이 DB에 아직 없습니다. 관리자에게 SQL 적용을 요청하세요.' : errMsg(res.error), 'err'); return false; }
+  if (res.error) return /signature/.test(errMsg(res.error)) ? '서명 저장 칸이 DB에 아직 없습니다. 관리자에게 SQL 적용을 요청하세요.' : errMsg(res.error);
   S.evals[id + '|' + t] = res.data;
   delete S.evalDraft[id];
-  toast(submit ? '평가를 제출했습니다.' : '임시저장했습니다.');
-  if (t === '원장') await loadAux();
+  return '';
+}
+
+/* ---------- 한꺼번에 저장 · 제출 ----------
+   화면에 보이는 내 평가 중 아직 제출하지 않은 것을 모아 한 번에 임시저장하거나,
+   3개 항목을 다 입력한 것을 서명 한 번으로 모두 제출합니다. */
+function openEvalCards() {
+  return evalTargets().filter(a => {
+    const t = myTypeFor(a); if (!t || a.status !== '면접심사') return false;
+    const e = getEv(a.id, t); return !(e && e.submitted);
+  });
+}
+const draftDone = id => { const d = draftOf(id); return !!(d.item1 && d.item2 && d.item3); };
+function syncEvalComments() {
+  openEvalCards().forEach(a => { const ta = $('#evc-' + a.id); if (ta) draftOf(a.id).comment = ta.value; });
+}
+function evalBatchBar() {
+  const open = openEvalCards(); if (!open.length) return '';
+  const ready = open.filter(a => draftDone(a.id)).length;
+  return `<div class="ev-batch"><div><b>미제출 ${open.length}명</b> <span class="muted small">· 3개 항목 입력 완료 ${ready}명${ready < open.length ? ` · 미완료 ${open.length - ready}명` : ''}</span></div>
+   <span class="sp"></span>
+   <button class="btn" onclick="saveAllEvals()">전체 임시저장</button>
+   <button class="btn pri" ${ready ? '' : 'disabled'} onclick="openSignPad('*')">한 번에 서명하고 제출 (${ready}명)</button></div>`;
+}
+async function saveAllEvals() {
+  syncEvalComments();
+  // 입력한 내용이 있는 카드만 저장 (아무것도 안 건드린 카드는 건너뜀)
+  const list = openEvalCards().filter(a => {
+    const d = S.evalDraft[a.id]; if (!d) return false;
+    const e = getEv(a.id, myTypeFor(a)) || {};
+    return ['item1', 'item2', 'item3', 'comment', 'result'].some(k => (d[k] || '') !== (e[k] || ''));
+  });
+  if (!list.length) { toast('새로 저장할 내용이 없습니다.'); return; }
+  setBusy(true);
+  let n = 0, err = '', dir = false;
+  for (const a of list) {
+    const t = myTypeFor(a);
+    err = await writeEval(a.id, t, draftOf(a.id), false);
+    if (err) { err = `${a.name_ko}: ${err}`; break; }
+    n++; if (t === '원장') dir = true;
+  }
+  if (dir) await loadAux();
+  setBusy(false);
+  toast(err ? `${err}${n ? ` (${n}명은 저장됨)` : ''}` : `${n}명 임시저장했습니다.`, err ? 'err' : 'ok');
+  keepScrollRender();
+}
+async function submitAllEvals(url) {
+  const list = openEvalCards().filter(a => draftDone(a.id));
+  let n = 0, err = '', dir = false;
+  for (const a of list) {
+    const t = myTypeFor(a);
+    err = await writeEval(a.id, t, draftOf(a.id), true, url);
+    if (err) { err = `${a.name_ko}: ${err}`; break; }
+    n++; if (t === '원장') dir = true;
+  }
+  if (dir) await loadAux();
   const hdr = $('.toolbar'); if (hdr) hdr.innerHTML = toolbarHtml();
-  keepScrollRender(id);
-  return true;
+  toast(err ? `${err}${n ? ` (${n}명은 제출됨)` : ''}` : `${n}명 평가를 제출했습니다.`, err ? 'err' : 'ok');
+  keepScrollRender();
+  return !err;
 }
 
 /* ---------- 학과장 서명 ---------- */
@@ -222,6 +286,7 @@ function unsignedEvals(t) {
 }
 function openSignPad(id) {
   const prev = lastSign();
+  const batch = id === '*'; if (batch) { syncEvalComments(); id = null; }
   const t = id ? myTypeFor(S.apps.find(x => x.id === id)) : myEvalType();
   const split = id ? isSplit(S.apps.find(x => x.id === id), t) : myPanels().length > 0;
   const who = split ? `면접위원 ${S.profile.display_name || ''}` : (t === '원장' ? '국제교류원장' : '학과장');
@@ -233,6 +298,16 @@ function openSignPad(id) {
     info = `<div class="kv" style="margin-bottom:10px">${EV_ITEMS.map((nm, i) => `<div><span>${esc(nm)}</span><b>${esc(d['item' + (i + 1)])} ${esc(EV_GRADES[d['item' + (i + 1)]] || '')}</b></div>`).join('')}<div><span>판정</span><b>${esc(res)}</b></div></div>`;
     warn = t === '원장' && S.role === 'director' ? '제출 후에도 면접심사 단계에서는 수정할 수 있으며, 다시 제출할 때 새로 서명합니다.' : '제출 후에는 수정할 수 없습니다.';
     okLabel = '서명하고 제출';
+  } else if (batch) {
+    const open = openEvalCards(), ready = open.filter(a => draftDone(a.id)), skip = open.length - ready.length;
+    if (!ready.length) { toast('3개 항목을 모두 입력한 평가가 없습니다.', 'err'); return; }
+    head = mHead(`평가 ${ready.length}명 한 번에 제출 · ${who} 서명`, '아래 내용을 확인한 뒤 서명하세요');
+    info = `<div class="tbl-wrap" style="margin-bottom:10px;max-height:300px;overflow:auto"><table class="tbl"><thead><tr><th>순서</th><th>성명</th><th>학과</th>${EV_ITEMS.map((_, i) => `<th>${i + 1}</th>`).join('')}<th>판정</th></tr></thead><tbody>${ready.map(a => {
+      const d = draftOf(a.id), o = orderOf(a);
+      return `<tr><td>${o == null ? '' : o + '번'}</td><td>${esc(a.name_ko)}</td><td>${esc(deptName(a.department_id))}</td>${[d.item1, d.item2, d.item3].map(g => `<td><b>${esc(g)}</b></td>`).join('')}<td><b>${esc(d.result || autoResult(d))}</b></td></tr>`; }).join('')}</tbody></table></div>
+      ${skip ? `<div class="notice small" style="margin-bottom:10px">3개 항목을 다 입력하지 않은 ${skip}명은 이번 제출에서 빠집니다.</div>` : ''}`;
+    warn = `서명 한 번으로 위 ${ready.length}명의 평가가 모두 제출됩니다. ${t === '원장' && S.role === 'director' ? '제출 후에도 면접심사 단계에서는 총괄관리자가 제출을 취소해 수정할 수 있습니다.' : '제출 후에는 수정할 수 없습니다.'}`;
+    okLabel = `서명하고 ${ready.length}명 제출`;
   } else {
     const list = unsignedEvals(t);
     head = mHead(`${who} 서명 · 제출한 평가 ${list.length}건`, '이미 제출한 평가에 서명만 추가합니다 (평가 내용은 바뀌지 않습니다)');
@@ -249,7 +324,7 @@ function openSignPad(id) {
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="clearSignPad()">지우기</button>
      ${prev ? `<button class="btn sm" onclick="useLastSign()">지난번 서명 사용</button>` : ''}</div></div>
    <div class="m-foot"><button class="btn" onclick="closeModal(this.closest('.backdrop'))">취소</button>
-    <button class="btn pri" id="sign-ok" onclick="submitSigned(${id ? `'${id}'` : 'null'})">${okLabel}</button></div>`, { sticky: true });
+    <button class="btn pri" id="sign-ok" onclick="submitSigned(${batch ? `'*'` : id ? `'${id}'` : 'null'})">${okLabel}</button></div>`, { sticky: true });
   initSignPad($('#sign-pad', bd));
 }
 function initSignPad(cv) {
@@ -312,7 +387,7 @@ async function submitSigned(id) {
   const url = cv && cv._signed ? signDataUrl(cv) : '';
   if (!url) { toast('서명을 해야 제출할 수 있습니다.', 'err'); return; }
   const btn = $('#sign-ok'); btn.disabled = true;
-  const ok = id ? await saveEval(id, true, url) : await signSubmitted(url);
+  const ok = id === '*' ? await submitAllEvals(url) : id ? await saveEval(id, true, url) : await signSubmitted(url);
   if (!ok) { btn.disabled = false; return; }
   closeModal(cv.closest('.backdrop'));
 }
