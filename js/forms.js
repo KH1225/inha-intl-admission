@@ -6,7 +6,7 @@ function evalSummary(id, type) {
   const e = S.evals[id + '|' + type];
   if (!e) return '미작성';
   const g = [e.item1, e.item2, e.item3].map(x => (x || '-').trim()).join('-');
-  return `${g} ${e.result ? '[' + e.result + ']' : ''}${e.submitted ? '' : ' (임시저장)'}`;
+  return `${g} ${e.result ? '[' + e.result + ']' : ''}${e.submitted ? '' : ' (임시저장)'}${e.evaluator_name ? ' · ' + e.evaluator_name : ''}`;
 }
 
 /* ---------- 상세 ---------- */

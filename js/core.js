@@ -244,6 +244,14 @@ async function loadAux() {
   const evs = await selectAll('interview_evaluations', ['applicant_id', 'evaluator_type']);
   S.evals = {};
   evs.forEach(r => { if (ids.has(r.applicant_id)) S.evals[r.applicant_id + '|' + r.evaluator_type] = r; });
+  // 면접위원 배정 (면접 순서로 나눠 평가) — 표가 아직 없으면(SQL 미적용) 배정 없이 예전처럼 동작
+  S.panels = []; S.panelReady = false;
+  if (S.term) {
+    try {
+      const r = await sb.from('interview_panels').select('*').eq('term_id', String(S.term.id));
+      if (!r.error) { S.panels = r.data || []; S.panelReady = true; }
+    } catch (e) { /* 무시 */ }
+  }
   S.payments = {}; S.docs = {};
   await loadPhotos();
   if (typeof loadCredit === 'function') await loadCredit();
