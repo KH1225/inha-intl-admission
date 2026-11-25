@@ -106,14 +106,17 @@ function evBadge(e) {
   return `${[e.item1, e.item2, e.item3].map(x => x || '-').join(' / ')} → <b>${esc(e.result || '-')}</b>${e.submitted ? ' (제출됨)' : ' (임시저장)'}`;
 }
 /* 편입학 지원자: 편입 학년과 협약학교 표시 */
-const partnerName = a => (a && a.partner_school_id && S.partnerMap && S.partnerMap[a.partner_school_id] ? S.partnerMap[a.partner_school_id].name : '');
+const partnerName = a => (a && a.partner_school_id && S.partnerMap && S.partnerMap[a.partner_school_id] ? S.partnerMap[a.partner_school_id].name : (a && a.partner_school_name) || '');
 /* 학교 목록을 못 읽는 권한이어도 협약 여부는 지원자 정보로 판단 */
 const isPartner = a => !!(a && (a.partner_school_id || a.route === ROUTE_PARTNER));
+/* 원장·학과장 계정은 면접 대상자 전용 보기(interview_targets)에서 불러오는데,
+   그 보기에 지원경로·협약학교 칸이 없으면 협약 여부를 알 수 없으므로 표시하지 않습니다 */
+const partnerKnown = a => !!a && ('route' in a || 'partner_school_id' in a);
 function transferBadges(a) {
   if (a.admission_kind !== '편입학') return '';
   const ps = partnerName(a), isP = isPartner(a);
   return ` <span class="badge kind tr">편입학${a.transfer_year ? ' ' + esc(a.transfer_year) + '학년' : ''}</span>`
-    + ` <span class="badge kind ${isP ? 'tr' : ''}">${isP ? '협약학교' + (ps ? ' · ' + esc(ps) : '') : '협약학교 아님'}</span>`;
+    + (!partnerKnown(a) ? '' : ` <span class="badge kind ${isP ? 'tr' : ''}">${isP ? '협약학교' + (ps ? ' · ' + esc(ps) : '') : '협약학교 아님'}</span>`);
 }
 /* 면접 일시: 11월 28일(금) 14:30 */
 function ivWhen(a) {
@@ -535,7 +538,7 @@ function evalSheetHtml(list) {
       const o = orderOf(a);
       const rowsEv = [['학과장', getEv(a.id, '학과장')]].concat(showDir ? [['원장', getEv(a.id, '원장')]] : []);
       const rs = `rowspan="${rowsEv.length}"`;
-      return rowsEv.map(([t, e], i) => `<tr>${i === 0 ? `<td ${rs} class="nw">${o == null ? '' : o}</td><td ${rs} class="nw">${esc(a.receipt_no)}<br><span class="kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind || '')}${a.admission_kind === '편입학' && a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''}</span>${a.admission_kind === '편입학' ? `<br><small>${isPartner(a) ? '협약' + (partnerName(a) ? ' · ' + esc(partnerName(a)) : '') : '비협약'}</small>` : ''}</td>
+      return rowsEv.map(([t, e], i) => `<tr>${i === 0 ? `<td ${rs} class="nw">${o == null ? '' : o}</td><td ${rs} class="nw">${esc(a.receipt_no)}<br><span class="kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind || '')}${a.admission_kind === '편입학' && a.transfer_year ? ` ${esc(a.transfer_year)}학년` : ''}</span>${a.admission_kind === '편입학' && partnerKnown(a) ? `<br><small>${isPartner(a) ? '협약' + (partnerName(a) ? ' · ' + esc(partnerName(a)) : '') : '비협약'}</small>` : ''}</td>
         <td ${rs}>${photoUrl(a) ? `<img src="${esc(photoUrl(a))}" style="width:14mm;height:18.6mm;object-fit:cover" alt="">` : ''}</td>
         <td ${rs} class="nm">${esc(a.name_ko)}<br><small>${esc(a.name_en)}</small></td><td ${rs} class="nw">${esc(a.nationality)}</td><td ${rs} class="nw">${esc(langLabel(a, true))}</td><td ${rs} class="hs">${esc(a.high_school || '')}</td>` : ''}
         ${showDir ? `<td class="nw">${isSplit(a, t) ? esc(whoName(a, t) || '미배정') : (t === '원장' ? '국제교류원장' : '학과장')}</td>` : ''}<td>${e ? esc(e.item1 || '') : ''}</td><td>${e ? esc(e.item2 || '') : ''}</td><td>${e ? esc(e.item3 || '') : ''}</td><td class="nw">${e ? esc(e.result || '') : ''}</td>
