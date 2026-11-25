@@ -8,7 +8,10 @@ const cnt = st => S.apps.filter(a => a.status === st && !(typeof isSample === 'f
 /* 접수취소된 지원자는 통계·차트·기본 목록에서 뺍니다 */
 /* 통계용: 접수취소자와 테스트용 샘플은 빼고 셉니다 */
 const activeApps = () => S.apps.filter(a => a.status !== '접수취소' && !(typeof isSample === 'function' && isSample(a)));
-const hasFull = a => 'route' in a;
+/* 지원자 전체 정보(서류·연락처·전형 등)를 불러온 계정인지.
+   원장·학과장은 면접 대상자 전용 보기(interview_targets)에서 일부 칸만 받으므로 전체 정보가 아님
+   (그 보기에 지원경로 칸이 추가되어도 판단이 바뀌지 않도록 권한으로 판단) */
+const hasFull = a => can.broad() && 'route' in a;
 
 function requiredDocCodes(a) {
   return S.docTypes.filter(d => docRequired(d, a)).map(d => d.code);
