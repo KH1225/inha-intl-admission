@@ -481,7 +481,8 @@ button.mail-chk{cursor:pointer}
 @media print{.ev-batch{display:none}}
 
 /* 면접 평가: 실시간 인원 */
-.ev-stats{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin:0 0 12px}
+.ev-stats{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin:0 -8px 12px;padding:8px;position:sticky;top:0;z-index:6;background:var(--bg);border-radius:0 0 12px 12px;box-shadow:0 6px 10px -8px rgba(15,23,42,.18)}
+.ev-stats:empty{display:none}
 .ev-stat{min-width:92px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:#fff;display:flex;flex-direction:column;gap:2px}
 .ev-stat span{font-size:12px;font-weight:700;color:var(--mute)}
 .ev-stat b{font-size:24px;line-height:1.1}
