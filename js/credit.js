@@ -68,6 +68,8 @@ const crAutoComment = (school, s) => `${school || '전적대학'}에서 이수�
 
 /* ---------- 화면 ---------- */
 function renderCredit() {
+  // 다시 그리기 전에, 기다리던 자동 저장을 지금 화면 내용으로 바로 시작 (입력 내용이 사라지지 않게)
+  Object.keys(crTimers).forEach(id => { clearTimeout(crTimers[id]); crAutoSave(id); });
   const all = creditAll();
   const depts = S.role === 'dept' ? [] : [...new Set(all.map(a => a.department_id))].map(id => ({ id, nm: deptName(id) })).sort((a, b) => a.nm.localeCompare(b.nm, 'ko'));
   const list = creditTargets();
@@ -85,8 +87,59 @@ function renderCredit() {
     <span class="sp"></span>
     ${crLock() ? '<button class="btn pri" onclick="crBulkSign()">✍ 학과장 서명 · 일괄 제출</button>' : ''}
     <button class="btn" onclick="openCreditPrint()">학점인정 서류 인쇄</button></div>
-  ${list.length ? `<div class="ev-list">${list.map(crCardHtml).join('')}</div>`
+  ${list.length ? `<div class="ev-list">${list.map(crCardHtml).join('')}</div>${crBatchBar(list)}`
     : '<div class="center-msg"><div><h2>심의할 편입학 지원자가 없습니다</h2><p>입학구분이 “편입학”인 지원자가 여기에 표시됩니다.</p></div></div>'}`;
+  crAutoBind();
+}
+/* 목록 맨 아래 고정: 서명 후 제출 (학과장) */
+function crBatchBar(list) {
+  if (!crLock() || !S.creditReady) return '';
+  const open = list.filter(a => !(crOf(a.id) || {}).submitted);
+  if (!open.length) return '';
+  return `<div class="ev-batch"><div><b>미제출 ${open.length}명</b> <span class="muted small">· 입력 내용은 자동으로 저장됩니다</span></div>
+   <span class="sp"></span><button class="btn pri" onclick="crBulkSign()">✍ 서명 후 제출</button></div>`;
+}
+
+/* ---------- 자동 저장 ----------
+   작성 중인 카드에서 무엇이든 바꾸면 잠시 뒤(1.5초) 자동으로 임시저장합니다. 제출은 하지 않습니다. */
+const crTimers = {}, crBusy = {}, crSavedAt = {};
+function crSavedText(id) {
+  const t = crSavedAt[id];
+  return t === 'saving' ? '저장 중…' : t === 'err' ? '<span style="color:var(--bad,#c0392b)">자동 저장 실패 — [지금 저장]을 눌러 주세요</span>'
+    : t ? `자동 저장됨 ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}` : '자동 저장';
+}
+function crShowSaved(id) { const el = $(`#cr-${id} .cr-saved`); if (el) el.innerHTML = crSavedText(id); }
+function crAutoBind() {
+  const main = $('#main'); if (!main || main._crAuto) return;
+  main._crAuto = true;
+  const on = e => { const card = e.target.closest && e.target.closest('.cr-card[data-auto]'); if (card) crTouch(card.id.slice(3)); };
+  main.addEventListener('input', on); main.addEventListener('change', on);
+  // 다른 곳을 누르면(탭 이동 등) 기다리지 않고 바로 저장
+  main.addEventListener('focusout', e => {
+    const card = e.target.closest && e.target.closest('.cr-card[data-auto]'); if (!card) return;
+    const id = card.id.slice(3); if (crTimers[id]) { clearTimeout(crTimers[id]); crAutoSave(id); }
+  });
+  window.addEventListener('beforeunload', e => { if (Object.keys(crTimers).length || Object.values(crBusy).some(Boolean)) { e.preventDefault(); e.returnValue = ''; } });
+}
+function crTouch(id) {
+  if (!$(`#cr-${id}[data-auto]`)) return;
+  clearTimeout(crTimers[id]);
+  crTimers[id] = setTimeout(() => crAutoSave(id), 1500);
+}
+async function crAutoSave(id) {
+  delete crTimers[id];
+  if (crBusy[id]) { crTouch(id); return; } // 저장 중이면 끝난 뒤 다시
+  if (!$(`#cr-${id}[data-auto]`)) return;
+  crBusy[id] = true; crSavedAt[id] = 'saving'; crShowSaved(id);
+  const ok = await crPersist(id, null, true);
+  crBusy[id] = false; crSavedAt[id] = ok ? new Date() : 'err'; crShowSaved(id);
+}
+/* 제출·저장 전에 기다리던 자동 저장을 끝냅니다 */
+async function crFlushAuto() {
+  const ids = Object.keys(crTimers);
+  ids.forEach(id => clearTimeout(crTimers[id]));
+  for (const id of ids) await crAutoSave(id);
+  while (Object.values(crBusy).some(Boolean)) await new Promise(r => setTimeout(r, 100));
 }
 // 구분 버튼: 누르면 선택(색), 다시 누르면 해제
 function crCat(b, x) {
@@ -114,7 +167,8 @@ function crCardHtml(a) {
   const r = crOf(a.id) || {}, rows = crCourses(a.id), ed = crEditable(a.id), sub = !!r.submitted;
   const s = crSums(rows, a), warn = crWarn(a, s);
   const v = k => esc(r[k] == null ? '' : r[k]);
-  return `<div class="ev-card cr-card ${sub ? 'done' : ''}" id="cr-${a.id}">
+  const auto = ed && !sub && S.creditReady;
+  return `<div class="ev-card cr-card ${sub ? 'done' : ''}" id="cr-${a.id}" ${auto ? 'data-auto="1"' : ''}>
    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
     <div style="flex:1;min-width:240px"><h3>${esc(a.name_ko)} <span class="muted small">${esc(a.name_en || '')} · ${esc(a.receipt_no)}</span>
       ${sub ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${sub && r.signature ? ` <span class="sign-mini">${crSignImg(r, '24px')}</span>` : ''}</h3>
@@ -135,8 +189,7 @@ function crCardHtml(a) {
      <span class="muted small">성적증명서의 과목을 엑셀이나 Claude가 정리한 표에서 복사해 한 번에 넣을 수 있습니다. 인정하는 과목은 ‘인정 여부’를 체크하세요.</span></div>` : ''}
    <div style="margin-top:10px">${field('학점인정기준 및 심의의견', ed ? `<div style="display:flex;gap:6px;align-items:flex-start"><textarea class="cr-cm" rows="2" style="flex:1">${v('comment')}</textarea><button class="btn sm" onclick="crFillComment('${a.id}')">자동 문구</button></div>` : `<div style="white-space:pre-wrap">${v('comment') || '-'}</div>`)}</div>
    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap">
-    ${ed && S.creditReady && !sub ? `<button class="btn" onclick="crSave('${a.id}')">임시저장</button>` : ''}
-    ${S.role === 'dept' && !sub && S.creditReady ? `<button class="btn pri" onclick="crSubmit('${a.id}')">서명 후 제출</button>` : ''}
+    ${auto ? `<span class="muted small cr-saved" style="align-self:center">${crSavedText(a.id)}</span><button class="btn" onclick="crSave('${a.id}')">지금 저장</button>` : ''}
     ${can.edit() && sub ? `<button class="btn" onclick="crSave('${a.id}')">수정 저장</button><button class="btn bad" onclick="crUnsubmit('${a.id}')">제출 취소</button>` : ''}
     ${sub ? `<span class="muted small" style="align-self:center">제출 ${fmtDateTime(r.submitted_at)}${r.reviewer_name ? ' · ' + esc(r.reviewer_name) : ''}</span>` : ''}</div></div>`;
 }
@@ -147,6 +200,7 @@ function crAddRow(id, c) {
 }
 function crTotals(el) {
   const card = el.closest('.cr-card'); if (!card) return;
+  crTouch(card.id.slice(3));
   const rows = $$('.cr-row', card).map(tr => ({ category: $('.cr-cat', tr).value, credits: $('.cr-cr', tr).value, recognized: $('.cr-ok', tr).checked }));
   const a = S.apps.find(x => `cr-${x.id}` === card.id), s = crSums(rows, a), w = a ? crWarn(a, s) : '';
   $('.cr-maj', card).innerHTML = crNum(s.maj, s.rMaj); $('.cr-gen', card).innerHTML = crNum(s.gen, s.rGen); $('.cr-tot', card).innerHTML = crNum(s.total, s.rTotal);
@@ -157,6 +211,7 @@ function crFillComment(id) {
   const card = $(`#cr-${id}`);
   const rows = $$('.cr-row', card).map(tr => ({ category: $('.cr-cat', tr).value, credits: $('.cr-cr', tr).value, recognized: $('.cr-ok', tr).checked }));
   $('.cr-cm', card).value = crAutoComment($('.cr-ps', card).value.trim(), crSums(rows, S.apps.find(x => x.id === id)));
+  crTouch(id);
 }
 /* 붙여넣기: 한 줄에 한 과목, 칸은 탭(엑셀) 또는 | 로 구분 — 교과목명  학점  [구분]  [인정]  (구분을 맨 앞에 둬도 인식) */
 function crPaste(id) {
@@ -200,7 +255,7 @@ function crPasteApply(id) {
   rows.forEach(c => crAddRow(id, c));
   crTotals($(`#cr-${id} .cr-tbl`));
   closeModal();
-  toast(`${rows.length}과목을 넣었습니다. 구분·인정 여부를 확인하고 “임시저장”을 눌러 주세요.`);
+  toast(`${rows.length}과목을 넣었습니다. 구분·인정 여부를 확인하세요. (자동으로 저장됩니다)`);
 }
 function crRead(id) {
   const card = $(`#cr-${id}`);
@@ -212,9 +267,9 @@ function crRead(id) {
     .filter(c => c.course_name || c.credits != null);
   return { review, courses };
 }
-async function crPersist(id, extra) {
+async function crPersist(id, extra, quiet) {
   const { review, courses } = crRead(id);
-  if (courses.some(c => c.credits != null && !(c.credits >= 0))) { toast('학점은 0 이상의 숫자로 입력하세요.', 'err'); return false; }
+  if (courses.some(c => c.credits != null && !(c.credits >= 0))) { if (!quiet) toast('학점은 0 이상의 숫자로 입력하세요.', 'err'); return false; }
   const row = { ...review, ...(extra || {}) };
   const r1 = await sb.from('credit_reviews').upsert(row, { onConflict: 'applicant_id' });
   if (r1.error) { toast('저장 실패: ' + errMsg(r1.error), 'err'); return false; }
@@ -230,6 +285,7 @@ async function crPersist(id, extra) {
 }
 async function crSave(id) {
   setBusy(true);
+  await crFlushAuto();
   const ok = await crPersist(id);
   setBusy(false);
   if (ok) { toast('저장했습니다.'); renderCredit(); }
@@ -256,6 +312,7 @@ async function crSubmitSigned(id) {
   const cv = $('#sign-pad'), url = cv && cv._signed ? signDataUrl(cv) : '';
   if (!url) { toast('서명을 해야 제출할 수 있습니다.', 'err'); return; }
   $('#cr-sign-ok').disabled = true;
+  await crFlushAuto();
   const ok = await crPersist(id, { submitted: true, submitted_at: new Date().toISOString(), review_date: todayYMD(), signature: url, reviewer_name: (S.profile && S.profile.display_name) || null });
   if (!ok) { $('#cr-sign-ok').disabled = false; return; }
   closeModal(cv.closest('.backdrop'));
@@ -293,6 +350,7 @@ async function crBulkSubmit() {
   const cv = $('#sign-pad'), url = cv && cv._signed ? signDataUrl(cv) : '';
   if (!url) { toast('서명을 해야 제출할 수 있습니다.', 'err'); return; }
   const btn = $('#cr-bulk-ok'); btn.disabled = true;
+  await crFlushAuto();
   const ready = creditTargets().filter(a => !(crOf(a.id) || {}).submitted && !crBulkCheck(a));
   const now = new Date().toISOString(), who = (S.profile && S.profile.display_name) || null;
   let n = 0;
