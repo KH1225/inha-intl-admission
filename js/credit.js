@@ -71,7 +71,7 @@ function renderCredit() {
   // 다시 그리기 전에, 기다리던 자동 저장을 지금 화면 내용으로 바로 시작 (입력 내용이 사라지지 않게)
   Object.keys(crTimers).forEach(id => { clearTimeout(crTimers[id]); crAutoSave(id); });
   const all = creditAll();
-  const depts = S.role === 'dept' ? [] : [...new Set(all.map(a => a.department_id))].map(id => ({ id, nm: deptName(id) })).sort((a, b) => a.nm.localeCompare(b.nm, 'ko'));
+  const depts = S.role === 'dept' && myDeptIds().length < 2 ? [] : [...new Set(all.map(a => a.department_id))].map(id => ({ id, nm: deptName(id) })).sort((a, b) => a.nm.localeCompare(b.nm, 'ko'));
   const list = creditTargets();
   const done = all.filter(a => crOf(a.id) && crOf(a.id).submitted).length;
   const intro = S.role === 'dept' ? '소속 학과 편입학 지원자의 학점인정 심의를 입력합니다. 서명 후 제출하면 수정할 수 없으니 확인 후 제출하세요.'
