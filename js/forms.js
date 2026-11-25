@@ -22,11 +22,11 @@ function openDetail(id, focus) {
   const kv = (l, v) => `<div><span>${l}</span><b>${v == null || v === '' ? '-' : esc(v)}</b></div>`;
   const basic = `<div class="sec"><h3>기본 정보</h3><div class="basic-wrap">${photoUrl(a) ? `<img class="photo" src="${esc(photoUrl(a))}" alt="사진">` : `<div class="photo none">사진 없음</div>`}<div style="flex:1"><div class="kv">
     ${kv('한글 성명', a.name_ko)}${kv('영문 성명', a.name_en)}${kv('성별', a.gender)}${kv('생년월일', a.birth_date)}${kv('국적', a.nationality)}
-    ${kv('입학구분', a.admission_kind + (a.transfer_year ? ` (${a.transfer_year}학년 편입)` : ''))}${kv('지원학과', d.name_ko)}${kv('전형', qualName(a.qualification_code))}
-    ${full ? kv('지원경로', routeLabel(a)) : ''}
+    ${kv('입학구분', a.admission_kind + (a.transfer_year ? ` (${a.transfer_year}학년 편입)` : ''))}${kv('지원학과', d.name_ko)}${full || a.qualification_code ? kv('전형', qualName(a.qualification_code)) : ''}
+    ${full || 'route' in a ? kv('지원경로', routeLabel(a)) : ''}
     ${kv('어학능력', langLabel(a))}${kv('출신 고교', (a.high_school || '') + (a.domestic_hs ? ' (국내 고교)' : ''))}${a.prev_university ? kv('출신 대학', a.prev_university) : ''}${kv('GPA(내신)', a.gpa)}
     ${full ? kv('비자', a.visa_type) + kv('이메일', a.email) + (emailCheckOn() && emailCheckTarget(a) ? kv('이메일 확인', a.email_verified_at ? '확인 완료 (' + fmtDateTime(a.email_verified_at) + ')' : '미확인') : '') + (a.cc_emails ? kv('추가 이메일', a.cc_emails) : '') + kv('연락처', a.phone) + kv('기숙사 신청', a.dorm_application ? '신청' + (dormRoom(a.dorm_room) ? ` — ${dormRoom(a.dorm_room).ko}` : '') : '미신청') : ''}
-    ${kv('지원일자', fmtDate(a.created_at))}</div></div></div>
+    ${full ? kv('지원일자', fmtDate(a.created_at)) : ''}</div></div></div>
     ${full && can.broad() && langReq(a).need ? `<div class="warn" style="margin-top:10px"><b>한국어성적표 추가제출 필요</b> — ${esc(langReq(a).reason)}. 면접은 볼 수 있지만 ${esc(LANG_DEADLINE)}까지 TOPIK ${langReq(a).min}급 이상(또는 사회통합 ${LANG_KIIP_MIN}단계 이상) 성적표를 내야 최종합격입니다. (${langDday()})</div>` : ''}
     ${full && a.memo ? `<div style="margin-top:10px"><span class="muted small">비고</span><div>${esc(a.memo)}</div></div>` : ''}</div>`;
 
