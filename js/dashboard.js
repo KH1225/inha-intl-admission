@@ -177,7 +177,7 @@ function langCardHtml() {
 }
 function langCardFilter() { S.f.lang = S.f.lang === 'need' ? '' : 'need'; S.f.status = ''; S.f.page = 1; renderDash(); }
 function resetFilters() {
-  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', lang: '', route: '', emailchk: '', sortKey: 'receipt_no', sortDir: 1, page: 1, passIds: null };
+  S.f = { q: '', status: '', kind: '', qual: '', nat: '', dept: '', schol: '', agency: '', lang: '', route: '', emailchk: '', sortKey: S.role === 'dept' ? 'order' : 'receipt_no', sortDir: 1, page: 1, passIds: null };
   renderDash();
 }
 let searchTimer = null;
@@ -191,7 +191,7 @@ function onSearch(v) {
 function sortVal(a, k) {
   switch (k) {
     case 'dept': return deptName(a.department_id);
-    case 'order': { const o = orderOf(a); return o == null ? 1e9 : o; }
+    case 'order': { const o = orderOf(a); return o == null ? '\uffff' + a.receipt_no : deptName(a.department_id) + '\u0001' + String(o).padStart(6, '0'); }
     case 'status': return STATUSES.indexOf(a.status);
     case 'topik': return (a.topik_level || 0) * 10 + (a.kiip_level != null ? a.kiip_level + 1 : 0);
     default: return a[k] == null ? '' : a[k];
@@ -248,7 +248,7 @@ function rowHtml(a) {
   const dots = Array.from({ length: dp.need }, (_, i) => `<i class="${i < dp.got ? '' : 'no'}"></i>`).join('');
   const ord = orderOf(a);
   return `<tr class="${a.status === '접수취소' ? 'cancelled' : ''}">
-    <td><span class="rno">${esc(a.receipt_no)}</span>${typeof isSample === 'function' && isSample(a) ? ' <span class="pill s-cancel">샘플</span>' : ''}</td>
+    <td>${S.role === 'dept' ? `<span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span><div class="muted small">${esc(a.receipt_no)}</div>` : `<span class="rno">${esc(a.receipt_no)}</span>`}${typeof isSample === 'function' && isSample(a) ? ' <span class="pill s-cancel">샘플</span>' : ''}</td>
     <td><div class="who-cell">${avatarHtml(a)}<div>
       <div class="nm"><span class="nw">${esc(a.name_ko)}</span> <span class="muted small">${a.gender === '여' ? '여' : '남'}</span>${ag}</div>
       <div class="muted small">${esc(a.name_en)}</div>
@@ -257,7 +257,7 @@ function rowHtml(a) {
     <td style="white-space:nowrap">${esc(a.nationality)}</td>
     <td><div class="nm nw">${esc(d.name_ko || '-')} <span class="badge kind ${a.admission_kind === '편입학' ? 'tr' : ''}">${esc(a.admission_kind === '편입학' ? '편입학' : '신입학')}</span></div>
       ${d.program_type ? `<div class="muted small">${esc(d.program_type === '전공심화' ? '전공심화과정' : d.program_type)}</div>` : ''}</td>
-    <td><span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span></td>
+    ${S.role === 'dept' ? '' : `<td><span class="ord ${ord == null ? 'none' : ''}">${ord == null ? '미지정' : ord + '번'}</span></td>`}
     <td style="white-space:nowrap">${langLabel(a) ? `<b>${esc(langLabel(a))}</b>` : '<span class="muted">-</span>'}${can.broad() && langReq(a).need ? `<div><span class="lang-need" title="${esc(langReq(a).reason)}">성적표 추가제출 (${langReq(a).min}급↑)</span></div>` : ''}</td>
     ${can.broad() ? `<td>${dp.need ? `<div class="dots">${dots}</div><div class="dc ${dp.got >= dp.need ? 'ok' : 'no'}">${dp.got}/${dp.need} 구비${dp.got >= dp.need ? '' : ' 미비'}</div>` : '<span class="muted">-</span>'}</td>` : ''}
     <td>${statusCell(a)}</td>
@@ -291,7 +291,8 @@ async function toggleEmailVerified(id) {
 function renderTable() {
   const list = filteredApps();
   const th = (k, label) => `<th class="s" onclick="sortBy('${k}')">${label}${S.f.sortKey === k ? (S.f.sortDir > 0 ? ' ▲' : ' ▼') : ' ↕'}</th>`;
-  $('#thead').innerHTML = `<tr>${th('receipt_no', '접수번호')}${th('name_ko', '지원자 성명')}${th('nationality', '국적')}${th('dept', '지원 학과 / 과정')}${th('order', '면접 순서')}${th('topik', '어학 능력')}${can.broad() ? '<th>서류 구비</th>' : ''}${th('status', '심사 진행상태')}${th('created_at', '지원일자')}<th class="right">관리</th></tr>`;
+  const deptView = S.role === 'dept';
+  $('#thead').innerHTML = `<tr>${deptView ? th('order', '면접 순서') : th('receipt_no', '접수번호')}${th('name_ko', '지원자 성명')}${th('nationality', '국적')}${th('dept', '지원 학과 / 과정')}${deptView ? '' : th('order', '면접 순서')}${th('topik', '어학 능력')}${can.broad() ? '<th>서류 구비</th>' : ''}${th('status', '심사 진행상태')}${th('created_at', '지원일자')}<th class="right">관리</th></tr>`;
   const shown = list.slice(0, S.f.page * PAGE_SIZE);
   $('#tbody').innerHTML = shown.map(rowHtml).join('') || `<tr><td colspan="10" class="muted" style="text-align:center;padding:28px">조건에 맞는 지원자가 없습니다.</td></tr>`;
   const nc = cnt('접수취소');
