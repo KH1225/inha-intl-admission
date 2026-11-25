@@ -492,3 +492,9 @@ button.mail-chk{cursor:pointer}
 .ev-stat.none b{color:var(--mute)}
 .ev-stat-note{font-size:12px;line-height:1.5;align-self:center;padding-left:4px}
 @media print{.ev-stats{display:none}}
+
+/* 서류 보완 현황 */
+.fix-panel{margin-bottom:14px;border-left:4px solid #ea580c}
+.fix-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;cursor:pointer}
+.fix-head .sp{flex:1}
+.badge.doc-miss{color:#c2410c;border-color:#fdba74;background:#fff7ed}

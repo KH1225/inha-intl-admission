@@ -112,6 +112,11 @@ const isPartner = a => !!(a && (a.partner_school_id || a.route === ROUTE_PARTNER
 /* 원장·학과장 계정은 면접 대상자 전용 보기(interview_targets)에서 불러오는데,
    그 보기에 지원경로·협약학교 칸이 없으면 협약 여부를 알 수 없으므로 표시하지 않습니다 */
 const partnerKnown = a => !!a && ('route' in a || 'partner_school_id' in a);
+/* 제출서류 미비 (총괄관리자·국제교류팀·조회전용 화면에서만 — 원장·학과장은 서류 정보를 불러오지 않음) */
+function docMissBadge(a) {
+  const m = typeof missingDocs === 'function' ? missingDocs(a) : [];
+  return m.length ? ` <span class="badge doc-miss" title="미비 서류: ${esc(m.join(', '))}">서류 미비 ${m.length}건</span>` : '';
+}
 function transferBadges(a) {
   if (a.admission_kind !== '편입학') return '';
   const ps = partnerName(a), isP = isPartner(a);
@@ -129,7 +134,7 @@ function ivWhen(a) {
 function evalCardView(a) {
   const e1 = getEv(a.id, '원장'), e2 = getEv(a.id, '학과장'), o = orderOf(a);
   const done = e1 && e1.submitted;
-  return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)} <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
+  return `<div class="ev-card ${done ? 'done' : ''}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)}${docMissBadge(a)} <span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''} ${ivWhen(a)}</div>
    
    <div class="kv" style="margin-top:8px"><div><span>${esc(whoLabel(a, '원장'))}</span><b>${evBadge(e1)} ${e1 && e1.submitted ? signImg(e1, '22px') : ''}</b></div><div><span>${esc(whoLabel(a, '학과장'))}</span><b>${evBadge(e2)} ${e2 && e2.submitted ? signImg(e2, '22px') : ''}</b></div></div>
@@ -155,7 +160,7 @@ function evalCardEdit(a, t) {
   const opts = hasC ? ['불합격'] : ['합격', '보류'];
   const resHtml = `<div><div class="muted small" style="margin-bottom:4px">${t === '원장' ? '종합 판정' : '판정'} ${complete ? '' : '(3개 항목 평가 후 선택)'}</div><div style="display:flex;gap:6px">${complete ? opts.map(r =>
       `<button type="button" class="res-btn r-${r} ${res === r ? 'on' : ''}" ${locked ? 'disabled' : ''} onclick="setResult('${a.id}','${r}')">${r}</button>`).join('') : '<span class="muted">-</span>'}</div></div>`;
-  return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)}
+  return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)}${docMissBadge(a)}
     ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${e.submitted && signImg(e, '26px') ? ` <span class="sign-mini">${signImg(e, '26px')}</span>` : ''}</h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.prev_university ? ' · ' + esc(a.prev_university) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''} ${ivWhen(a)}</div></div></div>
    <div class="ev-3">${items}</div>
