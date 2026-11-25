@@ -40,7 +40,7 @@ function openDetail(id, focus) {
 
   const interview = `<div class="sec"><h3>면접</h3><div class="kv">
     ${kv('면접 순서', orderOf(a) == null ? '미지정' : orderOf(a) + '번')}${kv('면접 일정', iv.scheduled_at ? fmtDateTime(iv.scheduled_at) : (a.scheduled_at ? fmtDateTime(a.scheduled_at) : ''))}
-    ${kv('국제교류원장 평가', S.role === 'dept' ? '(비공개)' : evalSummary(id, '원장'))}${kv('학과장 평가', evalSummary(id, '학과장'))}</div></div>`;
+    ${kv('국제교류원장 평가', evalSummary(id, '원장'))}${kv('학과장 평가', evalSummary(id, '학과장'))}</div></div>`;
 
   const schol = full && can.broad() ? `<div class="sec"><h3>장학금 <span>${can.edit() ? `<button class="btn sm" onclick="openScholEdit('${id}')">직접 지정</button>
       ${a.scholarship_source === '수동' ? `<button class="btn sm" onclick="resetSchol('${id}')">자동으로 되돌리기</button>` : ''}` : ''}</span></h3><div class="kv">
