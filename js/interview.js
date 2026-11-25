@@ -55,12 +55,12 @@ function autoResult(d) {
   return g.includes('C') ? '불합격' : '합격';
 }
 
-function evalTargets() {
+function evalTargets(allStatus) {
   let list = S.apps.filter(a => S.interviews[a.id] || a.status === '면접심사');
   // 학과장·학과 면접위원은 자기가 맡은 지원자만 봅니다
   if (S.role === 'dept') list = list.filter(a => myTypeFor(a));
   if (S.evalFilter.dept) list = list.filter(a => String(a.department_id) === String(S.evalFilter.dept));
-  if (S.evalFilter.pending && myEvalType()) {
+  if (!allStatus && S.evalFilter.pending && myEvalType()) {
     list = list.filter(a => { const t = myTypeFor(a); return t && !(getEv(a.id, t) && getEv(a.id, t).submitted); });
   }
   return list.sort((x, y) => {
@@ -95,8 +95,10 @@ function renderEval() {
     ${can.admin() ? `<button class="btn" onclick="openOrderModal()">면접 순서 · 일정 지정</button><button class="btn" onclick="openPanelModal()">면접위원 배정</button>` : ''}
     ${can.edit() ? `<button class="btn blue" onclick="openMailModal('면접안내')">면접 안내 메일</button>` : ''}
     <button class="btn" onclick="printEvalSheet()">면접평가표 인쇄</button></div>
+  ${evalStatsHtml()}
   ${list.length ? `<div class="ev-list">${list.map(a => { const mt = myTypeFor(a); return mt ? evalCardEdit(a, mt) : evalCardView(a); }).join('')}</div>${evalBatchBar()}`
     : '<div class="center-msg"><div><h2>평가할 지원자가 없습니다</h2><p>면접심사 단계로 변경된 지원자가 여기에 표시됩니다.</p></div></div>'}`;
+  evStartPoll();
 }
 
 function evBadge(e) {
@@ -146,22 +148,18 @@ function evalCardEdit(a, t) {
   }).join('');
   const hasC = [d.item1, d.item2, d.item3].includes('C');
   const complete = d.item1 && d.item2 && d.item3;
-  let resHtml = '';
-  if (t === '원장') {
-    const opts = hasC ? ['불합격'] : ['합격', '보류'];
-    resHtml = `<div><div class="muted small" style="margin-bottom:4px">종합 판정 ${complete ? '' : '(3개 항목 평가 후 자동 입력)'}</div><div style="display:flex;gap:6px">${complete ? opts.map(r =>
+  // 판정: C가 있으면 불합격, 없으면 합격/보류 중 선택 (학과 쪽·국제교류원 쪽 동일)
+  const opts = hasC ? ['불합격'] : ['합격', '보류'];
+  const resHtml = `<div><div class="muted small" style="margin-bottom:4px">${t === '원장' ? '종합 판정' : '판정'} ${complete ? '' : '(3개 항목 평가 후 선택)'}</div><div style="display:flex;gap:6px">${complete ? opts.map(r =>
       `<button type="button" class="res-btn r-${r} ${res === r ? 'on' : ''}" ${locked ? 'disabled' : ''} onclick="setResult('${a.id}','${r}')">${r}</button>`).join('') : '<span class="muted">-</span>'}</div></div>`;
-  } else {
-    resHtml = `<div><div class="muted small" style="margin-bottom:4px">자동 판정</div><span class="res-btn on r-${res || '보류'}" style="${res ? '' : 'background:var(--soft);color:var(--mute);border-color:var(--line)'}">${esc(res || '-')}</span></div>`;
-  }
   return `<div class="ev-card ${e.submitted ? 'done' : ''}" id="ev-${a.id}"><div class="ev-row">${avatarHtml(a, 'ev-photo')}<div class="ev-main"><h3>${o != null ? `<span class="rno">${o}번</span> ` : ''}${esc(a.name_ko)} <span class="muted small">${esc(a.name_en)} · ${esc(a.receipt_no)}</span>${transferBadges(a)}
     ${e.submitted ? '<span class="pill s-pass">제출 완료</span>' : '<span class="pill s-fix">작성 중</span>'}${e.submitted && signImg(e, '26px') ? ` <span class="sign-mini">${signImg(e, '26px')}</span>` : ''}</h3>
    <div class="muted small">${esc(deptName(a.department_id))} · ${esc(a.nationality)}${langLabel(a) ? ' · ' + langLabel(a) : ''}${a.high_school ? ' · ' + esc(a.high_school) : ''}${a.prev_university ? ' · ' + esc(a.prev_university) : ''}${a.status !== '면접심사' ? ` · 현재 상태: ${esc(a.status)}` : ''} ${ivWhen(a)}</div></div></div>
    <div class="ev-3">${items}</div>
    ${ref ? `<div class="ev-ref"><span>${esc(whoLabel(a, '학과장'))} 평가(참고): ${evBadge(ref)}</span><span>${ref.comment ? esc(ref.comment) : ''}</span></div>` : ''}
-   <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (선택)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value">${esc(d.comment)}</textarea>
+   <div class="ev-bottom"><textarea id="evc-${a.id}" ${locked ? 'disabled' : ''} placeholder="${t === '원장' ? '종합심사의견 (선택)' : '평가 의견 (선택)'}" oninput="S.evalDraft['${a.id}'].comment=this.value;evTouch('${a.id}')">${esc(d.comment)}</textarea>
     ${resHtml}
-    ${locked ? '' : `<div style="display:flex;gap:6px"><button class="btn" onclick="saveEval('${a.id}',false)">임시저장</button><button class="btn pri" onclick="saveEval('${a.id}',true)">평가 제출</button></div>`}</div></div>`;
+    ${locked ? '' : `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="muted small ev-saved">${evSavedText(a.id)}</span><button class="btn" onclick="saveEval('${a.id}',false)">지금 저장</button><button class="btn pri" onclick="saveEval('${a.id}',true)">평가 제출</button></div>`}</div></div>`;
 }
 function setGrade(id, k, g) {
   const d = draftOf(id);
@@ -169,9 +167,10 @@ function setGrade(id, k, g) {
   d.result = '';
   const auto = autoResult(d);
   if (auto) d.result = auto;
+  evTouch(id);
   keepScrollRender(id);
 }
-function setResult(id, r) { draftOf(id).result = r; keepScrollRender(id); }
+function setResult(id, r) { draftOf(id).result = r; evTouch(id); keepScrollRender(id); }
 function keepScrollRender(id) {
   const y = window.scrollY;
   renderEval();
@@ -186,6 +185,7 @@ async function saveEval(id, submit, signature) {
     if (!complete) { toast('3개 항목을 모두 평가해야 제출할 수 있습니다.', 'err'); return; }
     if (!signature) { openSignPad(id); return; }
   }
+  await evFlushAuto();
   const err = await writeEval(id, t, d, submit, signature);
   if (err) { toast(err, 'err'); return false; }
   toast(submit ? '평가를 제출했습니다.' : '임시저장했습니다.');
@@ -195,7 +195,7 @@ async function saveEval(id, submit, signature) {
   return true;
 }
 /* 평가 1건 저장 (화면 갱신 없음). 실패하면 오류 문구, 성공하면 '' */
-async function writeEval(id, t, d, submit, signature) {
+async function writeEval(id, t, d, submit, signature, keepDraft) {
   const complete = d.item1 && d.item2 && d.item3;
   const row = { item1: d.item1 || null, item2: d.item2 || null, item3: d.item3 || null, comment: (d.comment || '').trim() || null, result: complete ? (d.result || autoResult(d)) : null };
   if (submit) { row.submitted = true; row.submitted_at = new Date().toISOString(); if (signature) row.signature = signature; }
@@ -207,7 +207,7 @@ async function writeEval(id, t, d, submit, signature) {
   else res = await sb.from('interview_evaluations').insert({ applicant_id: id, evaluator_type: t, ...row }).select().single();
   if (res.error) return /signature/.test(errMsg(res.error)) ? '서명 저장 칸이 DB에 아직 없습니다. 관리자에게 SQL 적용을 요청하세요.' : errMsg(res.error);
   S.evals[id + '|' + t] = res.data;
-  delete S.evalDraft[id];
+  if (!keepDraft) delete S.evalDraft[id];
   return '';
 }
 
@@ -234,6 +234,7 @@ function evalBatchBar() {
 }
 async function saveAllEvals() {
   syncEvalComments();
+  await evFlushAuto();
   // 입력한 내용이 있는 카드만 저장 (아무것도 안 건드린 카드는 건너뜀)
   const list = openEvalCards().filter(a => {
     const d = S.evalDraft[a.id]; if (!d) return false;
@@ -255,6 +256,7 @@ async function saveAllEvals() {
   keepScrollRender();
 }
 async function submitAllEvals(url) {
+  await evFlushAuto();
   const list = openEvalCards().filter(a => draftDone(a.id));
   let n = 0, err = '', dir = false;
   for (const a of list) {
@@ -647,4 +649,89 @@ async function savePanels() {
   if (err) { toast(errMsg(err), 'err'); return; }
   toast('면접위원 배정을 저장했습니다.');
   closeModal(); await loadAux(); renderShell();
+}
+
+
+/* ---------- 자동 저장 ----------
+   A·B·C, 판정, 의견을 바꾸면 1.5초 뒤 자동으로 임시저장합니다. 제출은 하지 않습니다. */
+const evTimers = {}, evBusy = {}, evSavedAt = {};
+function evSavedText(id) {
+  const t = evSavedAt[id];
+  return t === 'saving' ? '저장 중…' : t === 'err' ? '<span style="color:var(--bad,#c0392b)">자동 저장 실패 — [지금 저장]을 눌러 주세요</span>'
+    : t ? `자동 저장됨 ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}` : '자동 저장';
+}
+function evShowSaved(id) { const el = $(`#ev-${id} .ev-saved`); if (el) el.innerHTML = evSavedText(id); }
+function evTouch(id) {
+  const a = S.apps.find(x => x.id === id), t = myTypeFor(a); if (!t) return;
+  const e = getEv(id, t); if ((e && e.submitted) || a.status !== '면접심사') return;
+  clearTimeout(evTimers[id]);
+  evTimers[id] = setTimeout(() => evAutoSave(id), 1500);
+}
+const evSame = (d, e) => ['item1', 'item2', 'item3', 'result'].every(k => (d[k] || '') === (e[k] || '')) && (d.comment || '').trim() === (e.comment || '');
+async function evAutoSave(id) {
+  delete evTimers[id];
+  if (evBusy[id]) { evTouch(id); return; } // 저장 중이면 끝난 뒤 다시
+  const a = S.apps.find(x => x.id === id), t = myTypeFor(a), d = S.evalDraft[id];
+  if (!t || !d) return;
+  const e = getEv(id, t);
+  if (e && e.submitted) return;
+  if (e ? evSame(d, e) : !(d.item1 || d.item2 || d.item3 || (d.comment || '').trim())) return;
+  evBusy[id] = true; evSavedAt[id] = 'saving'; evShowSaved(id);
+  const err = await writeEval(id, t, { ...d }, false, null, true);
+  evBusy[id] = false; evSavedAt[id] = err ? 'err' : new Date(); evShowSaved(id);
+  updateEvalStats();
+}
+/* 제출·저장 전에 기다리던 자동 저장을 끝냅니다 */
+async function evFlushAuto() {
+  const ids = Object.keys(evTimers);
+  ids.forEach(id => clearTimeout(evTimers[id]));
+  for (const id of ids) await evAutoSave(id);
+  while (Object.values(evBusy).some(Boolean)) await new Promise(r => setTimeout(r, 100));
+}
+window.addEventListener('beforeunload', e => { if (Object.keys(evTimers).length || Object.values(evBusy).some(Boolean)) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- 실시간 인원 (합격 · 불합격 · 보류 · 미평가) ----------
+   학과장·학과 면접위원은 학과 판정, 그 밖에는 국제교류원(최종) 판정 기준.
+   내가 입력 중인 판정은 바로 반영되고, 다른 평가자의 저장 내용은 20초마다 불러옵니다. */
+function evalStatsHtml() {
+  const list = evalTargets(true); if (!list.length) return '<div id="ev-stats"></div>';
+  const side = S.role === 'dept' ? '학과장' : '원장';
+  const c = { 합격: 0, 불합격: 0, 보류: 0, 미평가: 0 }; let sub = 0;
+  list.forEach(a => {
+    const e = getEv(a.id, side), d = myTypeFor(a) === side ? S.evalDraft[a.id] : null;
+    const r = d ? (d.item1 && d.item2 && d.item3 ? d.result || autoResult(d) : '') : (e && e.result) || '';
+    c[c[r] != null && r !== '미평가' ? r : '미평가']++;
+    if (e && e.submitted) sub++;
+  });
+  const chip = (k, cls) => `<div class="ev-stat ${cls}"><span>${k}</span><b>${c[k]}</b></div>`;
+  return `<div id="ev-stats" class="ev-stats">${chip('합격', 'pass')}${chip('불합격', 'fail')}${chip('보류', 'hold')}${chip('미평가', 'none')}
+   <div class="ev-stat-note"><b>${side === '원장' ? '국제교류원 판정' : '학과 판정'} 기준</b><br>전체 ${list.length}명 · 제출 완료 ${sub}명<br><span class="muted">작성 중인 판정 포함 · 20초마다 자동 갱신</span></div></div>`;
+}
+function updateEvalStats() {
+  const el = $('#ev-stats'); if (el) el.outerHTML = evalStatsHtml();
+  const hdr = $('.toolbar'); if (hdr) hdr.innerHTML = toolbarHtml();
+}
+let evPollTimer = null;
+function evStartPoll() { if (!evPollTimer) evPollTimer = setInterval(evPoll, 20000); }
+async function evPoll() {
+  if (S.tab !== 'eval' || document.hidden || !S.term) return;
+  if (Object.keys(evTimers).length || Object.values(evBusy).some(Boolean)) return;
+  const ids = S.apps.filter(a => S.interviews[a.id] || a.status === '면접심사').map(a => a.id);
+  if (!ids.length) return;
+  const rows = [];
+  for (const part of chunk(ids, 100)) {
+    const { data, error } = await sb.from('interview_evaluations').select('*').in('applicant_id', part);
+    if (error) return;
+    rows.push(...(data || []));
+  }
+  let changed = false;
+  rows.forEach(r => {
+    const k = r.applicant_id + '|' + r.evaluator_type, o = S.evals[k];
+    if (!o || o.updated_at !== r.updated_at || o.submitted !== r.submitted || o.result !== r.result) { S.evals[k] = r; changed = true; }
+  });
+  if (!changed || S.tab !== 'eval') return;
+  // 입력 중이면 화면은 그대로 두고 인원만 갱신
+  const ae = document.activeElement;
+  if (ae && $('#main') && $('#main').contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) updateEvalStats();
+  else keepScrollRender();
 }
