@@ -292,7 +292,7 @@ ${MAIL_CONTACT_EN}`
   }
 };
 
-let mailKind = '면접안내', mailLogs = {};
+let mailKind = '면접안내', mailLogs = {}, mailDept = '';
 const mailKey = k => `mailTpl:${S.term ? S.term.id : ''}:${k}`;
 /* 예전에 저장해 둔 안내문에 남아 있는 옛 문구를 새 문구로 바꿉니다 (직접 고친 다른 내용은 그대로) */
 const MAIL_UPGRADES = [
@@ -342,11 +342,16 @@ async function openMailModal(kind) {
   const sv = mailSaved(mailKind);
   const depts = [...new Set(list.map(a => a.department_id))].map(id => ({ id, name: deptName(id) })).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
   const hasCc = !!(S.hasCol && S.hasCol.cc_emails);
+  if (mailDept && !depts.some(d => String(d.id) === mailDept)) mailDept = '';
+  const deptSel = depts.length > 1 ? `<label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:8px">학과
+      <select id="ml-dept" onchange="mailDeptFilter(this.value)" style="width:auto;padding:5px 8px;font-size:13px">
+       <option value="">전체 학과 (${list.length}명)</option>${depts.map(d => `<option value="${esc(d.id)}" ${String(d.id) === mailDept ? 'selected' : ''}>${esc(d.name)} (${list.filter(a => a.department_id === d.id).length}명)</option>`).join('')}</select>
+      <span class="muted small" style="font-weight:500">— 고른 학과 지원자에게만 발송됩니다</span></label>` : '';
   const rows = list.map(a => {
     const ok = emailOk(a.email), sent = mailLogs[a.id], on = ok && !sent && (!K.defaultOn || K.defaultOn(a));
-    return `<tr><td><input type="checkbox" class="ml-ck" data-id="${a.id}" ${on ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="mailCount()" style="width:auto"></td>
+    return `<tr data-dept="${esc(a.department_id)}"><td><input type="checkbox" class="ml-ck" data-id="${a.id}" ${on ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="mailCount()" style="width:auto"></td>
       <td class="nw">${esc(a.receipt_no)}</td><td>${esc(a.name_ko)}<div class="muted small">${esc(a.name_en)}</div></td>
-      <td>${esc(deptName(a.department_id))}</td><td class="nw"><span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></td>
+      <td class="nw">${esc(deptName(a.department_id))}</td><td class="nw"><span class="pill ${STATUS_CLS[a.status]}">${esc(a.status)}</span></td>
       <td>${ok ? esc(a.email) : '<span style="color:var(--bad)">이메일 없음</span>'}</td>
       ${hasCc ? `<td><input class="ml-cc" data-id="${a.id}" value="${esc(a.cc_emails || '')}" placeholder="보호자·유학원 이메일" style="min-width:190px;padding:5px 7px;font-size:12px"></td>` : ''}
       <td class="nw small">${K.info(a)}</td>
@@ -358,6 +363,7 @@ async function openMailModal(kind) {
    <div class="m-body">
     <div class="notice small" style="margin-bottom:10px">${esc(K.desc)}</div>
     <div class="sec"><h3>받는 사람 <span class="muted small">${list.length ? `<a href="#" onclick="mailAll(true);return false">전체 선택</a> · <a href="#" onclick="mailAll(false);return false">전체 해제</a> · 이미 보낸 사람과 이메일이 없는 사람은 처음에 선택되지 않습니다` : ''}</span></h3>
+     ${deptSel}
      ${hasCc && list.length ? `<label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:8px"><input id="ml-cc-on" type="checkbox" checked style="width:auto"> 추가 이메일에도 같은 내용 보내기 (참조/CC) <span class="muted small" style="font-weight:500">— 쉼표로 여러 개(최대 3개), 입력한 주소는 지원자 정보에 저장됩니다</span></label>` : ''}
      ${list.length ? `<div class="tbl-wrap" style="max-height:260px;overflow:auto"><table class="tbl" style="min-width:${hasCc ? 960 : 780}px"><thead><tr><th></th><th>접수번호</th><th>성명</th><th>학과</th><th>상태</th><th>이메일</th>${hasCc ? '<th>추가 이메일 (참조)</th>' : ''}<th>정보</th><th>보낸 시각</th></tr></thead><tbody>${rows}</tbody></table></div>`
        : '<div class="muted">이 메일을 받을 지원자가 없습니다.</div>'}</div>
@@ -379,13 +385,21 @@ async function openMailModal(kind) {
     <button class="btn" onclick="closeModal(this.closest('.backdrop'))">닫기</button>
     <button class="btn" id="ml-test" onclick="mailSend(true)" ${list.length ? '' : 'disabled'}>내 메일로 테스트 발송</button>
     <button class="btn pri" id="ml-go" onclick="mailSend(false)">발송</button></div>`, { wide: true, sticky: true }).firstElementChild.classList.add('mail');
+  mailDeptFilter(mailDept);
+}
+/* 학과 선택: 다른 학과 행은 숨기고, 숨긴 행은 발송·선택 수에서 빠집니다 */
+function mailDeptFilter(v) {
+  mailDept = v || '';
+  $$('.ml-ck').forEach(c => { const tr = c.closest('tr'); tr.style.display = !mailDept || tr.dataset.dept === mailDept ? '' : 'none'; });
+  $$('.ml-zd').forEach(i => { const f = i.closest('.fld') || i.parentElement; f.style.display = !mailDept || i.dataset.dept === mailDept ? '' : 'none'; });
   mailCount();
 }
-function mailAll(on) { $$('.ml-ck').forEach(c => { if (!c.disabled) c.checked = on; }); mailCount(); }
-function mailChecked() { return $$('.ml-ck').filter(c => c.checked).map(c => c.dataset.id); }
+const mailVisible = c => c.closest('tr').style.display !== 'none';
+function mailAll(on) { $$('.ml-ck').forEach(c => { if (!c.disabled && mailVisible(c)) c.checked = on; }); mailCount(); }
+function mailChecked() { return $$('.ml-ck').filter(c => c.checked && mailVisible(c)).map(c => c.dataset.id); }
 function mailCount() {
-  const n = mailChecked().length;
-  $('#ml-cnt').textContent = `선택 ${n}명`;
+  const n = mailChecked().length, sel = $('#ml-dept');
+  $('#ml-cnt').textContent = `선택 ${n}명` + (sel && sel.value ? ` · ${sel.selectedOptions[0].text.replace(/\s*\(\d+명\)$/, '')}` : '');
   $('#ml-go').textContent = n ? `선택한 ${n}명에게 발송` : '발송';
   $('#ml-go').disabled = !n;
   mailPreview();
@@ -530,7 +544,7 @@ async function mailSend(test) {
       return { [id]: files };
     };
     if (test) {
-      const first = ids[0] || mailTargets()[0].id;
+      const vis = $$('.ml-ck').filter(mailVisible), first = ids[0] || (vis[0] || $$('.ml-ck')[0]).dataset.id;
       if (attach) res.innerHTML = `<div class="notice">${esc(attach.label)} PDF 만드는 중…</div>`;
       const r = await mailInvoke({ ...req, applicant_ids: [first], test: true, ...(attach ? { attachments: await withAttach(first, true) } : {}) });
       res.innerHTML = '';
