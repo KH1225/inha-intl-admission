@@ -16,8 +16,9 @@ const MAIL_KINDS = {
     desc: '면접심사 단계 지원자에게 면접 일시·순서·Zoom 주소를 안내합니다.',
     targets: () => S.apps.filter(a => a.status === '면접심사' || (S.interviews[a.id] && !['불합격', '접수취소'].includes(a.status))),
     zoom: true,
+    tplVer: 2,
     info: a => { const iv = S.interviews[a.id] || {}; return iv.scheduled_at ? fmtDateTime(iv.scheduled_at) : '<span style="color:var(--warn)">면접일시 미정</span>'; },
-    vars: ['이름', '영문이름', '접수번호', '학과', '면접일시', '면접일시_영문', '면접순서', '면접순서_영문', '줌주소'],
+    vars: ['이름', '영문이름', '접수번호', '학과', '면접일시', '면접일시_영문', '면접순서', '면접순서_영문', '면접번호', '줌주소', '회의ID', '암호'],
     subject: '[인하공업전문대학] 외국인 특별전형 면접 안내 / Interview Notice - {영문이름}',
     body: `{이름}({영문이름}) 님, 안녕하세요.
 인하공업전문대학 국제교류팀입니다.
@@ -28,12 +29,14 @@ const MAIL_KINDS = {
 ■ 면접일시: {면접일시} (한국시간)
 ■ 면접순서: {면접순서}
 ■ Zoom 주소: {줌주소}
+    - 회의 ID: {회의ID}
+    - 암호: {암호}
 
 [유의사항]
 - 면접 시작 10분 전까지 Zoom에 접속하여 대기해 주세요.
-- Zoom 표시 이름은 영문이름("{영문이름}")으로 설정해 주세요.
-- 본인 확인을 위해 여권을 준비해 주세요.
+- Zoom 표시 이름은 "면접번호_영문이름"("{면접번호}_{영문이름}")으로 설정해 주세요.
 - 카메라와 마이크를 켠 상태로 참여해야 합니다.
+- 면접은 한국어(자기소개, 지원동기, 졸업 후 진로 등)로 진행됩니다.
 
 ${MAIL_CONTACT_KO}${MAIL_SEP}Dear {영문이름},
 
@@ -45,12 +48,14 @@ Congratulations on passing the document screening. Your online interview (Zoom) 
 ■ Date & Time: {면접일시_영문}
 ■ Interview Order: {면접순서_영문}
 ■ Zoom Link: {줌주소}
+    - Meeting ID: {회의ID}
+    - Passcode: {암호}
 
 [Notes]
 - Please join the Zoom meeting at least 10 minutes before your interview.
-- Set your Zoom display name to your English name ("{영문이름}").
-- Please have your passport ready for identity verification.
+- Set your Zoom display name to "InterviewNo_EnglishName" ("{면접번호}_{영문이름}").
 - Your camera and microphone must be turned on.
+- The interview will be conducted in Korean (self-introduction, motivation for applying, career plans after graduation, etc.).
 
 ${MAIL_CONTACT_EN}`
   },
@@ -315,6 +320,8 @@ function mailUpgrade(t) { return typeof t === 'string' ? MAIL_UPGRADES.reduce((x
 function mailSaved(k) {
   try {
     const sv = JSON.parse(localStorage.getItem(mailKey(k)) || 'null') || {};
+    // 기본 안내문이 바뀐 경우(tplVer), 예전에 저장된 제목·본문은 쓰지 않고 새 기본 안내문으로 시작
+    if ((MAIL_KINDS[k].tplVer || 1) !== (sv.ver || 1)) { delete sv.body; delete sv.subject; }
     if (sv.body) sv.body = mailUpgrade(sv.body);
     if (sv.subject) sv.subject = mailUpgrade(sv.subject);
     return sv;
@@ -368,8 +375,11 @@ async function openMailModal(kind) {
      ${list.length ? `<div class="tbl-wrap" style="max-height:260px;overflow:auto"><table class="tbl" style="min-width:${hasCc ? 960 : 780}px"><thead><tr><th></th><th>접수번호</th><th>성명</th><th>학과</th><th>상태</th><th>이메일</th>${hasCc ? '<th>추가 이메일 (참조)</th>' : ''}<th>정보</th><th>보낸 시각</th></tr></thead><tbody>${rows}</tbody></table></div>`
        : '<div class="muted">이 메일을 받을 지원자가 없습니다.</div>'}</div>
     ${K.zoom ? `<div class="sec"><h3>Zoom 주소 <span class="muted small">학과별 주소를 비워 두면 기본 주소가 들어갑니다</span></h3>
-     <div class="grid2">${field('기본 Zoom 주소', `<input id="ml-zoom" placeholder="https://us06web.zoom.us/j/..." value="${esc(sv.zoom || '')}" oninput="mailPreview()">`, { full: 1 })}
-      ${depts.map(d => field(`${esc(d.name)} Zoom 주소`, `<input class="ml-zd" data-dept="${d.id}" placeholder="(기본 주소 사용)" value="${esc((sv.zoomByDept || {})[d.id] || '')}" oninput="mailPreview()">`)).join('')}</div></div>` : ''}
+     <div class="muted small" style="margin-bottom:6px">회의 ID를 비워 두면 Zoom 주소의 숫자(/j/…)로 자동으로 채웁니다. 학과별 주소를 넣은 학과는 그 학과의 회의 ID·암호가 쓰입니다.</div>
+     <div class="grid2" data-zgrp="">${field('기본 Zoom 주소', `<input id="ml-zoom" placeholder="https://us06web.zoom.us/j/..." value="${esc(sv.zoom || '')}" oninput="mailPreview()">`, { full: 1 })}
+      ${zoomMetaFields('', sv)}</div>
+      ${depts.map(d => `<div class="grid2" data-zgrp="${esc(d.id)}" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">${field(`${esc(d.name)} Zoom 주소`, `<input class="ml-zd" data-dept="${d.id}" placeholder="(기본 주소 사용)" value="${esc((sv.zoomByDept || {})[d.id] || '')}" oninput="mailPreview()">`, { full: 1 })}
+        ${zoomMetaFields(d.id, sv)}</div>`).join('')}</div>` : ''}
     ${K.extras ? `<div class="sec"><h3>안내 항목 <span class="muted small">모든 받는 사람에게 같은 내용으로 들어갑니다</span></h3><div class="grid2">
       ${K.extras.map(([k, l, ph]) => field(`${l} <code>{${k}}</code>`, `<input class="ml-ex" data-k="${k}" placeholder="${esc(ph)}" value="${esc((sv.extra || {})[k] || '')}" oninput="mailPreview()">`, { full: 1 })).join('')}</div></div>` : ''}
     ${K.fees ? feeSection(list) : ''}
@@ -391,7 +401,7 @@ async function openMailModal(kind) {
 function mailDeptFilter(v) {
   mailDept = v || '';
   $$('.ml-ck').forEach(c => { const tr = c.closest('tr'); tr.style.display = !mailDept || tr.dataset.dept === mailDept ? '' : 'none'; });
-  $$('.ml-zd').forEach(i => { const f = i.closest('.fld') || i.parentElement; f.style.display = !mailDept || i.dataset.dept === mailDept ? '' : 'none'; });
+  $$('[data-zgrp]').forEach(g => { if (g.dataset.zgrp) g.style.display = !mailDept || g.dataset.zgrp === mailDept ? '' : 'none'; });
   mailCount();
 }
 const mailVisible = c => c.closest('tr').style.display !== 'none';
@@ -410,8 +420,30 @@ function mailForm() {
   $$('.ml-zd').forEach(i => { if (i.value.trim()) zoomByDept[i.dataset.dept] = i.value.trim(); });
   $$('.ml-ex').forEach(i => { extra[i.dataset.k] = i.value.trim(); });
   const byId = {};
+  const zoom = $('#ml-zoom') ? $('#ml-zoom').value.trim() : '', zoomMeta = {};
+  $$('.ml-zid,.ml-zpw').forEach(i => { const m = zoomMeta[i.dataset.dept] = zoomMeta[i.dataset.dept] || {}; if (i.value.trim()) m[i.classList.contains('ml-zid') ? 'id' : 'pw'] = i.value.trim(); });
   if (MAIL_KINDS[mailKind].fees) mailTargets().forEach(a => { byId[a.id] = feeVars(a); });
-  return { subject: $('#ml-subj').value.trim(), body: $('#ml-body').value, zoom: $('#ml-zoom') ? $('#ml-zoom').value.trim() : '', zoomByDept, extra, byId };
+  if (MAIL_KINDS[mailKind].zoom) mailTargets().forEach(a => { byId[a.id] = zoomVars(a, zoom, zoomByDept, zoomMeta); });
+  return { subject: $('#ml-subj').value.trim(), body: $('#ml-body').value, zoom, zoomByDept, zoomMeta, extra, byId };
+}
+
+/* ---------- Zoom 회의 ID·암호·면접번호 (사람별 값으로 서버에 전달) ---------- */
+function zoomMetaFields(dept, sv) {
+  const m = ((sv.zoomMeta || {})[dept]) || {}, ph = dept ? '(기본값 사용)' : '';
+  return field(`${dept ? '' : '기본 '}회의 ID`, `<input class="ml-zid" data-dept="${esc(dept)}" placeholder="${dept ? ph : '예: 123 4567 8901 (비우면 주소에서 자동)'}" value="${esc(m.id || '')}" oninput="mailPreview()">`)
+    + field(`${dept ? '' : '기본 '}암호`, `<input class="ml-zpw" data-dept="${esc(dept)}" placeholder="${dept ? ph : '예: 123456'}" value="${esc(m.pw || '')}" oninput="mailPreview()">`);
+}
+function zoomIdFromUrl(u) {
+  const d = (String(u || '').match(/\/(?:j|w|s|wc\/join)\/(\d{9,11})/) || [])[1];
+  if (!d) return '';
+  return d.length === 11 ? `${d.slice(0, 3)} ${d.slice(3, 7)} ${d.slice(7)}` : d.length === 10 ? `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}` : d;
+}
+function zoomVars(a, zoom, zoomByDept, zoomMeta) {
+  const dk = String(a.department_id), own = !!zoomByDept[dk];
+  const url = own ? zoomByDept[dk] : zoom, dm = zoomMeta[dk] || {}, bm = zoomMeta[''] || {};
+  const m = own ? { id: dm.id || '', pw: dm.pw || bm.pw || '' } : { id: dm.id || bm.id || '', pw: dm.pw || bm.pw || '' };
+  const o = orderOf(a);
+  return { 회의ID: m.id || zoomIdFromUrl(url) || '추후 안내 (TBA)', 암호: m.pw || '추후 안내 (TBA)', 면접번호: o != null ? String(o) : '추후 안내' };
 }
 
 /* ---------- 미리보기 (서버와 같은 규칙) ---------- */
@@ -490,7 +522,9 @@ async function mailSend(test) {
   const ids = mailChecked();
   if (!test && !ids.length) return;
   const warns = [];
-  if (K.zoom) { const n = ids.filter(id => { const a = S.apps.find(x => x.id === id); return !(f.zoomByDept[a.department_id] || f.zoom); }).length; if (n) warns.push(`Zoom 주소가 없는 지원자 ${n}명 (‘추후 안내’로 표시됨)`); }
+  if (K.zoom) { const n = ids.filter(id => { const a = S.apps.find(x => x.id === id); return !(f.zoomByDept[a.department_id] || f.zoom); }).length; if (n) warns.push(`Zoom 주소가 없는 지원자 ${n}명 (‘추후 안내’로 표시됨)`);
+    const np = ids.filter(id => /^추후/.test((f.byId[id] || {}).암호 || '')).length; if (np) warns.push(`Zoom 암호가 없는 지원자 ${np}명 (‘추후 안내’로 표시됨)`);
+    const no = ids.filter(id => orderOf(S.apps.find(x => x.id === id)) == null).length; if (no) warns.push(`면접 순서(면접번호)가 정해지지 않은 지원자 ${no}명`); }
   if (mailKind === '면접안내') { const n = ids.filter(id => !(S.interviews[id] || {}).scheduled_at).length; if (n) warns.push(`면접 일시가 정해지지 않은 지원자 ${n}명`); }
   if (mailKind === '합격등록안내') {
     const n = ids.filter(id => !S.payments[id]).length; if (n) warns.push(`고지 금액이 없는 지원자 ${n}명 (금액이 ‘-’로 표시됨)`);
@@ -527,9 +561,9 @@ async function mailSend(test) {
   }
   if (K.extras) { const empty = K.extras.filter(([k]) => !f.extra[k]).map(([, l]) => l); if (empty.length) warns.push(`비어 있는 안내 항목: ${empty.join(', ')}`); }
   if (!test && !confirm(`[${K.label}] ${ids.length}명에게 메일을 발송합니다.` + (attach ? `\n📎 ${attach.label} PDF 첨부 (발급 기록이 남습니다)` : '') + (nCc ? `\n✉ 추가 이메일(참조)도 함께 받는 지원자 ${nCc}명` : '') + (warns.length ? '\n\n⚠ ' + warns.join('\n⚠ ') : '') + '\n\n계속할까요?')) return;
-  mailRemember(mailKind, { subject: f.subject, body: f.body, zoom: f.zoom, zoomByDept: f.zoomByDept, extra: f.extra });
+  mailRemember(mailKind, { ver: K.tplVer || 1, subject: f.subject, body: f.body, zoom: f.zoom, zoomByDept: f.zoomByDept, zoomMeta: f.zoomMeta, extra: f.extra });
   const req = { kind: mailKind, include_cc: ccOn, subject: f.subject, body: f.body, zoom_default: f.zoom, zoom_by_dept: f.zoomByDept, extra: f.extra };
-  if (K.fees) req.extra_by_id = f.byId;
+  if (K.fees || K.zoom) req.extra_by_id = f.byId;
   const btns = ['#ml-go', '#ml-test'].map(s => $(s)); btns.forEach(b => { b.disabled = true; });
   const res = $('#ml-res');
   try {
