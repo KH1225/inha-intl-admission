@@ -405,13 +405,36 @@ async function afterLogin() {
   renderShell();
   startIdleTimer();
 }
-async function logout() { try { await sb.auth.signOut(); } catch (e) { /* 무시 */ } location.reload(); }
+/* 로그아웃: 서버 요청이 실패하거나 멈춰도(최대 3초) 이 브라우저에 저장된 로그인 정보는 반드시 지웁니다 */
+const LAST_ACTIVE_KEY = 'lastActiveAt';
+function clearAuthStorage() {
+  [localStorage, sessionStorage].forEach(st => {
+    try { Object.keys(st).filter(k => /^sb-.*auth-token/.test(k) || k === LAST_ACTIVE_KEY).forEach(k => st.removeItem(k)); } catch (e) { /* 무시 */ }
+  });
+}
+let loggingOut = false;
+async function logout() {
+  if (loggingOut) return;
+  loggingOut = true;
+  clearTimeout(idleTimer);
+  try { await Promise.race([sb.auth.signOut(), new Promise(r => setTimeout(r, 3000))]); } catch (e) { /* 무시 */ }
+  try { await Promise.race([sb.auth.signOut({ scope: 'local' }), new Promise(r => setTimeout(r, 1000))]); } catch (e) { /* 무시 */ }
+  clearAuthStorage();
+  location.replace(location.pathname + location.search);
+}
+// 창을 닫았다가 다시 열어도, 마지막 사용 후 IDLE_MINUTES가 지났으면 로그인 상태를 이어가지 않습니다
+function idleExpired() {
+  let t = 0; try { t = Number(localStorage.getItem(LAST_ACTIVE_KEY)) || 0; } catch (e) { /* 무시 */ }
+  return !t || Date.now() - t > C.IDLE_MINUTES * 60 * 1000;
+}
+function markActive() { try { localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now())); } catch (e) { /* 무시 */ } }
 
-let idleTimer = null;
+let idleTimer = null, lastMark = 0;
 function startIdleTimer() {
   const reset = () => {
     clearTimeout(idleTimer);
     idleTimer = setTimeout(async () => { await logout(); }, C.IDLE_MINUTES * 60 * 1000);
+    if (Date.now() - lastMark > 15000) { lastMark = Date.now(); markActive(); }
   };
   ['click', 'keydown', 'mousemove', 'touchstart'].forEach(ev => window.addEventListener(ev, reset, { passive: true }));
   reset();

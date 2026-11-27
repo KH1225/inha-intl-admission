@@ -2,11 +2,16 @@
 /* ===== 시작 (모든 스크립트가 로드된 뒤 실행) ===== */
 (function init() {
   try { localStorage.removeItem('theme'); } catch (e) { /* 무시 (다크모드 삭제) */ }
-  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT' && S.user) location.reload(); });
+  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT' && S.user && !loggingOut) location.reload(); });
   (async () => {
     try {
       const { data: { session } } = await sb.auth.getSession();
       if (!session) { renderLogin(); return; }
+      // 오래 쓰지 않은 채 남아 있던 로그인(창을 닫았다 다시 연 경우 포함)은 끊고 로그인 화면으로
+      if (idleExpired()) {
+        try { await Promise.race([sb.auth.signOut({ scope: 'local' }), new Promise(r => setTimeout(r, 1000))]); } catch (e) { /* 무시 */ }
+        clearAuthStorage(); renderLogin(`${C.IDLE_MINUTES}분 이상 사용하지 않아 로그아웃되었습니다. 다시 로그인하세요.`); return;
+      }
       S.user = session.user;
       await afterLogin();
     } catch (e) { renderFatal(e); }
